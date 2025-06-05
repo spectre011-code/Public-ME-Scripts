@@ -8,7 +8,7 @@ local DiscordHandle = "not_spectre011"
 Changelog:
 v1.0.0 - 03-05-2025
     - Initial release.
-v1.1.1 - 08-05-2025
+v1.1.0 - 08-05-2025
     - Added functions
     - Changed . to :
 ]]

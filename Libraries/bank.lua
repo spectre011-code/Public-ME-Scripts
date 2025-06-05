@@ -1,20 +1,20 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.6"
+local ScriptVersion = "1.0.7"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
 --[[
 Changelog:
-v1.0 - 02-05-2025
+v1.0.0 - 02-05-2025
     - Initial release.
 v1.0.1 - 02-05-2025
     - Forgot to add changelog.
 v1.0.2 - 02-05-2025
-    - Renamed some functions to be more similar to other ME functions
+    - Renamed some functions to be more similar to other ME functions.
 v1.0.3 - 02-05-2025
-    - More renames
-    - Removed empty lines
+    - More renames.
+    - Removed empty lines.
 v1.0.4 - 04-05-2025
     - Edited credits variables to be local to prevent some funny interactions with my other scripts.
     - Added functions: 
@@ -31,24 +31,31 @@ v1.0.4 - 04-05-2025
     - Edited relevant functions to check for transfer/preset tabs.
     - Edited some prints to be more descriptive.
 v1.0.5 - 06-05-2025
-    Functions now use : instead of .
-    Modified tables to be inside the BANK table.
-    Modified functions to use the tables with the atribute self.
-    Modified functions BANK:PresetSettingsGetEquipment() and BANK:PresetSettingsGetInventory() to include the item name.
-    Added function BANK:PresetSettingsGetCheckBox().
-    Added function BANK:PresetSettingsSetCheckBox().
-    Renamed some function to be more descriptive of their class.
-    Reordered function by class:
+    - Functions now use : instead of .
+    - Modified tables to be inside the BANK table.
+    - Modified functions to use the tables with the atribute self.
+    - Modified functions BANK:PresetSettingsGetEquipment() and BANK:PresetSettingsGetInventory() to include the item name.
+    - Added function BANK:PresetSettingsGetCheckBox().
+    - Added function BANK:PresetSettingsSetCheckBox().
+    - Renamed some function to be more descriptive of their class.
+    - Reordered function by class:
         General bank
         Deposit box
         Collection box
         Preset settings
 v1.0.6 - 08-05-2025
-    Fixed VB read in BANK:GetOpenedTab()
-    Fixed VB read in BANK:GetQuantitySelected()
-    Fixed typos in BANK:WithdrawToBoB() and BANK:Withdraw()
-    Fixed typos for Head Guard in BANK:Open()
-    Added Head Guard to BANK:LoadLastPreset()
+    - Fixed VB read in BANK:GetOpenedTab().
+    - Fixed VB read in BANK:GetQuantitySelected().
+    - Fixed typos in BANK:WithdrawToBoB() and BANK:Withdraw().
+    - Fixed typos for Head Guard in BANK:Open().
+    - Added Head Guard to BANK:LoadLastPreset().
+v1.0.7 - 19-05-2025
+    - BANK:Contains() and BANK:InventoryContains() now accepts number and table.
+    - Added functions:
+        BANK:ContainsAny()
+        BANK:InventoryContainsAny()
+        BANK:EquipmentContains()
+        BANK:EquipmentContainsAny()
 ]]
 
 local API = require("api")
@@ -58,8 +65,7 @@ local BANK = {}
 BANK.Interfaces = {}
 BANK.Interfaces.PresetSettings = {}
 
---This gets the ids of the items
-BANK.Interfaces.CollectionBoxSlots = { -- https://imgur.com/WN60RRo 
+BANK.Interfaces.CollectionBoxSlots = { -- https://imgur.com/WN60RRo. 
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,15,-1,0 }, { 109,14,-1,0 }, { 109,14,1,0 } }, -- Slot 1
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,15,-1,0 }, { 109,14,-1,0 }, { 109,14,3,0 } }, -- Slot 2
 
@@ -84,34 +90,6 @@ BANK.Interfaces.CollectionBoxSlots = { -- https://imgur.com/WN60RRo
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,27,-1,0 }, { 109,67,-1,0 }, { 109,67,1,0 } }, -- Slot 15
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,27,-1,0 }, { 109,67,-1,0 }, { 109,67,3,0 } } -- Slot 16
 }
-
---This gets the name of the items
---[[
-BANK.Interface.CollectionBoxSlots = { -- https://imgur.com/WN60RRo
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,15,-1,0 }, { 109,14,-1,0 }, { 109,14,0,0 } }, -- Slot 1
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,15,-1,0 }, { 109,14,-1,0 }, { 109,14,2,0 } }, -- Slot 2
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,21,-1,0 }, { 109,12,-1,0 }, { 109,12,0,0 } }, -- Slot 3
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,21,-1,0 }, { 109,12,-1,0 }, { 109,12,2,0 } }, -- Slot 4
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,22,-1,0 }, { 109,10,-1,0 }, { 109,10,0,0 } }, -- Slot 5
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,22,-1,0 }, { 109,10,-1,0 }, { 109,10,2,0 } }, -- Slot 6
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,23,-1,0 }, { 109,7,-1,0 }, { 109,7,0,0 } }, -- Slot 7
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,23,-1,0 }, { 109,7,-1,0 }, { 109,7,2,0 } }, -- Slot 8
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,24,-1,0 }, { 109,4,-1,0 }, { 109,4,0,0 } }, -- Slot 9
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,24,-1,0 }, { 109,4,-1,0 }, { 109,4,2,0 } }, -- Slot 10
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,25,-1,0 }, { 109,1,-1,0 }, { 109,1,0,0 } }, -- Slot 11
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,25,-1,0 }, { 109,1,-1,0 }, { 109,1,2,0 } }, -- Slot 12
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,26,-1,0 }, { 109,62,-1,0 }, { 109,62,0,0 } }, -- Slot 13
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,26,-1,0 }, { 109,62,-1,0 }, { 109,62,2,0 } }, -- Slot 14
-
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,27,-1,0 }, { 109,67,-1,0 }, { 109,67,0,0 } }, -- Slot 15
-    { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,27,-1,0 }, { 109,67,-1,0 }, { 109,67,2,0 } } -- Slot 16
-}]]
 
 BANK.Interfaces.PresetSettings.Inventory = { 
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,277,-1,0 }, { 517,280,-1,0 }, { 517,280,0,0 } },
@@ -178,7 +156,7 @@ function BANK:IsOpen()
     end
 end
 
--- Attempts to open your bank using the listed options. Requires cache enabled https://imgur.com/5I9a46V
+-- Attempts to open your bank using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:Open()
     print("[BANK] Opening BANK:")
@@ -211,7 +189,7 @@ function BANK:Open()
     return false
 end
 
--- Attempts to load the last bank preset using the listed options. Requires cache enabled https://imgur.com/5I9a46V
+-- Attempts to load the last bank preset using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:LoadLastPreset()
     print("[BANK] Loading last preset.")
@@ -242,37 +220,6 @@ function BANK:LoadLastPreset()
 
     print("[BANK] Could not interact with any of the following: Banker, Bank chest, Bank booth, Counter and Head Guard.")
     return false
-end
-
--- Checks if inventory has item.
----@param ItemID number
----@return boolean
-function BANK:InventoryContains(ItemID)
-    if type(ItemID) ~= "number" then
-        print("[BANK] Error: Expected a number, got "..tostring(ItemID).." ("..type(ItemID)..")")
-        return false
-    end
-    local Items = API.Container_Get_all(93)
-    local FoundItem = false
-
-    if not Items or #Items == 0 then
-        print("[BANK] Could not read inventory items or there are none.")
-        return false
-    end
-
-    for _, item in ipairs(Items) do
-        if item.item_id and item.item_id == ItemID and item.item_stack > 0 then
-            FoundItem = true
-        end
-    end
-
-    if FoundItem then
-        print("[BANK] Item ID: "..ItemID.." found in inventory.")
-    else
-        print("[BANK] Item ID: "..ItemID.." not found in inventory.")
-    end
-
-    return FoundItem
 end
 
 -- Checks if item is equipped.
@@ -306,35 +253,321 @@ function BANK:IsEquipped(ItemID)
     return FoundItem
 end
 
--- Checks if bank has item.
----@param ItemID number
+-- Checks if bank has item(s).
+---@param ItemID number|table
 ---@return boolean
 function BANK:Contains(ItemID)
-    if type(ItemID) ~= "number" then
-        print("[BANK] Error: Expected a number, got "..tostring(ItemID).." ("..type(ItemID)..")")
+    local itemIds = {}
+    
+    -- Handle single number input
+    if type(ItemID) == "number" then
+        table.insert(itemIds, ItemID)
+    -- Handle table input
+    elseif type(ItemID) == "table" then
+        for _, id in pairs(ItemID) do
+            if type(id) == "number" then
+                table.insert(itemIds, id)
+            else
+                print("[BANK] Error: Expected a table of numbers, got a table containing "..tostring(id).." ("..type(id)..").")
+                return false
+            end
+        end
+    else
+        print("[BANK] Error: Expected a number or table of numbers, got "..tostring(ItemID).." ("..type(ItemID)..").")
         return false
     end
+    
     local Items = API.Container_Get_all(95)
-    local FoundItem = false
+    local foundItems = {}
+    
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read bank items or there are none.")
+        return false
+    end
 
+    for _, id in ipairs(itemIds) do
+        foundItems[id] = false
+    end
+    
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 and foundItems[item.item_id] ~= nil then
+            foundItems[item.item_id] = true
+        end
+    end
+
+    local allFound = true
+    local someFound = false
+    local resultMessage = "[BANK] Item search results:"
+    
+    for _, id in ipairs(itemIds) do
+        if foundItems[id] then
+            resultMessage = resultMessage.."\n- ID: "..id.." FOUND."
+            someFound = true
+        else
+            resultMessage = resultMessage.."\n- ID: "..id.." NOT FOUND."
+            allFound = false
+        end
+    end
+    
+    print(resultMessage)
+
+    return allFound
+end
+
+-- Checks if bank has any of the requested item(s).
+---@param ItemID number|table
+---@return boolean
+function BANK:ContainsAny(ItemID)
+    local itemIds = {}
+    
+    -- Handle single number input
+    if type(ItemID) == "number" then
+        table.insert(itemIds, ItemID)
+    -- Handle table input
+    elseif type(ItemID) == "table" then
+        for _, id in pairs(ItemID) do
+            if type(id) == "number" then
+                table.insert(itemIds, id)
+            else
+                print("[BANK] Error: Expected a table of numbers, got a table containing "..tostring(id).." ("..type(id)..").")
+                return false
+            end
+        end
+    else
+        print("[BANK] Error: Expected a number or table of numbers, got "..tostring(ItemID).." ("..type(ItemID)..").")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(95)
+    
     if not Items or #Items == 0 then
         print("[BANK] Could not read bank items or there are none.")
         return false
     end
 
     for _, item in ipairs(Items) do
-        if item.item_id and item.item_id == ItemID and item.item_stack > 0 then
-            FoundItem = true
+        if item.item_id and item.item_stack > 0 then
+            for _, id in ipairs(itemIds) do
+                if item.item_id == id then
+                    print("[BANK] Item ID: "..id.." found in BANK.")
+                    return true
+                end
+            end
+        end
+    end
+    
+    print("[BANK] None of the requested items found in BANK.")
+    return false
+end
+
+-- Checks if inventory has item(s).
+---@param ItemID number|table
+---@return boolean
+function BANK:InventoryContains(ItemID)
+    local itemIds = {}
+    
+    -- Handle single number input
+    if type(ItemID) == "number" then
+        table.insert(itemIds, ItemID)
+    -- Handle table input
+    elseif type(ItemID) == "table" then
+        for _, id in pairs(ItemID) do
+            if type(id) == "number" then
+                table.insert(itemIds, id)
+            else
+                print("[BANK] Error: Expected a table of numbers, got a table containing "..tostring(id).." ("..type(id)..").")
+                return false
+            end
+        end
+    else
+        print("[BANK] Error: Expected a number or table of numbers, got "..tostring(ItemID).." ("..type(ItemID)..").")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    local foundItems = {}
+    
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or there are none.")
+        return false
+    end
+
+    for _, id in ipairs(itemIds) do
+        foundItems[id] = false
+    end
+
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 and foundItems[item.item_id] ~= nil then
+            foundItems[item.item_id] = true
         end
     end
 
-    if FoundItem then
-        print("[BANK] Item ID: "..ItemID.." found in BANK:")
+    local allFound = true
+    local resultMessage = "[BANK] Item search results:"
+    
+    for _, id in ipairs(itemIds) do
+        if foundItems[id] then
+            resultMessage = resultMessage.."\n- ID: "..id.." FOUND."
+        else
+            resultMessage = resultMessage.."\n- ID: "..id.." NOT FOUND."
+            allFound = false
+        end
+    end
+    
+    print(resultMessage)
+    
+    return allFound
+end
+
+-- Checks if inventory has any of the requested item(s).
+---@param ItemID number|table
+---@return boolean
+function BANK:InventoryContainsAny(ItemID)
+    local itemIds = {}
+    
+    -- Handle single number input
+    if type(ItemID) == "number" then
+        table.insert(itemIds, ItemID)
+    -- Handle table input
+    elseif type(ItemID) == "table" then
+        for _, id in pairs(ItemID) do
+            if type(id) == "number" then
+                table.insert(itemIds, id)
+            else
+                print("[BANK] Error: Expected a table of numbers, got a table containing "..tostring(id).." ("..type(id)..").")
+                return false
+            end
+        end
     else
-        print("[BANK] Item ID: "..ItemID.." not found in BANK:")
+        print("[BANK] Error: Expected a number or table of numbers, got "..tostring(ItemID).." ("..type(ItemID)..").")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or there are none.")
+        return false
     end
 
-    return FoundItem
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 then
+            for _, id in ipairs(itemIds) do
+                if item.item_id == id then
+                    print("[BANK] Item ID: "..id.." found in inventory.")
+                    return true
+                end
+            end
+        end
+    end
+
+    print("[BANK] None of the requested items found in inventory.")
+    return false
+end
+
+-- Checks if equipment has item(s).
+---@param ItemID number|table
+---@return boolean
+function BANK:EquipmentContains(ItemID)
+    local itemIds = {}
+    
+    -- Handle single number input
+    if type(ItemID) == "number" then
+        table.insert(itemIds, ItemID)
+    -- Handle table input
+    elseif type(ItemID) == "table" then
+        for _, id in pairs(ItemID) do
+            if type(id) == "number" then
+                table.insert(itemIds, id)
+            else
+                print("[BANK] Error: Expected a table of numbers, got a table containing "..tostring(id).." ("..type(id)..").")
+                return false
+            end
+        end
+    else
+        print("[BANK] Error: Expected a number or table of numbers, got "..tostring(ItemID).." ("..type(ItemID)..").")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(94)
+    local foundItems = {}
+    
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read equipment items or there are none.")
+        return false
+    end
+
+    for _, id in ipairs(itemIds) do
+        foundItems[id] = false
+    end
+    
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 and foundItems[item.item_id] ~= nil then
+            foundItems[item.item_id] = true
+        end
+    end
+    
+    local allFound = true
+    local resultMessage = "[BANK] Item search results:"
+    
+    for _, id in ipairs(itemIds) do
+        if foundItems[id] then
+            resultMessage = resultMessage.."\n- ID: "..id.." FOUND."
+        else
+            resultMessage = resultMessage.."\n- ID: "..id.." NOT FOUND."
+            allFound = false
+        end
+    end
+    
+    print(resultMessage)
+    
+    return allFound
+end
+
+-- Checks if equipment has any of the requested item(s).
+---@param ItemID number|table
+---@return boolean
+function BANK:EquipmentContainsAny(ItemID)
+    local itemIds = {}
+    
+    -- Handle single number input
+    if type(ItemID) == "number" then
+        table.insert(itemIds, ItemID)
+    -- Handle table input
+    elseif type(ItemID) == "table" then
+        for _, id in pairs(ItemID) do
+            if type(id) == "number" then
+                table.insert(itemIds, id)
+            else
+                print("[BANK] Error: Expected a table of numbers, got a table containing "..tostring(id).." ("..type(id)..").")
+                return false
+            end
+        end
+    else
+        print("[BANK] Error: Expected a number or table of numbers, got "..tostring(ItemID).." ("..type(ItemID)..").")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(94)
+    
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read equipment items or there are none.")
+        return false
+    end
+    
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 then
+            for _, id in ipairs(itemIds) do
+                if item.item_id == id then
+                    print("[BANK] Item ID: "..id.." found in equipment.")
+                    return true
+                end
+            end
+        end
+    end
+
+    print("[BANK] None of the requested items found in equipment.")
+    return false
 end
 
 -- Get the player tab opened in the bank(Inventory, Equipment or Beast of burden).
@@ -1001,7 +1234,7 @@ function BANK:Equip(ItemID)
     end
 end
 
--- Withdraws item(s) from your bank to your beast of burden. The amount is set with BANK:SetQuantity(Qtitty)
+-- Withdraws item(s) from your bank to your beast of burden. The amount is set with BANK:SetQuantity(Qtitty).
 ---@param ItemID number|table
 ---@return boolean
 function BANK:WithdrawToBoB(ItemID)
@@ -1067,7 +1300,7 @@ function BANK:DepositBoxIsOpen()
     end
 end
 
--- Attempts to open a deposit box. Requires cache enabled https://imgur.com/5I9a46V
+-- Attempts to open a deposit box. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:DepositBoxOpen()
     print("[BANK] Opening Deposit box.")
@@ -1107,7 +1340,7 @@ function BANK:DepositBoxDepositMoneyPouch()
     return API.DoAction_Interface(0x24,0xffffffff,1,11,14,-1,API.OFF_ACT_GeneralInterface_route)
 end
 
--- Attempts to deposit-all in a deposit box. Requires cache enabled https://imgur.com/5I9a46V
+-- Attempts to deposit-all in a deposit box. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:DepositBoxDepositAll()
     print("[BANK] Depositing-All in a deposit box.")
@@ -1137,7 +1370,7 @@ function BANK:ColletionBoxIsOpen()
     end 
 end
 
--- Attempts to open your collection box using the listed options. Requires cache enabled https://imgur.com/5I9a46V
+-- Attempts to open your collection box using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:ColletionBoxOpen()
     print("[BANK] Opening colection box.")
@@ -1370,7 +1603,7 @@ function BANK:PresetSettingsGetEquipment()
     return equipment
 end
 
----Checks if a specific checkbox is enabled in the bank preset settings. Valid options are "Inventory", "Equipment", or "Summon"
+---Checks if a specific checkbox is enabled in the bank preset settings. Valid options are "Inventory", "Equipment", or "Summon".
 ---@param option string
 ---@return boolean|nil
 function BANK:PresetSettingsGetCheckBox(option)
@@ -1422,7 +1655,7 @@ function BANK:PresetSettingsGetCheckBox(option)
     
 end
 
----Set a specific checkbox to be enaled or disabled in the bank preset settings. Valid options are "Inventory", "Equipment", or "Summon"
+---Set a specific checkbox to be enaled or disabled in the bank preset settings. Valid options are "Inventory", "Equipment", or "Summon".
 ---@param option string
 ---@param state boolean
 ---@return boolean|nil
