@@ -35,24 +35,6 @@ local function GetComponentByName(componentName)
     end
 end
 
-local function GetComponentValue(componentName)
-    local componentArr = GetComponentByName(componentName)
-    local componentKind = componentArr[3]
-    local component = componentArr[2]
-
-    if componentKind == "Label" then
-        return component.string_value
-    elseif componentKind == "CheckBox" then
-        return component.return_click
-    elseif componentKind == "ComboBox" and component.string_value ~= "None" then
-        return component.string_value
-    elseif componentKind == "ListBox" and component.string_value ~= "None" then
-        return component.string_value
-    end
-
-    return nil
-end
-
 local function AddBackground(name, widthMultiplier, heightMultiplier, colour)
     widthMultiplier = widthMultiplier or 1
     heightMultiplier = heightMultiplier or 1
@@ -150,7 +132,7 @@ local function Tracking() -- This is what should be called at the end of every c
 end
 --------------------END METRICS STUFF--------------------
 local IdleCycles = 0
-local IsFirstStep = false
+local IsFirstStep = true
 local ClueStepId = 0
 local Naked = true
 local Control = nil -- idk yet
@@ -172,6 +154,30 @@ local ChallengeScrollIds = {
     33289,
     33291,
     33293
+}
+local Emotes = {
+    ["No"] = 1,
+    ["Bow"] = 2,
+    ["Angry"] = 3,
+    ["Think"] = 4,
+    ["Wave"] = 5,
+    ["Shrug"] = 6,
+    ["Cheer"] = 7,
+    ["Beckon"] = 8,
+    ["Laugh"] = 9,
+    ["Jump For Joy"] = 10,
+    ["Yawn"] = 11,
+    ["Dance"] = 12,
+    ["Jig"] = 13,
+    ["Twirl"] = 14,
+    ["Headbang"] = 15,
+    ["Cry"] = 16,
+    ["Blow Kiss"] = 17,
+    ["Panic"] = 18,
+    ["Raspberry"] = 19,
+    ["Clap"] = 20,
+    ["Salute"] = 21,
+    ["Idea"] = 28,
 }
 
 local function Dig()
@@ -222,6 +228,10 @@ local function MoveTo(X, Y, Z, WalkTolerance, AreaTolerance)
     return true
 end
 
+local function Emote(EmoteName)
+    return API.DoAction_Interface(0xffffffff,0xffffffff,1,590,11,Emotes[EmoteName],API.OFF_ACT_GeneralInterface_route)
+end
+
 local function Bool1Check(ObjID)
     local objects = API.GetAllObjArray1({ObjID}, 75, {12})
     if objects and #objects > 0 then
@@ -250,6 +260,21 @@ local function IsTypingBoxOpen()
     end
 end
 
+--SleepUntil(function() return IsDialogBoxOpen() end, 10)
+local function SleepUntil(conditionFunc, timeout)
+    local startTime = os.time()
+    while API.Read_LoopyLoop() do
+        if conditionFunc() then
+            return true
+        end
+        if timeout and (os.time() - startTime) >= timeout then
+            return false
+        end
+        UTILS.randomSleep(100)
+    end
+    return false
+end
+
 local function PressSpace()
     return API.KeyboardPress2(0x20, 40, 60), API.RandomSleep2(400,300,600)
 end
@@ -276,6 +301,10 @@ local function GetClueStepId()
     if #clue > 0 then
         UpdateStatus("Solving step " .. clue[1].id)
         print("Step: ".. clue[1].id)
+        if IsFirstStep then
+            API.DoAction_Inventory1(clue[1].id,0,1,API.OFF_ACT_GeneralInterface_route)
+            IsFirstStep = false
+        end
         return clue[1].id
     end
 
@@ -333,6 +362,116 @@ local function ReqCheck()
         return
     end
 end
+
+--[[
+TODO STEPS: (not considering challenge scrolls)
+2831 requires key and idk how to do this one yet
+2833 requires key and idk how to do this one yet
+2835 requires key and idk how to do this one yet
+2837 requires key and idk how to do this one yet
+2839 requires key and idk how to do this one yet
+2843
+2845
+2847
+2848
+2849
+2851
+2853
+2855
+2856
+2857
+2858
+3582
+3584
+3586
+3588
+3590
+3592
+3594
+3596
+3598
+3599
+3601
+3602
+3604
+3605
+3607
+3609
+3610
+3611
+3612
+3613
+3614
+3615
+3616
+3617
+3618
+7274
+7276
+7278
+7280
+7282
+7284
+7286
+7288
+7290
+7292
+7294
+7296
+7298
+7300
+7301
+7303
+7304
+7305
+7307
+7309
+7311
+7313
+7315
+7317
+10254
+10256
+10258
+10260
+10262
+10264
+10266
+10268
+10270
+10272
+10274
+10276
+10278
+13050
+13051
+13053
+13055
+13056
+13058
+13060
+13061
+13063
+13065
+13067
+13068
+13069
+13070
+13071
+13072
+13074
+13075
+13076
+13078
+13079
+13080
+33284
+33286
+33288
+33290
+33292
+
+]]
 
 local ClueSteps = {
     [1234] = function()
@@ -461,12 +600,80 @@ local ClueSteps = {
             MoveTo(2849, 3034, 0, 0, 0)
         end
     end,
+    [2819] = function()
+        if IsPlayerAtCoords(3007, 3144, 0) then
+            Dig()
+            IsFirstStep = true
+        else
+            LODESTONES.PORT_SARIM.Teleport()
+            MoveTo(3007, 3144, 0, 0, 0)
+        end
+    end,
+    [2821] = function()
+        if IsPlayerAtCoords(2920, 3403, 0) then
+            Dig()
+            IsFirstStep = true
+        else
+            LODESTONES.TAVERLEY.Teleport()
+            MoveTo(2920, 3403, 0, 0, 0)
+        end
+    end,
+    [2823] = function()
+        if IsPlayerAtCoords(3217, 3188, 0) then
+            Dig()
+            IsFirstStep = true
+        else
+            LODESTONES.LUMBRIDGE.Teleport()
+            MoveTo(3217, 3188, 0, 0, 0)
+        end
+    end,
+    [2825] = function()
+        if IsPlayerAtCoords(3179, 3344, 0) then
+            Dig()
+            IsFirstStep = true
+        else
+            LODESTONES.VARROCK.Teleport()
+            MoveTo(3179, 3344, 0, 0, 0)
+        end
+    end,
+    [2827] = function()
+        if IsPlayerAtCoords(3092, 3225, 0) then
+            Dig()
+            IsFirstStep = true
+        else
+            LODESTONES.DRAYNOR_VILLAGE.Teleport()
+            MoveTo(3092, 3225, 0, 0, 0)
+        end
+    end,
+    [2829] = function()
+        print("This step does not seem to exist in the game. If you see this message on console, please report it to me on discord.")
+        ReasonForStopping = "This step does not seem to exist in the game. If you see this message on console, please report it to me on discord."
+        API.Write_LoopyLoop(false)
+        return
+        --Step exists in game cache and wiki, but not in the clue trainer database.
+    end,
+    [2841] = function()
+        if IsPlayerInArea(2677, 3086, 0, 5) and IsPlayerAtZCoords(1) then
+            Interact:NPC("Hazelmere", "Talk-to", 10)
+            IsFirstStep = true
+        elseif IsPlayerInArea(2677, 3088, 0, 5) then
+            Interact:Object("Ladder", "Climb-up", 10)
+            IdleCycles = 5
+        elseif IsPlayerInArea(2635, 3168, 0, 10) then
+            MoveTo(2677, 3088, 0, 1, 5)
+        else
+            KhazardTeleport()
+            IdleCycles = 2
+        end
+    end,
+    
 }
 
-
 API.Write_fake_mouse_do(false)
+API.SetMaxIdleTime(9)
+
 while API.Read_LoopyLoop() do
-    ReqCheck()
+    --ReqCheck()
 
     --Start skip checks
     if IdleCycles > 0 then
@@ -484,7 +691,7 @@ while API.Read_LoopyLoop() do
         goto continue
     end
 
-    if IsDialogBoxOpen() then
+    if IsDialogBoxOpen() and not IsTypingBoxOpen() then
         print("Player in dialog. Sending spacebar.")
         PressSpace()
         goto continue
@@ -494,6 +701,8 @@ while API.Read_LoopyLoop() do
     if Naked then -- Used to stop script from solving new steps until the items from emote steps are deposited back into hidey-hole
         ClueStepId = GetClueStepId()
     end
+
+    --ClueStepId = 2821
 
     if ClueStepId then
         if ClueSteps[ClueStepId] then
