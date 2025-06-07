@@ -673,7 +673,7 @@ API.Write_fake_mouse_do(false)
 API.SetMaxIdleTime(9)
 
 while API.Read_LoopyLoop() do
-    --ReqCheck()
+    ReqCheck()
 
     --Start skip checks
     if IdleCycles > 0 then
