@@ -1,6 +1,6 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.7"
+local ScriptVersion = "1.0.8"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -56,6 +56,18 @@ v1.0.7 - 19-05-2025
         BANK:InventoryContainsAny()
         BANK:EquipmentContains()
         BANK:EquipmentContainsAny()
+v1.0.8 - 07-06-2025
+    - Added functions:
+        BANK:Withdraw1()
+        BANK:Withdraw5()
+        BANK:Withdraw10()
+        BANK:WithdrawX()
+        BANK:WithdrawAll()
+        BANK:Deposit1()
+        BANK:Deposit5()
+        BANK:Deposit10()
+        BANK:DepositX()
+        BANK:DepositAll()
 ]]
 
 local API = require("api")
@@ -1155,6 +1167,347 @@ function BANK:Withdraw(ItemID)
     end
 end
 
+-- Withdraws 1x item(s) from your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:Withdraw1(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(95)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:Contains(ItemID) then
+            print("[BANK] Item not found in bank: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 1  -- First option (1)
+        elseif currentQuantity == 5 then
+            option = 2  -- Second option (1)
+        elseif currentQuantity == 10 then
+            option = 2  -- Second option (1)
+        elseif currentQuantity == "X" then
+            option = 2  -- Second option (1)
+        elseif currentQuantity == "All" then
+            option = 2  -- Second option (1)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Withdrawing 1x item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:Withdraw1(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for Withdraw1. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Withdraws 5x item(s) from your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:Withdraw5(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(95)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:Contains(ItemID) then
+            print("[BANK] Item not found in bank: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 3  -- Second option (5)
+        elseif currentQuantity == 5 then
+            option = 1  -- First option (5)
+        elseif currentQuantity == 10 then
+            option = 3  -- Third option (5)
+        elseif currentQuantity == "X" then
+            option = 3  -- Third option (5)
+        elseif currentQuantity == "All" then
+            option = 3  -- Third option (5)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Withdrawing 5x item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:Withdraw5(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for Withdraw5. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Withdraws 10x item(s) from your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:Withdraw10(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(95)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:Contains(ItemID) then
+            print("[BANK] Item not found in bank: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 4  -- Third option (10)
+        elseif currentQuantity == 5 then
+            option = 4  -- Third option (10)
+        elseif currentQuantity == 10 then
+            option = 1  -- First option (10)
+        elseif currentQuantity == "X" then
+            option = 4  -- Fourth option (10)
+        elseif currentQuantity == "All" then
+            option = 4  -- Fourth option (10)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Withdrawing 10x item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:Withdraw10(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for Withdraw10. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Withdraws X amount of item(s) from your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:WithdrawX(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(95)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:Contains(ItemID) then
+            print("[BANK] Item not found in bank: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 5  -- Fourth option (X)
+        elseif currentQuantity == 5 then
+            option = 5  -- Fourth option (X)
+        elseif currentQuantity == 10 then
+            option = 5  -- Fourth option (X)
+        elseif currentQuantity == "X" then
+            option = 1  -- First option (X)
+        elseif currentQuantity == "All" then
+            option = 5  -- Fifth option (X)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Withdrawing X amount of item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:WithdrawX(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for WithdrawX. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Withdraws All of item(s) from your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:WithdrawAll(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(95)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:Contains(ItemID) then
+            print("[BANK] Item not found in bank: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        local route = nil
+        
+        if currentQuantity == 1 then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == 5 then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == 10 then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == "X" then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == "All" then
+            option = 1  -- First option (All)
+            route = API.OFF_ACT_GeneralInterface_route
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Withdrawing all of item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:WithdrawAll(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for WithdrawAll. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
 -- Deposits item(s) into your bank. The amount is set with BANK:SetQuantity(Qtitty).
 ---@param ItemID number|table
 ---@return boolean
@@ -1199,6 +1552,347 @@ function BANK:Deposit(ItemID)
         return success
     else
         print("[BANK] Invalid input type for DepositItem. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposits 1x item(s) into your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:Deposit1(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(93)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:InventoryContains(ItemID) then
+            print("[BANK] Item not found in inventory: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 1  -- First option (1)
+        elseif currentQuantity == 5 then
+            option = 2  -- Second option (1)
+        elseif currentQuantity == 10 then
+            option = 2  -- Second option (1)
+        elseif currentQuantity == "X" then
+            option = 2  -- Second option (1)
+        elseif currentQuantity == "All" then
+            option = 2  -- Second option (1)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Depositing 1x item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:Deposit1(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for Deposit1. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposits 5x item(s) into your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:Deposit5(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(93)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:InventoryContains(ItemID) then
+            print("[BANK] Item not found in inventory: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 3  -- Second option (5)
+        elseif currentQuantity == 5 then
+            option = 1  -- First option (5)
+        elseif currentQuantity == 10 then
+            option = 3  -- Third option (5)
+        elseif currentQuantity == "X" then
+            option = 3  -- Third option (5)
+        elseif currentQuantity == "All" then
+            option = 3  -- Third option (5)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Depositing 5x item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:Deposit5(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for Deposit5. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposits 10x item(s) into your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:Deposit10(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(93)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:InventoryContains(ItemID) then
+            print("[BANK] Item not found in inventory: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 4  -- Third option (10)
+        elseif currentQuantity == 5 then
+            option = 4  -- Third option (10)
+        elseif currentQuantity == 10 then
+            option = 1  -- First option (10)
+        elseif currentQuantity == "X" then
+            option = 4  -- Fourth option (10)
+        elseif currentQuantity == "All" then
+            option = 4  -- Fourth option (10)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Depositing 10x item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:Deposit10(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for Deposit10. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposits X amount of item(s) into your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:DepositX(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(93)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:InventoryContains(ItemID) then
+            print("[BANK] Item not found in inventory: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        
+        if currentQuantity == 1 then
+            option = 5  -- Fourth option (X)
+        elseif currentQuantity == 5 then
+            option = 5  -- Fourth option (X)
+        elseif currentQuantity == 10 then
+            option = 5  -- Fourth option (X)
+        elseif currentQuantity == "X" then
+            option = 1  -- First option (X)
+        elseif currentQuantity == "All" then
+            option = 5  -- Fifth option (X)
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Depositing X amount of item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:DepositX(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for DepositX. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposits All of item(s) into your bank.
+---@param ItemID number|table
+---@return boolean
+function BANK:DepositAll(ItemID)
+    BANK:OpenTab(1)
+    local success = true
+    
+    -- Handle single item case
+    if type(ItemID) == "number" then
+        local Items = API.Container_Get_all(93)
+        local ItemIDHex = string.format("0x%X", ItemID)
+        
+        if not BANK:InventoryContains(ItemID) then
+            print("[BANK] Item not found in inventory: "..tostring(ItemID))
+            return false
+        end
+        
+        local slot = nil
+        for i, item in ipairs(Items) do
+            if item.item_id and item.item_id == ItemID then
+                slot = item.item_slot
+                break
+            end
+        end
+        
+        if not slot then
+            print("[BANK] Could not find slot for item: "..tostring(ItemID))
+            return false
+        end
+        
+        local currentQuantity = BANK:GetQuantitySelected()
+        local option = nil
+        local route = nil
+        
+        if currentQuantity == 1 then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == 5 then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == 10 then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == "X" then
+            option = 7  -- Sixth option (All)
+            route = API.OFF_ACT_GeneralInterface_route2
+        elseif currentQuantity == "All" then
+            option = 1  -- First option (All)
+            route = API.OFF_ACT_GeneralInterface_route
+        else
+            print("[BANK] Unknown quantity setting: "..tostring(currentQuantity))
+            return false
+        end
+        
+        print("[BANK] Depositing all of item: "..tostring(ItemID))
+        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, route)
+        return true
+        
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:DepositAll(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for DepositAll. Expected number or table, got "..type(ItemID))
         return false
     end
 end
