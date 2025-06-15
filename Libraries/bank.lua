@@ -1,6 +1,6 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.8"
+local ScriptVersion = "1.0.9"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -37,7 +37,7 @@ v1.0.5 - 06-05-2025
     - Modified functions BANK:PresetSettingsGetEquipment() and BANK:PresetSettingsGetInventory() to include the item name.
     - Added function BANK:PresetSettingsGetCheckBox().
     - Added function BANK:PresetSettingsSetCheckBox().
-    - Renamed some function to be more descriptive of their class.
+    - Renamed some functions to be more descriptive of their class.
     - Reordered function by class:
         General bank
         Deposit box
@@ -68,6 +68,27 @@ v1.0.8 - 07-06-2025
         BANK:Deposit10()
         BANK:DepositX()
         BANK:DepositAll()
+v1.0.9 - 14-06-2025
+    - Change some functions params descriptions to remove warnings.
+    - Added functions:
+        BANK:IsPINOpen()
+        BANK:EnterPIN()
+        BANK:GetTotalSpaces()
+        BANK:GetUsedSpaces()
+        BANK:GetFreeSpaces()
+        BANK:GetItemAmount()
+        BANK:InventoryGetItemAmount()
+        BANK:EquipmentGetItemAmount()        
+        BANK:DepositBoxContains()
+        BANK:DepositBoxGetSlot()
+        BANK:DepositBoxDeposit1()
+        BANK:DepositBoxDeposit5()
+        BANK:DepositBoxDeposit10()
+        BANK:DepositBoxDepositAll2()  
+        BANK:Close()      
+        BANK:DepositBoxClose()
+        BANK:CollectionBoxClose()
+
 ]]
 
 local API = require("api")
@@ -76,6 +97,46 @@ local BANK = {}
 
 BANK.Interfaces = {}
 BANK.Interfaces.PresetSettings = {}
+
+BANK.Interfaces.PIN = { 
+    { 759,5,-1,0 } 
+}
+
+BANK.Interfaces.BankSpaces = {
+    { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,230,-1,0 }, { 517,231,-1,0 }, { 517,245,-1,0 }, { 517,246,-1,0 }, { 517,249,-1,0 } }, --Used space
+    { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,230,-1,0 }, { 517,231,-1,0 }, { 517,245,-1,0 }, { 517,246,-1,0 }, { 517,250,-1,0 } } --Total space
+}
+
+BANK.Interfaces.DepositBoxSlots = {
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,0,0 } }, --slot 1
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,1,0 } }, --slot 2
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,2,0 } }, --slot 3
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,3,0 } }, --slot 4
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,4,0 } }, --slot 5
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,5,0 } }, --slot 6
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,6,0 } }, --slot 7
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,7,0 } }, --slot 8
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,8,0 } }, --slot 9
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,9,0 } }, --slot 10
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,10,0 } }, --slot 11
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,11,0 } }, --slot 12
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,12,0 } }, --slot 13
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,13,0 } }, --slot 14
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,14,0 } }, --slot 15
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,15,0 } }, --slot 16
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,16,0 } }, --slot 17
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,17,0 } }, --slot 18
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,18,0 } }, --slot 19
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,19,0 } }, --slot 20
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,20,0 } }, --slot 21
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,21,0 } }, --slot 22
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,22,0 } }, --slot 23
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,23,0 } }, --slot 24
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,24,0 } }, --slot 25
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,25,0 } }, --slot 26
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,26,0 } }, --slot 27
+    { { 11,16,-1,0 }, { 11,18,-1,0 }, { 11,19,-1,0 }, { 11,19,27,0 } } --slot 28
+} 
 
 BANK.Interfaces.CollectionBoxSlots = { -- https://imgur.com/WN60RRo. 
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,15,-1,0 }, { 109,14,-1,0 }, { 109,14,1,0 } }, -- Slot 1
@@ -201,6 +262,18 @@ function BANK:Open()
     return false
 end
 
+-- Attempts to close the bank interface.
+---@return boolean
+function BANK:Close()
+    if BANK:IsOpen() then
+        print("[BANK] Closing bank.")
+        return API.DoAction_Interface(0x24,0xffffffff,1,517,318,-1,API.OFF_ACT_GeneralInterface_route)
+    else
+        print("[BANK] Bank not open.")
+        return false
+    end    
+end
+
 -- Attempts to load the last bank preset using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:LoadLastPreset()
@@ -232,6 +305,105 @@ function BANK:LoadLastPreset()
 
     print("[BANK] Could not interact with any of the following: Banker, Bank chest, Bank booth, Counter and Head Guard.")
     return false
+end
+
+-- Check if PIN interface is open.
+---@return boolean
+function BANK:IsPINOpen()
+    local pin = API.ScanForInterfaceTest2Get(true, self.Interfaces.PIN)
+    if #pin > 0 then
+        print("[BANK] Bank PIN interface open.")
+        return true
+    else
+        print("[BANK] Bank PIN interface is not open.")
+        return false
+    end
+end
+
+-- Insets the bank pin.
+---@param digit1 number
+---@param digit2 number
+---@param digit3 number
+---@param digit4 number
+---@return boolean
+function BANK:EnterPIN(digit1, digit2, digit3, digit4)
+    local digits = {digit1, digit2, digit3, digit4}
+
+    if not BANK:IsPINOpen() then
+        print("[BANK] PIN interface is not open.")
+        return false
+    end
+
+    for i, digit in ipairs(digits) do
+        if type(digit) ~= "number" then
+            print("[BANK] Error: Digit " .. i .. " must be a number, got " .. type(digit))
+            return false
+        end
+        if digit < 0 or digit > 9 or digit ~= math.floor(digit) then
+            print("[BANK] Error: Digit " .. i .. " must be an integer between 0-9, got " .. tostring(digit))
+            return false
+        end
+    end  
+    
+    print("[BANK] Entering PIN: " .. digit1 .. digit2 .. digit3 .. digit4)
+    for i, digit in ipairs(digits) do
+        if i <= 3 then
+            local interface_id = digit * 5 + 10
+            API.DoAction_Interface(0xffffffff,0xffffffff,1,759,interface_id,-1,API.OFF_ACT_GeneralInterface_route)
+        else
+            local interface_id = digit + 5
+            API.DoAction_Interface(0xffffffff,0xffffffff,0,13,interface_id,-1,API.OFF_ACT_GeneralInterface_Choose_option)
+        end
+        print("[BANK] Entered digit " .. i .. ": " .. digit)
+        API.RandomSleep2(1000, 1000, 1000)
+    end
+
+    API.RandomSleep2(500, 750, 1000)
+    
+    return true
+end
+
+-- Get the total number of spaces in the bank.
+---@return number
+function BANK:GetTotalSpaces()    
+    local TotalSpace = API.ScanForInterfaceTest2Get(false, self.Interfaces.BankSpaces[2])
+    local CleanText = string.gsub(TotalSpace[1].textids, ",", "")
+    local SpaceCount = tonumber(CleanText)
+    
+    if not SpaceCount then
+        print("[BANK] Error: Could not convert space text to number: " .. tostring(CleanText))
+        return 0
+    end
+    
+    print("[BANK] Total spaces: " .. tostring(SpaceCount))
+    return SpaceCount
+end
+
+-- Get the total number of items in the bank.
+---@return number
+function BANK:GetUsedSpaces()
+    local TotalItems = API.ScanForInterfaceTest2Get(false, self.Interfaces.BankSpaces[1])    
+    local CleanText = string.gsub(TotalItems[1].textids, ",", "")
+    local ItemCount = tonumber(CleanText)
+    
+    if not ItemCount then
+        print("[BANK] Error: Could not convert items text to number: " .. tostring(CleanText))
+        return 0
+    end
+    
+    print("[BANK] Total items: " .. tostring(ItemCount))
+    return ItemCount
+end
+
+-- Get the total number of free spaces in the bank.
+---@return number
+function BANK:GetFreeSpaces()
+    local TotalSpaces = BANK:GetTotalSpaces()
+    local TotalItems = BANK:GetUsedSpaces()    
+    local FreeSpaces = TotalSpaces - TotalItems
+    
+    print("[BANK] Free spaces calculation: " .. TotalSpaces .. " - " .. TotalItems .. " = " .. FreeSpaces)
+    return FreeSpaces
 end
 
 -- Checks if item is equipped.
@@ -372,6 +544,34 @@ function BANK:ContainsAny(ItemID)
     return false
 end
 
+-- Get the amount of the requested item in the bank.
+---@param ItemID number
+---@return number|boolean
+function BANK:GetItemAmount(ItemID)
+    if type(ItemID) ~= "number" then
+        print("[BANK] Error: Expected a number for ItemID, got " .. type(ItemID))
+        return false
+    end
+    
+    local Items = API.Container_Get_all(95)
+    local amount = 0
+
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 and item.item_id == ItemID then
+            amount = amount + item.item_stack
+            print("[BANK] Found stack of " .. item.item_stack .. " (total: " .. amount .. ")")
+        end
+    end
+    
+    if amount > 0 then
+        print("[BANK] Total amount of item ID " .. ItemID .. ": " .. amount)
+    else
+        print("[BANK] Item ID " .. ItemID .. " not found in bank.")
+    end
+    
+    return amount
+end
+
 -- Checks if inventory has item(s).
 ---@param ItemID number|table
 ---@return boolean
@@ -429,6 +629,34 @@ function BANK:InventoryContains(ItemID)
     print(resultMessage)
     
     return allFound
+end
+
+-- Get the amount of the requested item in the inventory.
+---@param ItemID number
+---@return number|boolean
+function BANK:InventoryGetItemAmount(ItemID)
+    if type(ItemID) ~= "number" then
+        print("[BANK] Error: Expected a number for ItemID, got " .. type(ItemID))
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    local amount = 0
+
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 and item.item_id == ItemID then
+            amount = amount + item.item_stack
+            print("[BANK] Found stack of " .. item.item_stack .. " (total: " .. amount .. ")")
+        end
+    end
+    
+    if amount > 0 then
+        print("[BANK] Total amount of item ID " .. ItemID .. ": " .. amount)
+    else
+        print("[BANK] Item ID " .. ItemID .. " not found in inventory.")
+    end
+    
+    return amount
 end
 
 -- Checks if inventory has any of the requested item(s).
@@ -582,6 +810,34 @@ function BANK:EquipmentContainsAny(ItemID)
     return false
 end
 
+-- Get the amount of the requested item in equipment.
+---@param ItemID number
+---@return number|boolean
+function BANK:EquipmentGetItemAmount(ItemID)
+    if type(ItemID) ~= "number" then
+        print("[BANK] Error: Expected a number for ItemID, got " .. type(ItemID))
+        return false
+    end
+    
+    local Items = API.Container_Get_all(94)
+    local amount = 0
+
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 and item.item_id == ItemID then
+            amount = amount + item.item_stack
+            print("[BANK] Found stack of " .. item.item_stack .. " (total: " .. amount .. ")")
+        end
+    end
+    
+    if amount > 0 then
+        print("[BANK] Total amount of item ID " .. ItemID .. ": " .. amount)
+    else
+        print("[BANK] Item ID " .. ItemID .. " not found in equipment.")
+    end
+    
+    return amount
+end
+
 -- Get the player tab opened in the bank(Inventory, Equipment or Beast of burden).
 ---@return number|boolean
 function BANK:GetOpenedTab()
@@ -663,7 +919,7 @@ function BANK:OpenTab(tabID)
 end
 
 -- Get transfer or preset tab. 0 = transfer and 1 = preset.
----@return number|false
+---@return number|boolean
 function BANK:GetTransferTab()
     local VB = API.VB_FindPSettinOrder(6680).state >> 12
     if VB == 0 then
@@ -946,7 +1202,7 @@ function BANK:SetNoteMode(boolean)
 end
 
 -- Get preset page. Page 1 = (1 -> 9), page 2 = (10 -> 18).
----@return number|false
+---@return number|boolean
 function BANK:GetPresetPage()
     local VB = API.VB_FindPSettinOrder(9932).state >> 15
     if VB == 0 then
@@ -966,7 +1222,7 @@ function BANK:GetPresetPage()
 end
 
 -- Sets the bank preset page to the specified number (1 or 2).
----@param number
+---@param number number
 ---@return boolean
 function BANK:SetPresetPage(number)
     if type(number) ~= "number" then
@@ -1006,7 +1262,7 @@ function BANK:SetPresetPage(number)
 end
 
 -- Saves the current bank preset to the specified preset slot (1-18).
----@param number
+---@param number number
 ---@return boolean
 function BANK:SavePreset(number)
     if type(number) ~= "number" then
@@ -1050,7 +1306,7 @@ function BANK:SaveSummonPreset()
 end
 
 -- Loads the specified preset (1-18).
----@param number
+---@param number number
 ---@return boolean
 function BANK:LoadPreset(number)
     if type(number) ~= "number" then
@@ -1145,7 +1401,7 @@ function BANK:Withdraw(ItemID)
 
         if slot then
             print("[BANK] Withdrawing item: "..tostring(ItemID)..".")
-            API.DoAction_Interface(0xffffffff, ItemIDHex, 1, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,202,slot,API.OFF_ACT_GeneralInterface_route)
             return true
         else
             print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
@@ -1216,7 +1472,7 @@ function BANK:Withdraw1(ItemID)
         end
         
         print("[BANK] Withdrawing 1x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1283,7 +1539,7 @@ function BANK:Withdraw5(ItemID)
         end
         
         print("[BANK] Withdrawing 5x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1350,7 +1606,7 @@ function BANK:Withdraw10(ItemID)
         end
         
         print("[BANK] Withdrawing 10x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1417,7 +1673,7 @@ function BANK:WithdrawX(ItemID)
         end
         
         print("[BANK] Withdrawing X amount of item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1490,7 +1746,7 @@ function BANK:WithdrawAll(ItemID)
         end
         
         print("[BANK] Withdrawing all of item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 202, slot, route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,route)
         return true
         
     -- Handle table of items case
@@ -1534,7 +1790,7 @@ function BANK:Deposit(ItemID)
 
         if slot then
             print("[BANK] Depositing item: "..tostring(ItemID)..".")
-            API.DoAction_Interface(0xffffffff, ItemIDHex, 1, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,15,slot,API.OFF_ACT_GeneralInterface_route)
             return true
         else
             print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
@@ -1605,7 +1861,7 @@ function BANK:Deposit1(ItemID)
         end
         
         print("[BANK] Depositing 1x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,15,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1672,7 +1928,7 @@ function BANK:Deposit5(ItemID)
         end
         
         print("[BANK] Depositing 5x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,15,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1739,7 +1995,7 @@ function BANK:Deposit10(ItemID)
         end
         
         print("[BANK] Depositing 10x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,15,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1806,7 +2062,7 @@ function BANK:DepositX(ItemID)
         end
         
         print("[BANK] Depositing X amount of item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,15,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1879,7 +2135,7 @@ function BANK:DepositAll(ItemID)
         end
         
         print("[BANK] Depositing all of item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff, ItemIDHex, option, 517, 15, slot, route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,15,slot,route)
         return true
         
     -- Handle table of items case
@@ -1920,7 +2176,7 @@ function BANK:Equip(ItemID)
 
     if slot then
         print("[BANK] Equipping item: "..tostring(ItemID)..".")
-        API.DoAction_Interface(0xffffffff, ItemIDHex, 1, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,202,slot, API.OFF_ACT_GeneralInterface_route)
         return true
     else
         print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
@@ -1954,7 +2210,7 @@ function BANK:WithdrawToBoB(ItemID)
 
         if slot then
             print("[BANK] Withdrawing item: "..tostring(ItemID).." to beast of burden.")
-            API.DoAction_Interface(0xffffffff, ItemIDHex, 1, 517, 202, slot, API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,202,slot,API.OFF_ACT_GeneralInterface_route)
             return true
         else
             print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
@@ -2006,6 +2262,55 @@ function BANK:DepositBoxOpen()
     return false
 end
 
+-- Attempts to close the deposit box interface.
+---@return boolean
+function BANK:DepositBoxClose()
+    if BANK:DepositBoxIsOpen() then
+        print("[BANK] Closing deposit box.")
+        return API.DoAction_Interface(0x24,0xffffffff,1,11,23,-1,API.OFF_ACT_GeneralInterface_route)
+    else
+        print("[BANK] Deposit box not open.")
+        return false
+    end    
+end
+
+-- Check if a specific item is in the deposit box.
+---@param ItemID number
+---@return boolean
+function BANK:DepositBoxContains(ItemID)
+    local FoundItem = false
+    for i = 1, 28 do
+        local slot = API.ScanForInterfaceTest2Get(false, self.Interfaces.DepositBoxSlots[i])[1]
+        if slot.itemid1 and slot.itemid1 == itemID then
+            FoundItem = true
+        end
+    end
+
+    if FoundItem then
+        print("[BANK] Item ID: "..itemID.." found.")
+    else
+        print("[BANK] Item ID: "..itemID.." not found.")
+    end
+
+    return FoundItem
+end
+
+-- Get the slot of a specific item in the deposit box (0-27).
+---@param ItemID number
+---@return number|boolean
+function BANK:DepositBoxGetSlot(ItemID)
+    for i = 1, 28 do
+        local slot = API.ScanForInterfaceTest2Get(false, self.Interfaces.DepositBoxSlots[i])[1]
+        if slot.itemid1 and slot.itemid1 == ItemID then
+            print("[BANK] Item ID: "..ItemID.." found in slot: "..(i)..".")
+            return i - 1
+        end
+    end
+
+    print("[BANK] Item ID: "..ItemID.." not found.")
+    return false
+end
+
 -- Empty your backpack into a deposit box.
 ---@return boolean
 function BANK:DepositBoxDepositInventory()
@@ -2044,6 +2349,138 @@ function BANK:DepositBoxDepositAll()
 
     print("[BANK] Could not interact with any Deposit box.")
     return false
+end
+
+-- Deposit 1 of a specific item(s) into a deposit box.
+---@param ItemID number|table
+---@return boolean
+function BANK:DepositBoxDeposit1(ItemID)
+    -- Handle single item case
+    if type(ItemID) == "number" then     
+        local ItemIDHex = string.format("0x%X", ItemID)  
+        local slot = BANK:DepositBoxGetSlot(ItemID)     
+
+        if slot then
+            print("[BANK] Depositing 1 of item: "..ItemID.." into deposit box.")
+            API.DoAction_Interface(0xffffffff,ItemIDHex,1,11,19,slot,API.OFF_ACT_GeneralInterface_route)
+            return true
+        else
+            print("[BANK] Item ID: "..ItemID.." not found in deposit box interface.")
+            return false
+        end
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        local success = true
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:DepositBoxDeposit1(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for DepositBoxDeposit1. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposit 5 of a specific item(s) into a deposit box.
+---@param ItemID number|table
+---@return boolean
+function BANK:DepositBoxDeposit5(ItemID)
+    -- Handle single item case
+    if type(ItemID) == "number" then     
+        local ItemIDHex = string.format("0x%X", ItemID)  
+        local slot = BANK:DepositBoxGetSlot(ItemID)     
+
+        if slot then
+            print("[BANK] Depositing 5 of item: "..ItemID.." into deposit box.")
+            API.DoAction_Interface(0xffffffff,ItemIDHex,2,11,19,slot,API.OFF_ACT_GeneralInterface_route)
+            return true
+        else
+            print("[BANK] Item ID: "..ItemID.." not found in deposit box interface.")
+            return false
+        end
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        local success = true
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:DepositBoxDeposit5(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for DepositBoxDeposit5. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposit 10 of a specific item(s) into a deposit box.
+---@param ItemID number|table
+---@return boolean
+function BANK:DepositBoxDeposit10(ItemID)
+    -- Handle single item case
+    if type(ItemID) == "number" then     
+        local ItemIDHex = string.format("0x%X", ItemID)  
+        local slot = BANK:DepositBoxGetSlot(ItemID)     
+
+        if slot then
+            print("[BANK] Depositing 10 of item: "..ItemID.." into deposit box.")
+            API.DoAction_Interface(0xffffffff,ItemIDHex,3,11,19,slot,API.OFF_ACT_GeneralInterface_route)
+            return true
+        else
+            print("[BANK] Item ID: "..ItemID.." not found in deposit box interface.")
+            return false
+        end
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        local success = true
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:DepositBoxDeposit10(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for DepositBoxDeposit10. Expected number or table, got "..type(ItemID))
+        return false
+    end
+end
+
+-- Deposit ALL of a specific item(s) into a deposit box.
+---@param ItemID number|table
+---@return boolean
+function BANK:DepositBoxDepositAll2(ItemID)
+    -- Handle single item case
+    if type(ItemID) == "number" then     
+        local ItemIDHex = string.format("0x%X", ItemID)  
+        local slot = BANK:DepositBoxGetSlot(ItemID)     
+
+        if slot then
+            print("[BANK] Depositing ALL of item: "..ItemID.." into deposit box.")
+            API.DoAction_Interface(0xffffffff,ItemIDHex,4,11,19,slot,API.OFF_ACT_GeneralInterface_route)
+            return true
+        else
+            print("[BANK] Item ID: "..ItemID.." not found in deposit box interface.")
+            return false
+        end
+    -- Handle table of items case
+    elseif type(ItemID) == "table" then
+        local success = true
+        for _, id in ipairs(ItemID) do
+            local currentSuccess = BANK:DepositBoxDepositAll2(id)
+            if not currentSuccess then
+                success = false
+            end
+        end
+        return success
+    else
+        print("[BANK] Invalid input type for DepositBoxDepositAll2. Expected number or table, got "..type(ItemID))
+        return false
+    end
 end
 
 -- ####################################
@@ -2090,6 +2527,18 @@ function BANK:ColletionBoxOpen()
 
     print("[BANK] Could not interact with any of the following: Banker, Bank chest, Bank booth and Counter.")
     return false
+end
+
+-- Attempts to close the collection box interface.
+---@return boolean
+function BANK:CollectionBoxClose()
+    if BANK:ColletionBoxIsOpen() then
+        print("[BANK] Closing collection box.")
+        return API.DoAction_Interface(0x24,0xffffffff,1,109,42,-1,API.OFF_ACT_GeneralInterface_route)
+    else
+        print("[BANK] Collection box not open.")
+        return false
+    end
 end
 
 -- Check if there are items to collect.
@@ -2222,7 +2671,7 @@ function BANK:PresetSettingsReturnToBank()
 end
 
 -- Returns selected preset from the preset settings interface.
----@return number|false
+---@return number|boolean
 function BANK:PresetSettingsGetSelectedPreset()
     if not BANK:PresetSettingsIsOpen() then
         print("[BANK] Preset settings interface is not open. Open it first with BANK:PresetSettingsOpen()")
@@ -2251,7 +2700,7 @@ function BANK:PresetSettingsSelectPreset(preset)
 
     if BANK:PresetSettingsIsOpen() then
         print("[BANK] Selecting preset " .. slot .. ".")
-        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 517, 268, slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,517,268,slot,-1,API.OFF_ACT_GeneralInterface_route)
         return true
     else
         print("[BANK] Preset settings interface is not open. Open it first with BANK:PresetSettingsOpen().")
@@ -2260,7 +2709,7 @@ function BANK:PresetSettingsSelectPreset(preset)
 end
 
 ---Get the itemID of all inventory slots inside the preset settings interface.
----@return table|false
+---@return table|boolean
 function BANK:PresetSettingsGetInventory()
     local inventory = {}
 
@@ -2279,7 +2728,7 @@ function BANK:PresetSettingsGetInventory()
 end
 
 ---Get the itemID of all equipment slots inside the preset settings interface.
----@return table|false
+---@return table|boolean
 function BANK:PresetSettingsGetEquipment()
     local equipment = {}
 
