@@ -29,7 +29,7 @@ local API = require("api")
 -- Configuration
 local Config = {
     StartingInterface = { {1473,0,-1,0}, {1473,7,-1,0}, {1473,10,-1,0}, {1473,10,5120,0} },
-    OutputDirectory = os.getenv("USERPROFILE") .. "\\Documents\\MemoryError\\Lua_Scripts\\exports\\interfaces\\",
+    OutputDirectory = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\exports\\interfaces\\",
     OutputFileName = "interfaces_export.csv"
 }
 
