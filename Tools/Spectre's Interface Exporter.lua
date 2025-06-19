@@ -4,6 +4,7 @@ local ScriptVersion = "1.0.0"
 local ReleaseDate = "15-06-2025"
 local DiscordHandle = "not_spectre011"
 
+
 --[[
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                          INTERFACE EXPORTER SCRIPT                           ║
@@ -23,7 +24,6 @@ v1.0.0 - 15-06-2025
     - Initial release.
 ]]
 
-
 local API = require("api")
 
 -- Configuration
@@ -32,6 +32,14 @@ local Config = {
     OutputDirectory = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\exports\\interfaces\\",
     OutputFileName = "interfaces_export.csv"
 }
+
+-- Opens the specified directory in Windows Explorer
+local function openDirectory(path)
+    -- Remove trailing backslash if present
+    path = path:gsub("\\+$", "")
+    -- Use os.execute to open the directory
+    os.execute('explorer "' .. path .. '"')
+end
 
 -- Creates directory if it doesn't exist and tests write access
 local function ensureDirectoryExists(dirPath)
@@ -366,6 +374,8 @@ print("=" .. string.rep("=", 50) .. "=")
 if success then
     print("")
     print("[" .. ScriptName .. "] Export successful!")
+    -- Open the output directory
+    openDirectory(Config.OutputDirectory)
 else
     print("")
     print("[" .. ScriptName .. "] Export failed!")
