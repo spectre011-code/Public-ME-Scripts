@@ -8,7 +8,7 @@ local DiscordHandle = "not_spectre011"
 
 --[[
 ======================================================================================
-                           Spectre011's Lua Utility Library (Slib)
+                       Spectre011's Lua Utility Library (Slib)                       
 ======================================================================================
 
 A comprehensive utility library for RuneScape automation scripts to me used with ME,
@@ -16,7 +16,7 @@ providing robust parameter validation, debugging tools, helper functions, and ta
 manipulation utilities designed specifically for the RuneScape API environment.
 
 --------------------------------------------------------------------------------------
-                                    CREDITS
+                                       CREDITS                                       
 --------------------------------------------------------------------------------------
 
 Primary Author: Spectre011 (Discord: not_spectre011)
@@ -47,6 +47,18 @@ Slib.Interfaces.InstanceTimer = {
     { 861,0,-1,0 }, { 861,2,-1,0 }, { 861,4,-1,0 }, { 861,8,-1,0 } 
 }
 
+Slib.Interfaces.GWD2KillCounts = {
+    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,43,-1,0 }, { 1746,47,-1,0 } },  -- Seren
+    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,49,-1,0 }, { 1746,54,-1,0 } },  -- Sliske
+    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,55,-1,0 }, { 1746,60,-1,0 } },  -- Zamorak
+    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,61,-1,0 }, { 1746,66,-1,0 } },  -- Zaros
+}
+
+Slib.Interfaces.CurrencyPouch = {
+    { {1473,0,-1,0}, {1473,13,-1,0}, {1473,17,-1,0}, {1473,18,-1,0}, {1473,21,-1,0} }
+}
+
+
 -- ##################################
 -- #                                #
 -- #       LOGGING FUNCTIONS        #
@@ -55,7 +67,7 @@ Slib.Interfaces.InstanceTimer = {
 
 -- Logs a general message with Slib prefix
 ---@param Message string The message to log
----@return string logged_message The logged message
+---@return string Message The logged message
 function Slib:Log(Message)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
@@ -66,7 +78,7 @@ end
 
 -- Logs an informational message with INFO level
 ---@param Message string The informational message to log
----@return string logged_message The logged message
+---@return string Message The logged message
 function Slib:Info(Message)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
@@ -77,7 +89,7 @@ end
 
 -- Logs a warning message with WARN level
 ---@param Message string The warning message to log
----@return string logged_message The logged message
+---@return string Message The logged message
 function Slib:Warn(Message)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
@@ -88,7 +100,7 @@ end
 
 -- Logs an error message with ERROR level
 ---@param Message string The error message to log
----@return string logged_message The logged message
+---@return string Message The logged message
 function Slib:Error(Message)
     -- Manual validation to avoid circular dependency with sanitization system
     if Message == nil then
@@ -113,7 +125,7 @@ end
 ---
 --- **Basic Lua Types:**
 ---   - "string", "number", "boolean", "function", "table", "userdata", "thread"
----   - "any" - accepts any non-nil value (unless allow_nil is true)
+---   - "any" - accepts any non-nil value (unless AllowNil is true)
 ---
 --- **Enhanced Number Types:**
 ---   - "id" - non-negative integers (0, 1, 2, 3...)
@@ -133,22 +145,22 @@ end
 ---   - "non_empty_table" - table that has at least one element
 ---
 ---
----@param value any The value to validate
----@param expected_type string|table The expected type(s) - can be single type or array of types
----@param param_name string|nil Optional parameter name for error messages (default: "parameter")
----@param allow_nil boolean|nil Whether nil values should be considered valid (optional, default: false)
----@param calling_function string|nil Optional calling function name for error messages
----@return boolean is_valid True if validation passes, false otherwise (errors logged via self:Error)
+---@param Value any The value to validate
+---@param ExpectedType string|table The expected type(s) - can be single type or array of types
+---@param ParamName string|nil Optional parameter name for error messages (default: "Parameter")
+---@param AllowNil boolean|nil Whether nil values should be considered valid (optional, default: false)
+---@param CallingFunction string|nil Optional calling function name for error messages
+---@return boolean IsValid True if validation passes, false otherwise (errors logged via self:Error)
 function Slib:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction)
     -- Set defaults
-    ParamName = ParamName or "parameter"
+    ParamName = ParamName or "Parameter"
     if AllowNil == nil then
         AllowNil = false
     end
     
     -- Get calling function name for better error messages
     if not CallingFunction then
-        CallingFunction = "unknown"
+        CallingFunction = "Unknown"
         local Info = debug.getinfo(2, "n")
         if Info and Info.name then
             CallingFunction = Info.name
@@ -227,9 +239,9 @@ function Slib:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction
         if ActualType == "table" or ActualType == "userdata" then
             -- Check for 'table_of_strings'
             if ExpectedPattern == "table_of_strings" then
-                for i, Item in ipairs(Value) do
+                for I, Item in ipairs(Value) do
                     if type(Item) ~= "string" then
-                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of strings (item " .. i .. " is " .. type(Item) .. ")")
+                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of strings (item " .. I .. " is " .. type(Item) .. ")")
                         return false
                     end
                 end
@@ -238,9 +250,9 @@ function Slib:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction
             
             -- Check for 'table_of_numbers'
             if ExpectedPattern == "table_of_numbers" then
-                for i, Item in ipairs(Value) do
+                for I, Item in ipairs(Value) do
                     if type(Item) ~= "number" then
-                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of numbers (item " .. i .. " is " .. type(Item) .. ")")
+                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of numbers (item " .. I .. " is " .. type(Item) .. ")")
                         return false
                     end
                 end
@@ -249,9 +261,9 @@ function Slib:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction
             
             -- Check for 'table_of_ids'
             if ExpectedPattern == "table_of_ids" then
-                for i, Item in ipairs(Value) do
+                for I, Item in ipairs(Value) do
                     if type(Item) ~= "number" or Item < 0 or math.floor(Item) ~= Item then
-                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of IDs (non-negative integers) (item " .. i .. " is invalid)")
+                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of IDs (non-negative integers) (item " .. I .. " is invalid)")
                         return false
                     end
                 end
@@ -260,9 +272,9 @@ function Slib:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction
             
             -- Check for 'table_of_positive_numbers'
             if ExpectedPattern == "table_of_positive_numbers" then
-                for i, Item in ipairs(Value) do
+                for I, Item in ipairs(Value) do
                     if type(Item) ~= "number" or Item <= 0 then
-                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of positive numbers (item " .. i .. " is invalid)")
+                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of positive numbers (item " .. I .. " is invalid)")
                         return false
                     end
                 end
@@ -271,9 +283,9 @@ function Slib:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction
             
             -- Check for 'table_of_integers'
             if ExpectedPattern == "table_of_integers" then
-                for i, Item in ipairs(Value) do
+                for I, Item in ipairs(Value) do
                     if type(Item) ~= "number" or math.floor(Item) ~= Item then
-                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of integers (item " .. i .. " is invalid)")
+                        self:Error("[" .. CallingFunction .. "] " .. ParamName .. " must be a table of integers (item " .. I .. " is invalid)")
                         return false
                     end
                 end
@@ -306,40 +318,40 @@ end
 --- ```lua
 --- -- Basic validation
 --- if not self:ValidateParams({
----     {playerName, "non_empty_string", "player_name"},
----     {npcIds, "table_of_ids", "npc_ids"},
----     {range, "positive_number", "range"}
+---     {PlayerName, "non_empty_string", "PlayerName"},
+---     {NpcIds, "table_of_ids", "NpcIds"},
+---     {Range, "positive_number", "Range"}
 --- }) then
 ---     return false
 --- end
 ---
 --- -- With optional parameters
 --- if not self:ValidateParams({
----     {itemId, "id", "item_id"},
----     {timeout, "positive_number", "timeout", true}, -- allow_nil = true
----     {options, "table", "options", true}
+---     {ItemId, "id", "ItemId"},
+---     {Timeout, "positive_number", "Timeout", true}, -- AllowNil = true
+---     {Options, "table", "Options", true}
 --- }) then
 ---     return false
 --- end
 ---
 --- -- Multiple allowed types
 --- if not self:ValidateParams({
----     {searchCriteria, {"string", "table_of_strings"}, "search_criteria"},
----     {coords, {"number", "table_of_numbers"}, "coordinates"}
+---     {SearchCriteria, {"string", "table_of_strings"}, "SearchCriteria"},
+---     {Coords, {"number", "table_of_numbers"}, "Coords"}
 --- }) then
 ---     return false
 --- end
 --- ```
 ---
----@param params table Array of parameter specs: {value, expected_type, param_name, allow_nil}
----   - **value**: The parameter value to validate
----   - **expected_type**: Type(s) to validate against (see Sanitize documentation for all types)
----   - **param_name**: Name for error messages (optional, defaults to "parameter N")
----   - **allow_nil**: Whether nil is acceptable (optional, defaults to false)
----@return boolean all_valid True if all parameters are valid, false otherwise (errors logged via self:Error)
+---@param Params table Array of parameter specs: {Value, ExpectedType, ParamName, AllowNil}
+---   - **Value**: The parameter value to validate
+---   - **ExpectedType**: Type(s) to validate against (see Sanitize documentation for all types)
+---   - **ParamName**: Name for error messages (optional, defaults to "Parameter N")
+---   - **AllowNil**: Whether nil is acceptable (optional, defaults to false)
+---@return boolean AllValid True if all parameters are valid, false otherwise (errors logged via self:Error)
 function Slib:ValidateParams(Params)
     -- Get calling function name for better error messages
-    local CallingFunction = "unknown"
+    local CallingFunction = "Unknown"
     local Info = debug.getinfo(2, "n")
     if Info and Info.name then
         CallingFunction = Info.name
@@ -350,9 +362,9 @@ function Slib:ValidateParams(Params)
         return false
     end
     
-    for i, ParamSpec in ipairs(Params) do
+    for I, ParamSpec in ipairs(Params) do
         if type(ParamSpec) ~= "table" then
-            self:Error("[" .. CallingFunction .. "] Parameter specification " .. i .. " must be a table")
+            self:Error("[" .. CallingFunction .. "] Parameter specification " .. I .. " must be a table")
             return false
         end
         
@@ -361,17 +373,17 @@ function Slib:ValidateParams(Params)
         if ParamSpec[1] ~= nil then
             Value = ParamSpec[1]
         else
-            Value = ParamSpec.value
+            Value = ParamSpec.Value
         end
         
-        local ExpectedType = ParamSpec[2] or ParamSpec.expected_type
-        local ParamName = ParamSpec[3] or ParamSpec.param_name or ("parameter " .. i)
+        local ExpectedType = ParamSpec[2] or ParamSpec.ExpectedType
+        local ParamName = ParamSpec[3] or ParamSpec.ParamName or ("Parameter " .. I)
         
         local AllowNil
         if ParamSpec[4] ~= nil then
             AllowNil = ParamSpec[4]
         else
-            AllowNil = ParamSpec.allow_nil or false
+            AllowNil = ParamSpec.AllowNil or false
         end
         
         if not self:Sanitize(Value, ExpectedType, ParamName, AllowNil, CallingFunction) then
@@ -441,6 +453,40 @@ function Slib:Sleep(Duration, Unit)
     return (os.clock() - StartTime) >= TargetDuration
 end
 
+-- Sleeps for a random duration between min and max values
+---@param MinDuration number The minimum sleep duration (must be positive)
+---@param MaxDuration number The maximum sleep duration (must be greater than MinDuration)
+---@param Unit string The time unit: "ms", "s", "m", "h" (milliseconds, seconds, minutes, hours)
+---@return boolean success True if sleep completed successfully, false if interrupted or invalid parameters
+---@usage
+--- -- Sleep between 1-3 seconds
+--- Slib:RandomSleep(1, 3, "s")
+--- -- Sleep between 500-1500 milliseconds
+--- Slib:RandomSleep(500, 1500, "ms")
+function Slib:RandomSleep(MinDuration, MaxDuration, Unit)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {MinDuration, "positive_number", "MinDuration"},
+        {MaxDuration, "positive_number", "MaxDuration"},
+        {Unit, "string", "Unit"}
+    }) then
+        return false
+    end
+    
+    -- Validate min/max relationship
+    if MinDuration >= MaxDuration then
+        self:Error("[RandomSleep] MinDuration must be less than MaxDuration")
+        return false
+    end
+    
+    -- Generate random duration
+    local Duration = MinDuration + math.random() * (MaxDuration - MinDuration)
+    self:Info(string.format("[RandomSleep] Sleeping for %.2f %s", Duration, Unit))
+    
+    -- Use existing Sleep function
+    return self:Sleep(Duration, Unit)
+end
+
 -- Sleeps until a condition is met or timeout occurs
 ---@param ConditionFunc function The function to check (should return boolean)
 ---@param TimeoutSeconds number|nil Maximum wait time in seconds (optional, default: 30)
@@ -503,7 +549,7 @@ end
 -- ##################################
 
 -- Prints all the buffs currently active with detailed information
----@return boolean success True if buffs were found and printed, false if no buffs or error occurred
+---@return boolean Success True if buffs were found and printed, false if no buffs or error occurred
 function Slib:PrintBuffs()
     -- Protected API call with validation
     local Buffs = API.Buffbar_GetAllIDs()
@@ -528,23 +574,23 @@ function Slib:PrintBuffs()
     print("")
     
     -- Safe iteration with bounds checking
-    for i = 1, #Buffs do
-        local Buff = Buffs[i]
+    for I = 1, #Buffs do
+        local Buff = Buffs[I]
         
         -- Check if buff exists and is valid
         if not Buff then
-            self:Warn("Skipping nil buff at index " .. i)
+            self:Warn("Skipping nil buff at index " .. I)
             goto continue
         end
         
         if type(Buff) ~= "table" and type(Buff) ~= "userdata" then
-            self:Warn("Skipping invalid buff at index " .. i .. " (type: " .. type(Buff) .. ")")
+            self:Warn("Skipping invalid buff at index " .. I .. " (type: " .. type(Buff) .. ")")
             goto continue
         end
         
         -- Format buff information with nice borders
         print("+=========================+")
-        print("|         BUFF #" .. i .. "         |")
+        print("|         BUFF #" .. I .. "         |")
         print("+=========================+")
         print("|   ID             : " .. tostring(Buff.id or "N/A"))
         print("|   Found          : " .. tostring(Buff.found or "N/A"))
@@ -579,7 +625,7 @@ function Slib:PrintBuffs()
 end
 
 -- Prints all the debuffs currently active with detailed information
----@return boolean success True if debuffs were found and printed, false if no debuffs or error occurred
+---@return boolean Success True if debuffs were found and printed, false if no debuffs or error occurred
 function Slib:PrintDebuffs()
     -- Protected API call with validation
     local Debuffs = API.DeBuffbar_GetAllIDs()
@@ -604,23 +650,23 @@ function Slib:PrintDebuffs()
     print("")
     
     -- Safe iteration with bounds checking
-    for i = 1, #Debuffs do
-        local Debuff = Debuffs[i]
+    for I = 1, #Debuffs do
+        local Debuff = Debuffs[I]
         
         -- Check if debuff exists and is valid
         if not Debuff then
-            self:Warn("Skipping nil debuff at index " .. i)
+            self:Warn("Skipping nil debuff at index " .. I)
             goto continue
         end
         
         if type(Debuff) ~= "table" and type(Debuff) ~= "userdata" then
-            self:Warn("Skipping invalid debuff at index " .. i .. " (type: " .. type(Debuff) .. ")")
+            self:Warn("Skipping invalid debuff at index " .. I .. " (type: " .. type(Debuff) .. ")")
             goto continue
         end
         
         -- Format debuff information with nice borders
         print("+=========================+")
-        print("|        DEBUFF #" .. i .. "        |")
+        print("|        DEBUFF #" .. I .. "        |")
         print("+=========================+")
         print("|   ID             : " .. tostring(Debuff.id or "N/A"))
         print("|   Found          : " .. tostring(Debuff.found or "N/A"))
@@ -655,8 +701,8 @@ function Slib:PrintDebuffs()
 end
 
 -- Prints container contents with detailed information for each item (93 = inventory, 94 = equipment, 95 = bank)
----@param containerId number
----@return boolean
+---@param ContainerId number
+---@return boolean Success
 function Slib:PrintContainer(ContainerId)
     -- Parameter validation
     if not self:Sanitize(ContainerId, "number", "ContainerId") then
@@ -684,8 +730,8 @@ function Slib:PrintContainer(ContainerId)
 
     -- Count valid items (items with valid item_id >= 0)
     local ValidItemCount = 0
-    for i = 1, #Items do
-        local Item = Items[i]
+    for I = 1, #Items do
+        local Item = Items[I]
         if Item and Item.item_id and Item.item_id >= 0 then
             ValidItemCount = ValidItemCount + 1
         end
@@ -701,17 +747,37 @@ function Slib:PrintContainer(ContainerId)
     print("")
 
     -- Safe iteration with bounds checking
-    for i = 1, #Items do
-        local Item = Items[i]
+    for I = 1, #Items do
+        local Item = Items[I]
+        local ItemName = nil
+        if Item and Item.item_id and Item.item_id >= 0 and Item.Get then
+            local Success, ItemData = pcall(Item.Get, Item, Item.item_id)
+            if Success and ItemData and ItemData.name then
+                ItemName = ItemData.name
+            end
+        elseif Item and Item.item_id and Item.item_id >= 0 and Item.Get == nil and Item.Get ~= nil then
+            -- fallback if Item is not a class instance, try global Item
+            if Item.Get then
+                local Success, ItemData = pcall(Item.Get, Item.item_id)
+                if Success and ItemData and ItemData.name then
+                    ItemName = ItemData.name
+                end
+            end
+        elseif _G.Item and _G.Item.Get then
+            local Success, ItemData = pcall(_G.Item.Get, _G.Item, Item.item_id)
+            if Success and ItemData and ItemData.name then
+                ItemName = ItemData.name
+            end
+        end
         
         -- Check if item exists and is valid
         if not Item then
-            self:Warn("Skipping nil item at slot " .. i)
+            self:Warn("Skipping nil item at slot " .. I)
             goto continue
         end
         
         if type(Item) ~= "table" and type(Item) ~= "userdata" then
-            self:Warn("Skipping invalid item at slot " .. i .. " (type: " .. type(Item) .. ")")
+            self:Warn("Skipping invalid item at slot " .. I .. " (type: " .. type(Item) .. ")")
             goto continue
         end
         
@@ -722,8 +788,9 @@ function Slib:PrintContainer(ContainerId)
         
         -- Format item information with nice borders
         print("+========================+")
-        print("|      ITEM SLOT #" .. i .. "      |")
+        print("|      ITEM SLOT #" .. I .. "      |")
         print("+========================+")
+        print("|   Item Name      : " .. tostring(ItemName or "N/A"))
         print("|   Item ID        : " .. tostring(Item.item_id or "N/A"))
         print("|   Item Stack     : " .. tostring(Item.item_stack or "N/A"))
         print("|   Item Slot      : " .. tostring(Item.item_slot or "N/A"))
@@ -777,129 +844,129 @@ function Slib:PrintContainer(ContainerId)
 end
 
 -- Prints all abilities from specified ability bar(s)
----@param BarID number|table
----@return boolean
-function Slib:PrintAbilityBar(BarID)
+---@param BarId number|table
+---@return boolean Success
+function Slib:PrintAbilityBar(BarId)
     -- Parameter validation
-    if not self:Sanitize(BarID, {"number", "table_of_numbers"}, "BarID") then
+    if not self:Sanitize(BarId, {"number", "table_of_numbers"}, "BarId") then
         return false
     end
     
-    -- Ensure BarID is a table for consistent processing
-    local barTable = type(BarID) == "table" and BarID or {BarID}
+    -- Ensure BarId is a table for consistent processing
+    local BarTable = type(BarId) == "table" and BarId or {BarId}
     
     -- Validate range (0-4) for each bar ID
-    for i, barId in ipairs(barTable) do
-        if barId < 0 or barId > 4 then
-            self:Error("BarID must be between 0-4, got: " .. barId .. " at index " .. i)
+    for I, Bar in ipairs(BarTable) do
+        if Bar < 0 or Bar > 4 then
+            self:Error("BarId must be between 0-4, got: " .. Bar .. " at index " .. I)
             return false
         end
     end
     
-    local totalAbilities = 0
-    local processedBars = 0
+    local TotalAbilities = 0
+    local ProcessedBars = 0
     
     -- Process each ability bar
-    for _, barId in ipairs(barTable) do
-        local bar = API.GetABarInfo(barId)
+    for _, Bar in ipairs(BarTable) do
+        local BarInfo = API.GetABarInfo(Bar)
         
-        if not bar then
-            self:Warn("Unable to get ability bar " .. barId)
+        if not BarInfo then
+            self:Warn("Unable to get ability bar " .. Bar)
             goto continue
         end
         
-        if type(bar) ~= "table" and type(bar) ~= "userdata" then
-            self:Warn("Invalid data type for bar " .. barId .. ": " .. type(bar))
+        if type(BarInfo) ~= "table" and type(BarInfo) ~= "userdata" then
+            self:Warn("Invalid data type for bar " .. Bar .. ": " .. type(BarInfo))
             goto continue
         end
         
-        if #bar == 0 then
-            self:Info("Ability bar " .. barId .. " is empty")
+        if #BarInfo == 0 then
+            self:Info("Ability bar " .. Bar .. " is empty")
             goto continue
         end
         
         -- Count valid abilities in this bar
-        local validAbilities = 0
-        for i = 1, #bar do
-            local ability = bar[i]
-            if ability and ability.id and ability.id ~= 65535 then
-                validAbilities = validAbilities + 1
+        local ValidAbilities = 0
+        for I = 1, #BarInfo do
+            local Ability = BarInfo[I]
+            if Ability and Ability.id and Ability.id ~= 65535 then
+                ValidAbilities = ValidAbilities + 1
             end
         end
         
-        if validAbilities == 0 then
-            self:Info("No valid abilities found in bar " .. barId)
+        if ValidAbilities == 0 then
+            self:Info("No valid abilities found in bar " .. Bar)
             goto continue
         end
         
-        self:Info("=== Ability Bar " .. barId .. " ===")
-        self:Info("Found " .. validAbilities .. " abilities:")
+        self:Info("=== Ability Bar " .. Bar .. " ===")
+        self:Info("Found " .. ValidAbilities .. " abilities:")
         print("")
         
         -- Safe iteration through abilities
-        for i = 1, #bar do
-            local ability = bar[i]
+        for I = 1, #BarInfo do
+            local Ability = BarInfo[I]
             
             -- Check if ability exists and is valid
-            if not ability then
-                self:Warn("Skipping nil ability at slot " .. i .. " in bar " .. barId)
+            if not Ability then
+                self:Warn("Skipping nil ability at slot " .. I .. " in bar " .. Bar)
                 goto continue_ability
             end
             
-            if type(ability) ~= "table" and type(ability) ~= "userdata" then
-                self:Warn("Skipping invalid ability at slot " .. i .. " in bar " .. barId .. " (type: " .. type(ability) .. ")")
+            if type(Ability) ~= "table" and type(Ability) ~= "userdata" then
+                self:Warn("Skipping invalid ability at slot " .. I .. " in bar " .. Bar .. " (type: " .. type(Ability) .. ")")
                 goto continue_ability
             end
             
             -- Skip empty/invalid abilities (ID 65535 is empty slot)
-            if not ability.id or ability.id == 65535 then
+            if not Ability.id or Ability.id == 65535 then
                 goto continue_ability
             end
             
             -- Format ability information with nice borders
             print("+========================+")
-            print("|     ABILITY SLOT #" .. string.format("%-2s", i) .. "   |")
-            print("|        (Bar " .. barId .. ")         |")
+            print("|     ABILITY SLOT #" .. string.format("%-2s", I) .. "   |")
+            print("|        (Bar " .. Bar .. ")         |")
             print("+========================+")
-            print("|   slot           : " .. tostring(ability.slot or "N/A"))
-            print("|   id             : " .. tostring(ability.id or "N/A"))
-            print("|   name           : " .. tostring(ability.name or "N/A"))
-            print("|   hotkey         : " .. tostring(ability.hotkey or "N/A"))
-            print("|   cooldown_timer : " .. tostring(ability.cooldown_timer or "N/A"))
-            print("|   action         : " .. tostring(ability.action or "N/A"))
-            print("|   enabled        : " .. tostring(ability.enabled or "N/A"))
+            print("|   slot           : " .. tostring(Ability.slot or "N/A"))
+            print("|   id             : " .. tostring(Ability.id or "N/A"))
+            print("|   name           : " .. tostring(Ability.name or "N/A"))
+            print("|   hotkey         : " .. tostring(Ability.hotkey or "N/A"))
+            print("|   cooldown_timer : " .. tostring(Ability.cooldown_timer or "N/A"))
+            print("|   action         : " .. tostring(Ability.action or "N/A"))
+            print("|   enabled        : " .. tostring(Ability.enabled or "N/A"))
 
             -- Print ability info if it exists
-            if ability.info then
-                local info = ability.info
+            if Ability.info then
+                local Info = Ability.info
                 print("|                        ")
                 print("|     --- info ---       ")
-                print("|   x              : " .. tostring(info.x or "N/A"))
-                print("|   xs             : " .. tostring(info.xs or "N/A"))
-                print("|   y              : " .. tostring(info.y or "N/A"))
-                print("|   ys             : " .. tostring(info.ys or "N/A"))
-                print("|   box_x          : " .. tostring(info.box_x or "N/A"))
-                print("|   box_y          : " .. tostring(info.box_y or "N/A"))
-                print("|   scroll_y       : " .. tostring(info.scroll_y or "N/A"))
-                print("|   id1            : " .. tostring(info.id1 or "N/A"))
-                print("|   id2            : " .. tostring(info.id2 or "N/A"))
-                print("|   id3            : " .. tostring(info.id3 or "N/A"))
-                print("|   itemid1        : " .. tostring(info.itemid1 or "N/A"))
-                print("|   itemid1_size   : " .. tostring(info.itemid1_size or "N/A"))
-                print("|   itemid2        : " .. tostring(info.itemid2 or "N/A"))
-                print("|   hov            : " .. tostring(info.hov or "N/A"))
-                print("|   textids        : " .. tostring(info.textids or "N/A"))
-                print("|   textitem       : " .. tostring(info.textitem or "N/A"))
-                print("|   memloc         : " .. tostring(info.memloc or "N/A"))
-                print("|   memloctop      : " .. tostring(info.memloctop or "N/A"))
-                print("|   index          : " .. tostring(info.index or "N/A"))
-                print("|   fullpath       : " .. tostring(info.fullpath or "N/A"))
-                print("|   fullIDpath     : " .. tostring(info.fullIDpath or "N/A"))
-                print("|   notvisible     : " .. tostring(info.notvisible or "N/A"))
-                print("|   OP             : " .. tostring(info.OP or "N/A"))
-                print("|   xy             : " .. tostring(info.xy or "N/A"))
-                print("|   xy.x           : " .. tostring(info.xy.x or "N/A"))
-                print("|   xy.y           : " .. tostring(info.xy.y or "N/A"))
+                print("|   x              : " .. tostring(Info.x or "N/A"))
+                print("|   xs             : " .. tostring(Info.xs or "N/A"))
+                print("|   y              : " .. tostring(Info.y or "N/A"))
+                print("|   ys             : " .. tostring(Info.ys or "N/A"))
+                print("|   box_x          : " .. tostring(Info.box_x or "N/A"))
+                print("|   box_y          : " .. tostring(Info.box_y or "N/A"))
+                print("|   scroll_y       : " .. tostring(Info.scroll_y or "N/A"))
+                print("|   id1            : " .. tostring(Info.id1 or "N/A"))
+                print("|   id2            : " .. tostring(Info.id2 or "N/A"))
+                print("|   id3            : " .. tostring(Info.id3 or "N/A"))
+                print("|   itemid1        : " .. tostring(Info.itemid1 or "N/A"))
+                print("|   itemid1_size   : " .. tostring(Info.itemid1_size or "N/A"))
+                print("|   itemid2        : " .. tostring(Info.itemid2 or "N/A"))
+                print("|   hov            : " .. tostring(Info.hov or "N/A"))
+                print("|   textids        : " .. tostring(Info.textids or "N/A"))
+                print("|   textitem       : " .. tostring(Info.textitem or "N/A"))
+                print("|   memloc         : " .. tostring(Info.memloc or "N/A"))
+                print("|   memloctop      : " .. tostring(Info.memloctop or "N/A"))
+                print("|   index          : " .. tostring(Info.index or "N/A"))
+                print("|   fullpath       : " .. tostring(Info.fullpath or "N/A"))
+                print("|   fullIDpath     : " .. tostring(Info.fullIDpath or "N/A"))
+                print("|   notvisible     : " .. tostring(Info.notvisible or "N/A"))
+                print("|   OP             : " .. tostring(Info.OP or "N/A"))
+                print("|   xy             : " .. tostring(Info.xy or "N/A"))
+                print("|   xy.x           : " .. tostring(Info.xy.x or "N/A"))
+                print("|   xy.y           : " .. tostring(Info.xy.y or "N/A"))
             else
                 print("|   info           : N/A")
             end
@@ -907,22 +974,22 @@ function Slib:PrintAbilityBar(BarID)
             print("+========================+")
             print("")
             
-            totalAbilities = totalAbilities + 1
+            TotalAbilities = TotalAbilities + 1
             
             ::continue_ability::
         end
         
-        processedBars = processedBars + 1
+        ProcessedBars = ProcessedBars + 1
         
         ::continue::
     end
     
-    if processedBars == 0 then
+    if ProcessedBars == 0 then
         self:Error("No ability bars could be processed")
         return false
     end
     
-    self:Info("Ability scan completed - processed " .. processedBars .. " bar(s) with " .. totalAbilities .. " total abilities")
+    self:Info("Ability scan completed - processed " .. ProcessedBars .. " bar(s) with " .. TotalAbilities .. " total abilities")
     return true
 end
 
@@ -930,7 +997,7 @@ end
 ---@param Id number|table
 ---@param Range number
 ---@param Type number|table
----@return boolean
+---@return boolean Success
 function Slib:PrintObjects(Id, Range, Type)
     -- Parameter validation
     if not self:ValidateParams({
@@ -942,77 +1009,77 @@ function Slib:PrintObjects(Id, Range, Type)
     end
     
     -- Ensure Id and Type are tables
-    local idTable = type(Id) == "table" and Id or {Id}
-    local typeTable = type(Type) == "table" and Type or {Type}
+    local IdTable = type(Id) == "table" and Id or {Id}
+    local TypeTable = type(Type) == "table" and Type or {Type}
     
     -- Direct API call
-    local objects = API.GetAllObjArray1(idTable, Range, typeTable)
+    local Objects = API.GetAllObjArray1(IdTable, Range, TypeTable)
     
     -- Check if API returned valid data
-    if not objects then
+    if not Objects then
         self:Error("API returned nil")
         return false
     end
     
-    if type(objects) ~= "table" and type(objects) ~= "userdata" then
-        self:Error("API returned invalid data type: " .. type(objects))
+    if type(Objects) ~= "table" and type(Objects) ~= "userdata" then
+        self:Error("API returned invalid data type: " .. type(Objects))
         return false
     end
     
-    if #objects == 0 then
+    if #Objects == 0 then
         self:Info("No objects found matching criteria")
         return false
     end
     
-    self:Info("Found " .. #objects .. " objects:")
+    self:Info("Found " .. #Objects .. " objects:")
     
     -- Safe iteration with bounds checking
-    for i = 1, #objects do
-        local object = objects[i]
+    for I = 1, #Objects do
+        local Object = Objects[I]
         
         -- Check if object exists and is valid
-        if not object then
-            self:Warn("Skipping nil object at index " .. i)
+        if not Object then
+            self:Warn("Skipping nil object at index " .. I)
             goto continue
         end
         
-        if type(object) ~= "table" and type(object) ~= "userdata" then
-            self:Warn("Skipping invalid object at index " .. i .. " (type: " .. type(object) .. ")")
+        if type(Object) ~= "table" and type(Object) ~= "userdata" then
+            self:Warn("Skipping invalid object at index " .. I .. " (type: " .. type(Object) .. ")")
             goto continue
         end
         
         -- Direct object printing
         print("+==============================+")
-        print("|          OBJECT #" .. i .. "           |")
+        print("|          OBJECT #" .. I .. "           |")
         print("+==============================+")
-        print("|    Name           : " .. tostring(object.Name or "N/A"))
-        print("|    Id             : " .. tostring(object.Id or "N/A"))
-        print("|    Type           : " .. tostring(object.Type or "N/A"))
-        print("|    Life           : " .. tostring(object.Life or "N/A"))
-        print("|    Action         : " .. tostring(object.Action or "N/A"))
-        print("|    Anim           : " .. tostring(object.Anim or "N/A"))
-        print("|    Amount         : " .. tostring(object.Amount or "N/A"))
-        print("|    Distance       : " .. tostring(object.Distance or "N/A"))
-        print("|    Floor          : " .. tostring(object.Floor or "N/A"))
-        print("|    CalcX          : " .. tostring(object.CalcX or "N/A"))
-        print("|    CalcY          : " .. tostring(object.CalcY or "N/A"))
-        print("|    TileX          : " .. tostring(object.TileX or "N/A") .. " (÷512: " .. tostring(object.TileX and (object.TileX/512) or "N/A") .. ")")
-        print("|    TileY          : " .. tostring(object.TileY or "N/A") .. " (÷512: " .. tostring(object.TileY and (object.TileY/512) or "N/A") .. ")")
-        print("|    TileZ          : " .. tostring(object.TileZ or "N/A") .. " (÷512: " .. tostring(object.TileZ and (object.TileZ/512) or "N/A") .. ")")
-        print("|    Tile_XYZ.x     : " .. tostring(object.Tile_XYZ and object.Tile_XYZ.x or "N/A"))
-        print("|    Tile_XYZ.y     : " .. tostring(object.Tile_XYZ and object.Tile_XYZ.y or "N/A"))
-        print("|    Tile_XYZ.z     : " .. tostring(object.Tile_XYZ and object.Tile_XYZ.z or "N/A"))
-        print("|    Pixel_XYZ.x    : " .. tostring(object.Pixel_XYZ and object.Pixel_XYZ.x or "N/A"))
-        print("|    Pixel_XYZ.y    : " .. tostring(object.Pixel_XYZ and object.Pixel_XYZ.y or "N/A"))
-        print("|    Pixel_XYZ.z    : " .. tostring(object.Pixel_XYZ and object.Pixel_XYZ.z or "N/A"))
-        print("|    Mem            : " .. tostring(object.Mem or "N/A"))
-        print("|    MemE           : " .. tostring(object.MemE or "N/A"))
-        print("|    Unique_Id      : " .. tostring(object.Unique_Id or "N/A"))
-        print("|    Cmb_lv         : " .. tostring(object.Cmb_lv or "N/A"))
-        print("|    ItemIndex      : " .. tostring(object.ItemIndex or "N/A"))
-        print("|    Bool1          : " .. tostring(object.Bool1 or "N/A"))
-        print("|    ViewP          : " .. tostring(object.ViewP or "N/A"))
-        print("|    ViewF          : " .. tostring(object.ViewF or "N/A"))
+        print("|    Name           : " .. tostring(Object.Name or "N/A"))
+        print("|    Id             : " .. tostring(Object.Id or "N/A"))
+        print("|    Type           : " .. tostring(Object.Type or "N/A"))
+        print("|    Life           : " .. tostring(Object.Life or "N/A"))
+        print("|    Action         : " .. tostring(Object.Action or "N/A"))
+        print("|    Anim           : " .. tostring(Object.Anim or "N/A"))
+        print("|    Amount         : " .. tostring(Object.Amount or "N/A"))
+        print("|    Distance       : " .. tostring(Object.Distance or "N/A"))
+        print("|    Floor          : " .. tostring(Object.Floor or "N/A"))
+        print("|    CalcX          : " .. tostring(Object.CalcX or "N/A"))
+        print("|    CalcY          : " .. tostring(Object.CalcY or "N/A"))
+        print("|    TileX          : " .. tostring(Object.TileX or "N/A") .. " (÷512: " .. tostring(Object.TileX and (Object.TileX/512) or "N/A") .. ")")
+        print("|    TileY          : " .. tostring(Object.TileY or "N/A") .. " (÷512: " .. tostring(Object.TileY and (Object.TileY/512) or "N/A") .. ")")
+        print("|    TileZ          : " .. tostring(Object.TileZ or "N/A") .. " (÷512: " .. tostring(Object.TileZ and (Object.TileZ/512) or "N/A") .. ")")
+        print("|    Tile_XYZ.x     : " .. tostring(Object.Tile_XYZ and Object.Tile_XYZ.x or "N/A"))
+        print("|    Tile_XYZ.y     : " .. tostring(Object.Tile_XYZ and Object.Tile_XYZ.y or "N/A"))
+        print("|    Tile_XYZ.z     : " .. tostring(Object.Tile_XYZ and Object.Tile_XYZ.z or "N/A"))
+        print("|    Pixel_XYZ.x    : " .. tostring(Object.Pixel_XYZ and Object.Pixel_XYZ.x or "N/A"))
+        print("|    Pixel_XYZ.y    : " .. tostring(Object.Pixel_XYZ and Object.Pixel_XYZ.y or "N/A"))
+        print("|    Pixel_XYZ.z    : " .. tostring(Object.Pixel_XYZ and Object.Pixel_XYZ.z or "N/A"))
+        print("|    Mem            : " .. tostring(Object.Mem or "N/A"))
+        print("|    MemE           : " .. tostring(Object.MemE or "N/A"))
+        print("|    Unique_Id      : " .. tostring(Object.Unique_Id or "N/A"))
+        print("|    Cmb_lv         : " .. tostring(Object.Cmb_lv or "N/A"))
+        print("|    ItemIndex      : " .. tostring(Object.ItemIndex or "N/A"))
+        print("|    Bool1          : " .. tostring(Object.Bool1 or "N/A"))
+        print("|    ViewP          : " .. tostring(Object.ViewP or "N/A"))
+        print("|    ViewF          : " .. tostring(Object.ViewF or "N/A"))
         print("+==============================+")
         print("")
         
@@ -1023,139 +1090,139 @@ function Slib:PrintObjects(Id, Range, Type)
 end
 
 -- Prints info about specified VarBit(s)
----@param VB number|table
----@return boolean
-function Slib:PrintVB(VB)
+---@param Vb number|table
+---@return boolean Success
+function Slib:PrintVb(Vb)
     -- Parameter validation
-    if not self:Sanitize(VB, {"number", "table_of_numbers"}, "VB") then
+    if not self:Sanitize(Vb, {"number", "table_of_numbers"}, "Vb") then
         return false
     end
     
-    -- Ensure VB is a table for consistent processing
-    local vbTable = type(VB) == "table" and VB or {VB}
+    -- Ensure Vb is a table for consistent processing
+    local VbTable = type(Vb) == "table" and Vb or {Vb}
     
-    local totalFound = 0
-    local processedVBs = 0
+    local TotalFound = 0
+    local ProcessedVbs = 0
     
     -- Process each VarBit
-    for _, vbId in ipairs(vbTable) do
-        local var = API.VB_FindPSettinOrder(vbId)
+    for _, VbId in ipairs(VbTable) do
+        local Var = API.VB_FindPSettinOrder(VbId)
         
-        if not var then
-            self:Warn("VarBit " .. vbId .. " not found")
+        if not Var then
+            self:Warn("VarBit " .. VbId .. " not found")
             goto continue
         end
         
-        if type(var) ~= "table" and type(var) ~= "userdata" then
-            self:Warn("Invalid data type for VarBit " .. vbId .. ": " .. type(var))
+        if type(Var) ~= "table" and type(Var) ~= "userdata" then
+            self:Warn("Invalid data type for VarBit " .. VbId .. ": " .. type(Var))
             goto continue
         end
         
         -- Format VarBit information with nice borders
         print("+========================+")
-        print("|      VARBIT #" .. string.format("%-2s", vbId) .. "      |")
+        print("|      VARBIT #" .. string.format("%-2s", VbId) .. "      |")
         print("+========================+")
-        print("|   id             : " .. tostring(var.id or "N/A"))
-        print("|   state          : " .. tostring(var.state or "N/A"))
-        print("|   addr           : " .. tostring(var.addr or "N/A"))
-        print("|   indexaddr_orig : " .. tostring(var.indexaddr_orig or "N/A"))
+        print("|   id             : " .. tostring(Var.id or "N/A"))
+        print("|   state          : " .. tostring(Var.state or "N/A"))
+        print("|   addr           : " .. tostring(Var.addr or "N/A"))
+        print("|   indexaddr_orig : " .. tostring(Var.indexaddr_orig or "N/A"))
         print("+========================+")
         print("")
         
-        totalFound = totalFound + 1
-        processedVBs = processedVBs + 1
+        TotalFound = TotalFound + 1
+        ProcessedVbs = ProcessedVbs + 1
         
         ::continue::
     end
     
-    if processedVBs == 0 then
+    if ProcessedVbs == 0 then
         self:Error("No VarBits could be processed")
         return false
     end
     
-    self:Info("VarBit scan completed - processed " .. processedVBs .. " VarBit(s), found " .. totalFound .. " valid")
+    self:Info("VarBit scan completed - processed " .. ProcessedVbs .. " VarBit(s), found " .. TotalFound .. " valid")
     return true
 end
 
 -- Prints detailed information about interface elements
----@param target_under boolean
----@param interfaceToScan table
----@return boolean
-function Slib:PrintInterfaceInfo(target_under, interfaceToScan)
+---@param TargetUnder boolean
+---@param InterfaceToScan table
+---@return boolean Success
+function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
     -- Parameter validation
     if not self:ValidateParams({
-        {target_under, "boolean", "target_under"},
-        {interfaceToScan, "table", "interfaceToScan"}
+        {TargetUnder, "boolean", "TargetUnder"},
+        {InterfaceToScan, "table", "InterfaceToScan"}
     }) then
         return false
     end
     
     -- API call to get interface elements
-    local interface = API.ScanForInterfaceTest2Get(target_under, interfaceToScan)
+    local Interface = API.ScanForInterfaceTest2Get(TargetUnder, InterfaceToScan)
     
-    if not interface then
+    if not Interface then
         self:Error("Failed to scan interface")
         return false
     end
     
-    if type(interface) ~= "table" and type(interface) ~= "userdata" then
-        self:Error("Invalid data type returned from API: " .. type(interface))
+    if type(Interface) ~= "table" and type(Interface) ~= "userdata" then
+        self:Error("Invalid data type returned from API: " .. type(Interface))
         return false
     end
     
-    if #interface == 0 then
+    if #Interface == 0 then
         self:Info("No interface elements found")
         return false
     end
     
-    self:Info("Found " .. #interface .. " interface elements:")
+    self:Info("Found " .. #Interface .. " interface elements:")
     print("")
     
     -- Safe iteration through interface elements
-    for i = 1, #interface do
-        local element = interface[i]
+    for I = 1, #Interface do
+        local Element = Interface[I]
         
         -- Check if element exists and is valid
-        if not element then
-            self:Warn("Skipping nil element at index " .. i)
+        if not Element then
+            self:Warn("Skipping nil element at index " .. I)
             goto continue_element
         end
         
-        if type(element) ~= "table" and type(element) ~= "userdata" then
-            self:Warn("Skipping invalid element at index " .. i .. " (type: " .. type(element) .. ")")
+        if type(Element) ~= "table" and type(Element) ~= "userdata" then
+            self:Warn("Skipping invalid element at index " .. I .. " (type: " .. type(Element) .. ")")
             goto continue_element
         end
         
         -- Format interface element information with nice borders
         print("+============================+")
-        print("|       ELEMENT #" .. string.format("%-2s", i) .. "          |")
+        print("|       ELEMENT #" .. string.format("%-2s", I) .. "          |")
         print("+============================+")
-        print("|   x              : " .. tostring(element.x or "N/A"))
-        print("|   xs             : " .. tostring(element.xs or "N/A"))
-        print("|   y              : " .. tostring(element.y or "N/A"))
-        print("|   ys             : " .. tostring(element.ys or "N/A"))
-        print("|   box_x          : " .. tostring(element.box_x or "N/A"))
-        print("|   box_y          : " .. tostring(element.box_y or "N/A"))
-        print("|   scroll_y       : " .. tostring(element.scroll_y or "N/A"))
-        print("|   id1            : " .. tostring(element.id1 or "N/A"))
-        print("|   id2            : " .. tostring(element.id2 or "N/A"))
-        print("|   id3            : " .. tostring(element.id3 or "N/A"))
-        print("|   itemid1        : " .. tostring(element.itemid1 or "N/A"))
-        print("|   itemid1_size   : " .. tostring(element.itemid1_size or "N/A"))
-        print("|   itemid2        : " .. tostring(element.itemid2 or "N/A"))
-        print("|   hov            : " .. tostring(element.hov or "N/A"))
-        print("|   textids        : " .. tostring(element.textids or "N/A"))
-        print("|   textitem       : " .. tostring(element.textitem or "N/A"))
-        print("|   memloc         : " .. tostring(element.memloc or "N/A"))
-        print("|   memloctop      : " .. tostring(element.memloctop or "N/A"))
-        print("|   index          : " .. tostring(element.index or "N/A"))
-        print("|   fullpath       : " .. tostring(element.fullpath or "N/A"))
-        print("|   fullIDpath     : " .. tostring(element.fullIDpath or "N/A"))
-        print("|   notvisible     : " .. tostring(element.notvisible or "N/A"))
-        print("|   OP             : " .. tostring(element.OP or "N/A"))
-        print("|   xy             : " .. tostring(element.xy or "N/A"))
-        print("|   xy.x           : " .. tostring(element.xy.x or "N/A"))
-        print("|   xy.y           : " .. tostring(element.xy.y or "N/A"))
+        print("|   x              : " .. tostring(Element.x or "N/A"))
+        print("|   xs             : " .. tostring(Element.xs or "N/A"))
+        print("|   y              : " .. tostring(Element.y or "N/A"))
+        print("|   ys             : " .. tostring(Element.ys or "N/A"))
+        print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
+        print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
+        print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
+        print("|   id1            : " .. tostring(Element.id1 or "N/A"))
+        print("|   id2            : " .. tostring(Element.id2 or "N/A"))
+        print("|   id3            : " .. tostring(Element.id3 or "N/A"))
+        print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
+        print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
+        print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
+        print("|   hov            : " .. tostring(Element.hov or "N/A"))
+        print("|   textids        : " .. tostring(Element.textids or "N/A"))
+        print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
+        print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
+        print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
+        print("|   index          : " .. tostring(Element.index or "N/A"))
+        print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
+        print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
+        print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
+        print("|   OP             : " .. tostring(Element.OP or "N/A"))
+        print("|   xy             : " .. tostring(Element.xy or "N/A"))
+        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
+        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
         print("+============================+")
         print("")
         
@@ -1167,131 +1234,97 @@ function Slib:PrintInterfaceInfo(target_under, interfaceToScan)
 end
 
 -- Prints all fields of a QuestData object
----@param quest_ids_or_names number|string|table
----@return boolean
-function Slib:PrintQuestData(quest_ids_or_names)
+---@param QuestIdsOrNames number|string|table
+---@return boolean Success
+function Slib:PrintQuestData(QuestIdsOrNames)
     -- Parameter validation
-    if not self:Sanitize(quest_ids_or_names, {"number", "string", "table_of_strings", "table_of_numbers"}, "quest_ids_or_names") then
+    if not self:Sanitize(QuestIdsOrNames, {"number", "string", "table_of_strings", "table_of_numbers"}, "QuestIdsOrNames") then
         return false
     end
     
-    -- Ensure quest_ids_or_names is a table for consistent processing
-    local questTable = type(quest_ids_or_names) == "table" and quest_ids_or_names or {quest_ids_or_names}
+    -- Ensure QuestIdsOrNames is a table for consistent processing
+    local QuestTable = type(QuestIdsOrNames) == "table" and QuestIdsOrNames or {QuestIdsOrNames}
     
-    local totalFound = 0
-    local processedQuests = 0
+    local TotalFound = 0
+    local ProcessedQuests = 0
     
     -- Process each quest
-    for _, questId in ipairs(questTable) do
+    for _, QuestId in ipairs(QuestTable) do
         -- API call to get quest data
-        local questData = Quest:Get(questId)
+        local QuestData = Quest:Get(QuestId)
         
-        if not questData then
-            self:Warn("Quest not found: " .. tostring(questId))
+        if not QuestData then
+            self:Warn("Quest not found: " .. tostring(QuestId))
             goto continue
         end
         
-        if type(questData) ~= "table" and type(questData) ~= "userdata" then
-            self:Warn("Invalid quest data type for " .. tostring(questId) .. ": " .. type(questData))
+        if type(QuestData) ~= "table" and type(QuestData) ~= "userdata" then
+            self:Warn("Invalid quest data type for " .. tostring(QuestId) .. ": " .. type(QuestData))
             goto continue
         end
 
-        self:Info("=== Quest: " .. tostring(questId) .. " ===")
+        self:Info("=== Quest: " .. tostring(QuestId) .. " ===")
         print("")
     
-    -- Format quest information with nice borders
-    print("+================================+")
-    print("|           QUEST DATA           |")
-    print("+================================+")
-    print("|   id                 : " .. tostring(questData.id or "N/A"))
-    print("|   name               : " .. tostring(questData.name or "N/A"))
-    print("|   list_name          : " .. tostring(questData.list_name or "N/A"))
-    print("|   members            : " .. tostring(questData.members or "N/A"))
-    print("|   category           : " .. tostring(questData.category or "N/A"))
-    print("|   difficulty         : " .. tostring(questData.difficulty or "N/A"))
-    print("|   points_reward      : " .. tostring(questData.points_reward or "N/A"))
-    print("|   points_required    : " .. tostring(questData.points_required or "N/A"))
-    print("|   progress_start_bit : " .. tostring(questData.progress_start_bit or "N/A"))
-    print("|   progress_end_bit   : " .. tostring(questData.progress_end_bit or "N/A"))
-    print("|   progress_varbit    : " .. tostring(questData.progress_varbit or "N/A"))
-    print("|                                ")
-    print("|     --- Methods ---            ")
-    
-    -- Call methods safely
-    if questData.getProgress then
-        local success, progress = pcall(questData.getProgress, questData)
-        print("|   getProgress()      : " .. tostring(success and progress or "Error"))
-    else
-        print("|   getProgress()      : N/A")
-    end
-    
-    if questData.isStarted then
-        local success, started = pcall(questData.isStarted, questData)
-        print("|   isStarted()        : " .. tostring(success and started or "Error"))
-    else
-        print("|   isStarted()        : N/A")
-    end
-    
-    if questData.isComplete then
-        local success, complete = pcall(questData.isComplete, questData)
-        print("|   isComplete()       : " .. tostring(success and complete or "Error"))
-    else
-        print("|   isComplete()       : N/A")
-    end
-    
-    print("|                                ")
-    print("|   --- Required Quests ---      ")
-    
-    -- Print required quests with debugging
-    if questData.required_quests then
-        if (type(questData.required_quests) == "table" or type(questData.required_quests) == "userdata") and #questData.required_quests > 0 then
-            for i, reqQuest in ipairs(questData.required_quests) do
-                if reqQuest and (type(reqQuest) == "table" or type(reqQuest) == "userdata") then
-                    local questId = tostring(reqQuest.id or "N/A")
-                    local questName = tostring(reqQuest.name or "N/A")
-                    -- Split long lines to fit within border
-                    print("|   [" .. i .. "] ID: " .. questId)
-                    if string.len(questName) > 25 then
-                        print("|       Name: " .. string.sub(questName, 1, 22) .. "...")
-                    else
-                        print("|       Name: " .. questName)
-                    end
-                else
-                    print("|   [" .. i .. "] Invalid quest data     ")
-                end
-            end
+        -- Format quest information with nice borders
+        print("+================================+")
+        print("|           QUEST DATA           |")
+        print("+================================+")
+        print("|   id                 : " .. tostring(QuestData.id or "N/A"))
+        print("|   name               : " .. tostring(QuestData.name or "N/A"))
+        print("|   list_name          : " .. tostring(QuestData.list_name or "N/A"))
+        print("|   members            : " .. tostring(QuestData.members or "N/A"))
+        print("|   category           : " .. tostring(QuestData.category or "N/A"))
+        print("|   difficulty         : " .. tostring(QuestData.difficulty or "N/A"))
+        print("|   points_reward      : " .. tostring(QuestData.points_reward or "N/A"))
+        print("|   points_required    : " .. tostring(QuestData.points_required or "N/A"))
+        print("|   progress_start_bit : " .. tostring(QuestData.progress_start_bit or "N/A"))
+        print("|   progress_end_bit   : " .. tostring(QuestData.progress_end_bit or "N/A"))
+        print("|   progress_varbit    : " .. tostring(QuestData.progress_varbit or "N/A"))
+        print("|                                ")
+        print("|     --- Methods ---            ")
+        
+        -- Call methods safely
+        if QuestData.getProgress then
+            local Success, Progress = pcall(QuestData.getProgress, QuestData)
+            print("|   getProgress()      : " .. tostring(Success and Progress or "Error"))
         else
-            print("|   None                         ")
+            print("|   getProgress()      : N/A")
         end
-    else
-        print("|   N/A                          ")
-    end
-
-    print("|                                ")
-    print("|   --- Required Skills ---      ")
-    
-            -- Print required skills with debugging  
-        if questData.required_skills then
-            if (type(questData.required_skills) == "table" or type(questData.required_skills) == "userdata") and #questData.required_skills > 0 then
-                for i, skill in ipairs(questData.required_skills) do
-                    if skill and (type(skill) == "table" or type(skill) == "userdata") then
-                        local skillId = skill.id or "N/A"
-                        local skillLevel = tostring(skill.level or "N/A")
-                        
-                        -- Get skill name from API
-                        local skillName = "Unknown"
-                        if skillId ~= "N/A" then
-                            local skillData = API.GetSkillById(skillId)
-                            if skillData and skillData.name then
-                                skillName = skillData.name
-                            else
-                                skillName = "ID:" .. tostring(skillId)
-                            end
+        
+        if QuestData.isStarted then
+            local Success, Started = pcall(QuestData.isStarted, QuestData)
+            print("|   isStarted()        : " .. tostring(Success and Started or "Error"))
+        else
+            print("|   isStarted()        : N/A")
+        end
+        
+        if QuestData.isComplete then
+            local Success, Complete = pcall(QuestData.isComplete, QuestData)
+            print("|   isComplete()       : " .. tostring(Success and Complete or "Error"))
+        else
+            print("|   isComplete()       : N/A")
+        end
+        
+        print("|                                ")
+        print("|   --- Required Quests ---      ")
+        
+        -- Print required quests with debugging
+        if QuestData.required_quests then
+            if (type(QuestData.required_quests) == "table" or type(QuestData.required_quests) == "userdata") and #QuestData.required_quests > 0 then
+                for I, ReqQuest in ipairs(QuestData.required_quests) do
+                    if ReqQuest and (type(ReqQuest) == "table" or type(ReqQuest) == "userdata") then
+                        local ReqQuestId = tostring(ReqQuest.id or "N/A")
+                        local ReqQuestName = tostring(ReqQuest.name or "N/A")
+                        -- Split long lines to fit within border
+                        print("|   [" .. I .. "] ID: " .. ReqQuestId)
+                        if string.len(ReqQuestName) > 25 then
+                            print("|       Name: " .. string.sub(ReqQuestName, 1, 22) .. "...")
+                        else
+                            print("|       Name: " .. ReqQuestName)
                         end
-                        
-                        print("|   [" .. i .. "] " .. skillName .. " Level: " .. skillLevel)
                     else
-                        print("|   [" .. i .. "] Invalid skill data    ")
+                        print("|   [" .. I .. "] Invalid quest data     ")
                     end
                 end
             else
@@ -1300,22 +1333,128 @@ function Slib:PrintQuestData(quest_ids_or_names)
         else
             print("|   N/A                          ")
         end
-    
+
+        print("|                                ")
+        print("|   --- Required Skills ---      ")
+        
+        -- Print required skills with debugging  
+        if QuestData.required_skills then
+            if (type(QuestData.required_skills) == "table" or type(QuestData.required_skills) == "userdata") and #QuestData.required_skills > 0 then
+                for I, Skill in ipairs(QuestData.required_skills) do
+                    if Skill and (type(Skill) == "table" or type(Skill) == "userdata") then
+                        local SkillId = Skill.id or "N/A"
+                        local SkillLevel = tostring(Skill.level or "N/A")
+                        
+                        -- Get skill name from API
+                        local SkillName = "Unknown"
+                        if SkillId ~= "N/A" then
+                            local SkillData = API.GetSkillById(SkillId)
+                            if SkillData and SkillData.name then
+                                SkillName = SkillData.name
+                            else
+                                SkillName = "ID:" .. tostring(SkillId)
+                            end
+                        end
+                        
+                        print("|   [" .. I .. "] " .. SkillName .. " Level: " .. SkillLevel)
+                    else
+                        print("|   [" .. I .. "] Invalid skill data    ")
+                    end
+                end
+            else
+                print("|   None                         ")
+            end
+        else
+            print("|   N/A                          ")
+        end
+        
         print("+================================+")
         print("")
         
-        totalFound = totalFound + 1
-        processedQuests = processedQuests + 1
+        TotalFound = TotalFound + 1
+        ProcessedQuests = ProcessedQuests + 1
         
         ::continue::
     end
     
-    if processedQuests == 0 then
+    if ProcessedQuests == 0 then
         self:Error("No quests could be processed")
         return false
     end
     
-    self:Info("Quest data scan completed - processed " .. processedQuests .. " quest(s), found " .. totalFound .. " valid")
+    self:Info("Quest data scan completed - processed " .. ProcessedQuests .. " quest(s), found " .. TotalFound .. " valid")
+    return true
+end
+
+-- Prints all items in the currency pouch with detailed information
+---@return boolean Success True if currency pouch items were found and printed, false if no items or error occurred
+function Slib:PrintCurrencyPouch()
+    if not self.Interfaces or not self.Interfaces.CurrencyPouch then
+        self:Error("CurrencyPouch interface not defined")
+        return false
+    end
+    
+    local TotalFound = 0
+    local ProcessedInterfaces = 0
+    
+    -- Process each interface configuration
+    for I = 1, #self.Interfaces.CurrencyPouch do
+        local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.CurrencyPouch[I])
+        
+        -- Count valid items in this interface
+        local ValidItems = 0
+        for _, Item in pairs(Interface) do
+            if Item and Item.itemid1 and Item.itemid1 >= 0 then
+                ValidItems = ValidItems + 1
+            end
+        end
+        
+        if ValidItems > 0 then
+            self:Info("=== Currency Pouch Interface " .. I .. " ===")
+            self:Info("Found " .. ValidItems .. " items:")
+            print("")
+            
+            -- Process each item
+            for _, Item in pairs(Interface) do
+                if Item and Item.itemid1 and Item.itemid1 >= 0 then
+                    -- Format item information with nice borders
+                    print("+================================+")
+                    print("|        CURRENCY ITEM           |")
+                    print("+================================+")
+                    print("|   Item ID         : " .. tostring(Item.itemid1))
+                    print("|   Amount/Text     : " .. tostring(Item.textitem or "N/A"))
+                    
+                    -- Add additional fields if they exist
+                    if Item.id1 then print("|   id1            : " .. tostring(Item.id1)) end
+                    if Item.id2 then print("|   id2            : " .. tostring(Item.id2)) end
+                    if Item.id3 then print("|   id3            : " .. tostring(Item.id3)) end
+                    if Item.memloc then print("|   memloc         : " .. tostring(Item.memloc)) end
+                    if Item.textids then print("|   textids        : " .. tostring(Item.textids)) end
+                    
+                    print("+================================+")
+                    print("")
+                    
+                    TotalFound = TotalFound + 1
+                end
+            end
+        end
+        
+        ProcessedInterfaces = ProcessedInterfaces + 1
+        
+        ::continue::
+    end
+    
+    if ProcessedInterfaces == 0 then
+        self:Error("No currency pouch interfaces could be processed")
+        return false
+    end
+    
+    if TotalFound == 0 then
+        self:Info("No currency items found in pouch")
+        return false
+    end
+    
+    self:Info("Currency pouch scan completed - processed " .. ProcessedInterfaces .. " interface(s), found " .. TotalFound .. " items")
     return true
 end
 
@@ -1483,37 +1622,6 @@ function Slib:IsPlayerAtCoords(X, Y, Z)
     return AtCoords
 end
 
--- Walks to specified coordinates
----@param X number The target X coordinate
----@param Y number The target Y coordinate
----@param Z number The target Z coordinate (floor/plane)
----@return boolean success True if walk was initiated or player is already at destination, false on failure
-function Slib:WalkToCoordinates(X, Y, Z)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {X, "number", "X"},
-        {Y, "number", "Y"},
-        {Z, "number", "Z"}
-    }) then
-        return false
-    end
-    
-    -- Check if already at destination
-    local AtDest = self:IsPlayerAtCoords(X, Y, Z)
-    if AtDest then
-        return true
-    end
-    
-    -- Attempt to walk
-    local WalkResult = API.DoAction_Tile(WPOINT.new(X, Y, Z))
-    if not WalkResult then
-        self:Error("Failed to initiate walk to (" .. X .. ", " .. Y .. ", " .. Z .. ")")
-        return false
-    end
-    
-    return true
-end
-
 -- Gets the current instance timer text
 ---@return string timerText The instance timer text, or empty string if not found/unavailable
 function Slib:GetInstanceTimer()
@@ -1579,45 +1687,86 @@ function Slib:InstanceTimerCheck(TimeToCheck)
     return Found ~= nil
 end
 
--- Uses an ability by name if it exists and is enabled. ExactMatch is used to check if the ability name is exact.
----@param AbilityName string
----@param ExactMatch boolean
----@return boolean
-function Slib:UseAbilityByName(AbilityName, ExactMatch)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {AbilityName, "non_empty_string", "AbilityName"},
-        {ExactMatch, "boolean", "ExactMatch"}
-    }) then
-        return false
+-- Retrieves the kill counts for GWD2 (God Wars Dungeon 2) followers
+---@return table<string, number>|nil killCounts Table containing kill counts for each faction, or nil if failed to retrieve data
+function Slib:GetGWD2KillCounts()
+
+    local FactionNames = { "Seren", "Sliske", "Zamorak", "Zaros" }
+    local Results = {}
+    local SuccessCount = 0
+
+    -- Process each faction
+    for i, BaseAddress in ipairs(self.Interfaces.GWD2KillCounts) do
+        local FactionName = FactionNames[i]
+        
+        -- Scan interface for faction data
+        local Data = API.ScanForInterfaceTest2Get(false, BaseAddress)
+        if not Data then
+            self:Warn(string.format("[GetGWD2KillCounts] Failed to scan interface for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        if type(Data) ~= "table" and type(Data) ~= "userdata" then
+            self:Error(string.format("[GetGWD2KillCounts] Invalid data type for %s: %s", FactionName, type(Data)))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        if #Data == 0 then
+            self:Warn(string.format("[GetGWD2KillCounts] No interface data found for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        -- Get the first element and validate it
+        local Element = Data[1]
+        if not Element or not Element.memloc then
+            self:Warn(string.format("[GetGWD2KillCounts] Invalid element data for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        -- Read kill count from memory
+        local Amount = API.ReadCharsLimit(Element.memloc + API.I_itemids3, 255)
+        if not Amount then
+            self:Warn(string.format("[GetGWD2KillCounts] Failed to read kill count for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        -- Convert to number
+        local KillCount = tonumber(Amount)
+        if not KillCount then
+            self:Warn(string.format("[GetGWD2KillCounts] Invalid kill count value for %s: %s", FactionName, tostring(Amount)))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        Results[FactionName] = KillCount
+        SuccessCount = SuccessCount + 1
+        self:Info(string.format("[GetGWD2KillCounts] %s kill count: %d", FactionName, KillCount))
+        
+        ::continue::
     end
-    
-    -- Get ability information using GetABs_name
-    local Ability = API.GetABs_name(AbilityName, ExactMatch)
-    if not Ability then
-        self:Warn("Ability not found: " .. AbilityName)
-        return false
+
+    -- Print formatted results
+    if SuccessCount > 0 then
+        self:Info("=== GWD2 Kill Counts ===")
+        print("+========================+")
+        print("|      GWD2 KILLS        |")
+        print("+========================+")
+        print("|   Seren    : " .. string.format("%-8s", tostring(Results.Seren or 0)) .. " |")
+        print("|   Sliske   : " .. string.format("%-8s", tostring(Results.Sliske or 0)) .. " |")
+        print("|   Zamorak  : " .. string.format("%-8s", tostring(Results.Zamorak or 0)) .. " |")
+        print("|   Zaros    : " .. string.format("%-8s", tostring(Results.Zaros or 0)) .. " |")
+        print("+========================+")
+
+        return Results
+    else
+        self:Error("[GetGWD2KillCounts] Failed to retrieve any kill counts")
+        return nil
     end
-    
-    if type(Ability) ~= "table" and type(Ability) ~= "userdata" then
-        self:Error("Invalid ability data type: " .. type(Ability))
-        return false
-    end
-    
-    -- Check if ability is enabled
-    if not Ability.enabled then
-        self:Warn("Ability is not enabled: " .. AbilityName)
-        return false
-    end
-    
-    -- Attempt to use the ability
-    local Result = API.DoAction_Ability(AbilityName,1,API.OFF_ACT_GeneralInterface_route,ExactMatch)
-    if not Result then
-        self:Error("Failed to use ability: " .. AbilityName)
-        return false
-    end
-    
-    return true
 end
 
 -- Checks recent chat messages for specified patterns and returns true if any are found
@@ -1785,20 +1934,24 @@ function Slib:WaitForObjectToAppear(ObjID, Range, ObjType, TimeoutSeconds)
     return false
 end
 
--- Waits for a specific object to appear within range using GetAllObjArray2 (supports tile parameter)
+-- Waits for a specific object to appear within range using GetAllObjArray2 (supports x, y, z parameters)
 ---@param ObjID number|table The object ID(s) to wait for
 ---@param Range number Maximum search distance in tiles
 ---@param ObjType number|table The object type(s) to search for
----@param Tile WPOINT The tile position to search from (WPOINT)
+---@param x number The x coordinate to search from
+---@param y number The y coordinate to search from
+---@param z number The z coordinate to search from
 ---@param TimeoutSeconds number Maximum wait time in seconds
 ---@return boolean found True if object was found within timeout, false otherwise
-function Slib:WaitForObjectToAppear2(ObjID, Range, ObjType, Tile, TimeoutSeconds)
+function Slib:WaitForObjectToAppear2(ObjID, Range, ObjType, x, y, z, TimeoutSeconds)
     -- Parameter validation
     if not self:ValidateParams({
         {ObjID, {"number", "table_of_numbers"}, "ObjID"},
         {Range, "positive_number", "Range"},
         {ObjType, {"number", "table_of_numbers"}, "ObjType"},
-        {Tile, {"table", "userdata"}, "Tile"},
+        {x, "number", "x"},
+        {y, "number", "y"},
+        {z, "number", "z"},
         {TimeoutSeconds, "positive_number", "TimeoutSeconds"}
     }) then
         return false
@@ -1814,9 +1967,12 @@ function Slib:WaitForObjectToAppear2(ObjID, Range, ObjType, Tile, TimeoutSeconds
     -- Create descriptive strings for logging
     local ObjIdStr = type(ObjID) == "table" and table.concat(ObjIdTable, ", ") or tostring(ObjID)
     local ObjTypeStr = type(ObjType) == "table" and table.concat(ObjTypeTable, ", ") or tostring(ObjType)
-    local TileStr = "from tile (" .. tostring(Tile.x) .. ", " .. tostring(Tile.y) .. ")"
+    local TileStr = "from tile (" .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z) .. ")"
     
     self:Info("Waiting for object ID(s) [" .. ObjIdStr .. "] (Type(s) [" .. ObjTypeStr .. "]) within range " .. Range .. " tiles " .. TileStr .. "...")
+    
+    -- Construct WPOINT from x, y, z
+    local Tile = WPOINT.new(x, y, z)
     
     while API.Read_LoopyLoop() do
         -- Check timeout
@@ -1926,19 +2082,23 @@ function Slib:FindObj(ObjId, Distance, ObjType)
     return NearestObj
 end
 
--- Finds the nearest object with specified ID(s) and type(s) within range using GetAllObjArray2 (supports tile parameter)
+-- Finds the nearest object with specified ID(s) and type(s) within range using GetAllObjArray2 (supports x, y, z parameters)
 ---@param ObjId number|table The object ID(s) to search for
 ---@param Distance number Maximum search distance in tiles
 ---@param ObjType number|table The object type(s) to search for
----@param Tile WPOINT The tile position to search from (WPOINT)
+---@param x number The x coordinate to search from
+---@param y number The y coordinate to search from
+---@param z number The z coordinate to search from
 ---@return table|nil nearest_object The nearest matching object, or nil if none found
-function Slib:FindObj2(ObjId, Distance, ObjType, Tile)
+function Slib:FindObj2(ObjId, Distance, ObjType, x, y, z)
     -- Parameter validation
     if not self:ValidateParams({
         {ObjId, {"number", "table_of_numbers"}, "ObjId"},
         {Distance, "id", "Distance"},
         {ObjType, {"number", "table_of_numbers"}, "ObjType"},
-        {Tile, {"table", "userdata"}, "Tile"}
+        {x, "number", "x"},
+        {y, "number", "y"},
+        {z, "number", "z"}
     }) then
         return nil
     end
@@ -1946,6 +2106,9 @@ function Slib:FindObj2(ObjId, Distance, ObjType, Tile)
     -- Convert to tables for API call
     local ObjIdTable = type(ObjId) == "table" and ObjId or {ObjId}
     local ObjTypeTable = type(ObjType) == "table" and ObjType or {ObjType}
+    
+    -- Construct WPOINT from x, y, z
+    local Tile = WPOINT.new(x, y, z)
     
     -- Search for objects using GetAllObjArray2
     local Objects = API.GetAllObjArray2(ObjIdTable, Distance, ObjTypeTable, Tile)
@@ -1968,5 +2131,402 @@ function Slib:FindObj2(ObjId, Distance, ObjType, Tile)
     return NearestObj
 end
 
+-- Checks if the currency pouch contains an item with the given ID or any ID in a list
+---@param Ids number|table The item ID or list of item IDs to check for
+---@return boolean found True if at least one of the IDs is found in the currency pouch, false otherwise
+function Slib:CurrencyPouchContains(Ids)
+    -- Parameter validation
+    if not self:Sanitize(Ids, {"number", "table_of_ids"}, "Ids") then
+        return false
+    end
+    
+    -- Convert to table for consistent processing
+    local IdTable = type(Ids) == "table" and Ids or {Ids}
+    
+    -- Track which IDs have been found
+    local found = {}
+    for _, id in ipairs(IdTable) do
+        found[id] = false
+    end
+    
+    -- Scan all currency pouch interfaces
+    for I = 1, #self.Interfaces.CurrencyPouch do
+        local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.CurrencyPouch[I])
+        if Interface and (type(Interface) == "table" or type(Interface) == "userdata") then
+            for _, Item in pairs(Interface) do
+                if Item and Item.itemid1 and Item.itemid1 >= 0 then
+                    if found[Item.itemid1] == false then
+                        found[Item.itemid1] = true
+                    end
+                end
+            end
+        end
+    end
+    -- Check if all IDs were found
+    for _, id in ipairs(IdTable) do
+        if not found[id] then
+            return false
+        end
+    end
+    return true
+end
+
+-- ##################################
+-- #                                #
+-- #           PROCEDURES           #
+-- #                                #
+-- ##################################
+
+-- Walks to specified coordinates
+---@param X number The target X coordinate
+---@param Y number The target Y coordinate
+---@param Z number The target Z coordinate (floor/plane)
+---@return boolean success True if walk was initiated or player is already at destination, false on failure
+function Slib:WalkToCoordinates(X, Y, Z)
+    self:Info("[WalkToCoordinates] Starting walk to coordinates (" .. X .. ", " .. Y .. ", " .. Z .. ")...")
+    -- Parameter validation
+    if not self:ValidateParams({
+        {X, "number", "X"},
+        {Y, "number", "Y"},
+        {Z, "number", "Z"}
+    }) then
+        self:Error("[WalkToCoordinates] Parameter validation failed")
+        return false
+    end
+    
+    -- Check if already at destination
+    local AtDest = self:IsPlayerAtCoords(X, Y, Z)
+    if AtDest then
+        self:Info("[WalkToCoordinates] Already at destination coordinates")
+        return true
+    end
+    
+    self:Info("[WalkToCoordinates] Initiating walk...")
+    -- Attempt to walk
+    local WalkResult = API.DoAction_Tile(WPOINT.new(X, Y, Z))
+    if not WalkResult then
+        self:Error("[WalkToCoordinates] Failed to initiate walk to (" .. X .. ", " .. Y .. ", " .. Z .. ")")
+        return false
+    end
+
+    return true
+end
+
+-- Attempts to use Surge ability if player is facing the specified orientation
+---@param Orientation number The orientation angle to check (0-360 degrees)
+---@return boolean success True if surge was used successfully, false if wrong orientation or ability unavailable
+function Slib:SurgeIfFacing(Orientation)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {Orientation, "number", "Orientation"}
+    }) then
+        return false
+    end
+
+    self:Info(string.format("[SurgeIfFacing] Checking if player is facing %d degrees...", Orientation))
+    
+    -- Normalize orientation values
+    local PlayerFacing = math.floor(API.calculatePlayerOrientation())
+    if PlayerFacing == 0 then PlayerFacing = 360 end
+    if Orientation == 0 then Orientation = 360 end
+    
+    -- Check if player is facing the correct direction
+    if Orientation ~= PlayerFacing then
+        self:Info(string.format("[SurgeIfFacing] Player facing %d degrees, not matching required %d degrees", PlayerFacing, Orientation))
+        return false
+    end
+    
+    self:Info("[SurgeIfFacing] Player facing correct direction, attempting to surge...")
+    return self:UseAbilityById(14233) --Surge ID
+end
+
+-- Dives to the specified coordinates using Bladed Dive or regular Dive
+---@param X number The target X coordinate
+---@param Y number The target Y coordinate
+---@param Z number The target Z coordinate
+---@return boolean success True if dive was successful, false if abilities on cooldown or dive failed
+function Slib:Dive(X, Y, Z)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {X, "number", "X"},
+        {Y, "number", "Y"},
+        {Z, "number", "Z"}
+    }) then
+        return false
+    end
+
+    self:Info(string.format("[Dive] Attempting to dive to coordinates (%d, %d, %d)", X, Y, Z))
+    
+    -- Check Bladed Dive ability
+    local BladedDive = API.GetABs_id(30331)
+    if not BladedDive then
+        self:Error("[Dive] Failed to get Bladed Dive ability info")
+        return false
+    end
+    
+    -- Check regular Dive ability
+    local RegularDive = API.GetABs_id(23714)
+    if not RegularDive then
+        self:Error("[Dive] Failed to get regular Dive ability info")
+        return false
+    end
+    
+    -- Check if either ability is available
+    local BladedDiveReady = BladedDive.id ~= 0 and BladedDive.enabled and BladedDive.cooldown_timer < 1
+    local RegularDiveReady = RegularDive.id ~= 0 and RegularDive.enabled and RegularDive.cooldown_timer < 1
+    
+    if not (BladedDiveReady or RegularDiveReady) then
+        self:Warn("[Dive] No dive abilities available (on cooldown or disabled)")
+        return false
+    end
+    
+    -- Create target point
+    local TargetPoint = WPOINT.new(X, Y, Z)
+    
+    -- Try Bladed Dive first
+    if BladedDiveReady then
+        self:Info("[Dive] Attempting Bladed Dive...")
+        if API.DoAction_BDive_Tile(TargetPoint) then
+            self:Info("[Dive] Bladed Dive successful")
+            return true
+        end
+        self:Warn("[Dive] Bladed Dive failed")
+    end
+    
+    -- Try regular Dive as fallback
+    if RegularDiveReady then
+        self:Info("[Dive] Attempting regular Dive...")
+        if API.DoAction_Dive_Tile(TargetPoint) then
+            self:Info("[Dive] Regular Dive successful")
+            return true
+        end
+        self:Warn("[Dive] Regular Dive failed")
+    end
+    
+    self:Error("[Dive] All dive attempts failed")
+    return false
+end
+
+-- Uses an ability by its ID
+---@param AbilityId number The ID of the ability to use
+---@return boolean success True if ability was used successfully, false if ability not found, on cooldown, or disabled
+function Slib:UseAbilityById(AbilityId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityId, "id", "AbilityId"}
+    }) then
+        return false
+    end
+
+    self:Info(string.format("[UseAbilityById] Attempting to use ability with ID: %d", AbilityId))
+    
+    -- Get ability information
+    local Ability = API.GetABs_id(AbilityId)
+    if not Ability or Ability.id == 0 then
+        self:Error(string.format("[UseAbilityById] Ability with ID %d not found", AbilityId))
+        return false
+    end
+    
+    -- Check if ability is available
+    if not Ability.enabled then
+        self:Info(string.format("[UseAbilityById] Ability %d is currently disabled", AbilityId))
+        return false
+    end
+    
+    -- Check cooldown
+    if Ability.cooldown_timer >= 1 then
+        self:Info(string.format("[UseAbilityById] Ability %d is on cooldown (%.1f seconds remaining)", AbilityId, Ability.cooldown_timer))
+        return false
+    end
+    
+    -- Attempt to use the ability
+    self:Info(string.format("[UseAbilityById] Using ability %d", AbilityId))
+    return API.DoAction_Ability_Direct(Ability, 1, API.OFF_ACT_GeneralInterface_route)
+end
+
+-- Uses an ability by name if it exists and is enabled. ExactMatch is used to check if the ability name is exact.
+---@param AbilityName string
+---@param ExactMatch boolean
+---@return boolean
+function Slib:UseAbilityByName(AbilityName, ExactMatch)
+    self:Info("[UseAbilityByName] Attempting to use ability: " .. AbilityName .. " (ExactMatch: " .. tostring(ExactMatch) .. ")")
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityName, "non_empty_string", "AbilityName"},
+        {ExactMatch, "boolean", "ExactMatch"}
+    }) then
+        self:Error("[UseAbilityByName] Parameter validation failed")
+        return false
+    end
+    
+    -- Get ability information using GetABs_name
+    local Ability = API.GetABs_name(AbilityName, ExactMatch)
+    if not Ability then
+        self:Warn("[UseAbilityByName] Ability not found: " .. AbilityName)
+        return false
+    end
+    
+    if type(Ability) ~= "table" and type(Ability) ~= "userdata" then
+        self:Error("[UseAbilityByName] Invalid ability data type: " .. type(Ability))
+        return false
+    end
+    
+    -- Check if ability is enabled
+    if not Ability.enabled then
+        self:Warn("[UseAbilityByName] Ability is not enabled: " .. AbilityName)
+        return false
+    end
+    
+    self:Info("[UseAbilityByName] Ability found and enabled. Attempting to use...")
+    -- Attempt to use the ability
+    local Result = API.DoAction_Ability(AbilityName,1,API.OFF_ACT_GeneralInterface_route,ExactMatch)
+    if not Result then
+        self:Error("[UseAbilityByName] Failed to use ability: " .. AbilityName)
+        return false
+    end
+    
+    self:Info("[UseAbilityByName] Ability used successfully: " .. AbilityName)
+    return true
+end
+
+-- Teleports the player to Guthix Memorial using the Memory Strand currency from the currency pouch
+---@return boolean success True if teleport was successful, false if Memory Strand not found or teleport failed
+function Slib:MemoryStrandTeleport()
+    if not self:CurrencyPouchContains(39486) then
+        self:Error("[MemoryStrandTeleport] Memory Strand not found in currency pouch")
+        return false
+    end
+
+    while API.Read_LoopyLoop() and not (self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 5)) do
+        self:Info("[MemoryStrandTeleport] Attempting to use Memory Strand teleport...")
+        API.DoAction_Interface(0x24,0x9A3E,1,1473,21,10,API.OFF_ACT_GeneralInterface_route) -- Memory Strand teleport
+        self:SleepUntil(function()
+            return self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 20)
+        end, 6, 100)
+    end
+    return true
+end
+
+-- Uses incense sticks and keep them active
+---@param BuffID number
+---@return boolean
+function Slib:CheckIncenseStick(BuffID)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {BuffID, "id", "buffID"}
+    }) then
+        return false
+    end
+
+    self:Info("[CheckIncenseStick] Checking incense stick buff: " .. BuffID)
+    
+    -- Get all active buffs
+    local buffs = API.Buffbar_GetAllIDs()
+    if not buffs then
+        self:Error("[CheckIncenseStick] Failed to get buff information")
+        return false
+    end
+    
+    -- Check if the buff is active
+    local found = false
+    for _, object in ipairs(buffs) do
+        if object.id == BuffID then
+            found = true
+            self:Info("[CheckIncenseStick] Found active incense stick buff")
+            
+            -- Parse buff information
+            local time, level = string.match(object.text, "(%d+)%a* %((%d+)%)")
+            time = tonumber(time)
+            level = tonumber(level)
+            
+            if not time or not level then
+                self:Error("[CheckIncenseStick] Failed to parse buff time or level")
+                return false
+            end
+            
+            -- Check and maintain buff level
+            if level < 4 then
+                self:Info("[CheckIncenseStick] Buff level low (" .. level .. "), applying overload...")
+                API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
+            end
+            
+            -- Check and extend duration if needed
+            if time < 50 then
+                self:Info("[CheckIncenseStick] Buff duration low (" .. time .. "m), extending...")
+                for i = 1, 5 do
+                    API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
+                    self:RandomSleep(100, 300, "ms")
+                end
+            end
+            break
+        end
+    end
+    
+    -- If buff not found, apply new buff
+    if not found then
+        self:Info("[CheckIncenseStick] Buff not active, applying new buff...")
+        -- Apply overload
+        API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(100, 300, "ms")
+        
+        -- Extend multiple times
+        self:Info("[CheckIncenseStick] Extending new buff...")
+        for i = 1, 5 do
+            API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
+            self:RandomSleep(100, 300, "ms")
+        end
+        self:Info("[CheckIncenseStick] New buff applied and extended")
+        return true
+    end
+
+    return true
+end
+
+-- Recharges silverhawk boots when stored feathers are below minimum quantity
+---@param MinQuantity number The minimum quantity of feathers to maintain
+---@return boolean success True if boots were recharged successfully, false if no boots found or no feathers available
+function Slib:RechargeSilverhawkBoots(MinQuantity)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {MinQuantity, "positive_number", "MinQuantity"}
+    }) then
+        return false
+    end
+   
+    -- Check if boots are equipped
+    local Boots = API.Container_Get_s(94, 30924)  -- 94 = equipment, 30924 = silverhawk boots
+    if not Boots or not Boots.item_id or Boots.item_id ~= 30924 then
+        self:Error("[RechargeSilverhawkBoots] Silverhawk boots not found in equipment")
+        return false
+    end
+    
+    local CurrentFeathers = Boots.Extra_ints[2]
+    self:Info(string.format("[RechargeSilverhawkBoots] Current feathers: %d (Minimum: %d)", CurrentFeathers, MinQuantity))
+    
+    -- Check if recharge is needed
+    if CurrentFeathers >= MinQuantity then
+        self:Info("[RechargeSilverhawkBoots] Feather quantity sufficient")
+        return false
+    end
+    
+    -- Check for regular silverhawk feathers
+    local HasFeathers = API.CheckInvStuff0(30915)
+    if HasFeathers then
+        self:Info("[RechargeSilverhawkBoots] Using regular silverhawk feathers")
+        API.DoAction_Inventory1(30915,0,1,API.OFF_ACT_GeneralInterface_route)
+        return true
+    end
+
+    -- Check for silverhawk down
+    local HasDown = API.CheckInvStuff0(34823)
+    if HasDown then
+        self:Info("[RechargeSilverhawkBoots] Using silverhawk down")
+        API.DoAction_Inventory1(34823,0,1,API.OFF_ACT_GeneralInterface_route)
+        return true
+    end
+    
+    self:Warn("[RechargeSilverhawkBoots] No feathers or down found in inventory")
+    return false
+end
 
 return Slib
