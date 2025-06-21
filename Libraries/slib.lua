@@ -4,8 +4,6 @@ local ScriptVersion = "1.0.0"
 local ReleaseDate = "15-06-2025"
 local DiscordHandle = "not_spectre011"
 
-
-
 --[[
 ======================================================================================
                        Spectre011's Lua Utility Library (Slib)                       
@@ -35,7 +33,6 @@ v1.0.0 - 15-06-2025
     - Initial release
 ]]
 
-
 local API = require("api")
 
 local Slib = {}
@@ -45,6 +42,14 @@ Slib.Interfaces = {}
 
 Slib.Interfaces.InstanceTimer = { 
     { 861,0,-1,0 }, { 861,2,-1,0 }, { 861,4,-1,0 }, { 861,8,-1,0 } 
+}
+
+Slib.Interfaces.GWD1KillCounts = {
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,18,-1,0 } }, -- Armadyl
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,19,-1,0 } }, -- Bandos
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,20,-1,0 } }, -- Saradomin
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,21,-1,0 } }, -- Zamorak
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,22,-1,0 } }, -- Zaros
 }
 
 Slib.Interfaces.GWD2KillCounts = {
@@ -57,7 +62,6 @@ Slib.Interfaces.GWD2KillCounts = {
 Slib.Interfaces.CurrencyPouch = {
     { {1473,0,-1,0}, {1473,13,-1,0}, {1473,17,-1,0}, {1473,18,-1,0}, {1473,21,-1,0} }
 }
-
 
 -- ##################################
 -- #                                #
@@ -1194,9 +1198,9 @@ function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
         end
         
         -- Format interface element information with nice borders
-        print("+============================+")
-        print("|       ELEMENT #" .. string.format("%-2s", I) .. "          |")
-        print("+============================+")
+        print("+=============================================+")
+        print("|       ELEMENT #" .. string.format("%-2s", I) .. "                    |")
+        print("+=============================================+")
         print("|   x              : " .. tostring(Element.x or "N/A"))
         print("|   xs             : " .. tostring(Element.xs or "N/A"))
         print("|   y              : " .. tostring(Element.y or "N/A"))
@@ -1223,7 +1227,204 @@ function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
         print("|   xy             : " .. tostring(Element.xy or "N/A"))
         print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
         print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
-        print("+============================+")
+        
+        -- Add memory read information if memloc is available
+        if Element.memloc and type(Element.memloc) == "number" then
+            print("|                                ")
+            print("|     --- MEMORY READS ---       ")
+            print("|                                ")
+            
+            -- Define API constants
+            local ApiConstants = {
+                {name = "I_00textP", value = API.I_00textP},
+                {name = "I_itemids3", value = API.I_itemids3},
+                {name = "I_itemids", value = API.I_itemids},
+                {name = "I_itemstack", value = API.I_itemstack},
+                {name = "I_slides", value = API.I_slides},
+                {name = "I_buffb", value = API.I_buffb}
+            }
+            
+            -- Group memory reads by function type
+            local MemReadGroups = {
+                {
+                    name = "Mem_Read_char",
+                    func = API.Mem_Read_char,
+                    reads = {
+                        {name = "memloc", offset = 0}
+                    }
+                },
+                {
+                    name = "Mem_Read_short", 
+                    func = API.Mem_Read_short,
+                    reads = {
+                        {name = "memloc", offset = 0}
+                    }
+                },
+                {
+                    name = "Mem_Read_int",
+                    func = API.Mem_Read_int,
+                    reads = {
+                        {name = "memloc", offset = 0}
+                    }
+                },
+                {
+                    name = "Mem_Read_uint64",
+                    func = API.Mem_Read_uint64,
+                    reads = {
+                        {name = "memloc", offset = 0}
+                    }
+                },
+                {
+                    name = "ReadCharsLimit",
+                    func = API.ReadCharsLimit,
+                    reads = {}
+                }
+            }
+            
+            -- Add constant combinations to each group
+            for _, Constant in ipairs(ApiConstants) do
+                if Constant.value and type(Constant.value) == "number" then
+                    -- Add to Mem_Read functions
+                    for _, Group in ipairs(MemReadGroups) do
+                        if Group.name ~= "ReadCharsLimit" then
+                            table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
+                        end
+                    end
+                    
+                    -- Add to ReadCharsLimit group
+                    table.insert(MemReadGroups[5].reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
+                end
+            end
+            
+            -- Build all function names first to determine max width
+            local allFunctionNames = {}
+            for _, Group in ipairs(MemReadGroups) do
+                for _, Read in ipairs(Group.reads) do
+                    local FunctionName = Group.name .. "(" .. Read.name .. ")"
+                    if Group.func == API.ReadCharsLimit then
+                        FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                    end
+                    table.insert(allFunctionNames, FunctionName)
+                end
+            end
+            local maxFuncNameLen = 0
+            for _, name in ipairs(allFunctionNames) do
+                if #name > maxFuncNameLen then maxFuncNameLen = #name end
+            end
+            maxFuncNameLen = math.max(maxFuncNameLen, 20)  -- minimum width for aesthetics
+            local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
+
+            -- Process each group
+            local funcIdx = 1
+            for _, Group in ipairs(MemReadGroups) do
+                for _, Read in ipairs(Group.reads) do
+                    local FunctionName = Group.name .. "(" .. Read.name .. ")"
+                    if Group.func == API.ReadCharsLimit then
+                        FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                    end
+                    local Success, Result = pcall(function()
+                        if Group.func == API.ReadCharsLimit then
+                            return Group.func(Element.memloc + Read.offset, Read.limit)
+                        else
+                            return Group.func(Element.memloc + Read.offset)
+                        end
+                    end)
+                    if Success and Result then
+                        local FormattedResult
+                        local ResultType = type(Result)
+                        if ResultType == "number" then
+                            -- Helper function to safely format numbers
+                            local function SafeFormat(result, hexFormat, hexWidth)
+                                -- Check if number is finite and within safe integer range
+                                if result ~= result then -- NaN check
+                                    return "NaN"
+                                elseif result == math.huge then
+                                    return "Infinity"
+                                elseif result == -math.huge then
+                                    return "-Infinity"
+                                elseif math.abs(result) > 9007199254740991 then -- 2^53 - 1 (safe integer limit)
+                                    return string.format("%.0f (too large for hex)", result)
+                                elseif result < 0 then
+                                    return string.format("%.0f (negative)", result)
+                                elseif math.floor(result) ~= result then
+                                    return string.format("%.6f (fractional)", result)
+                                else
+                                    -- Safe to format as integer and hex
+                                    local success, formattedHex = pcall(string.format, hexFormat, result)
+                                    local success2, formattedDec = pcall(string.format, "%.0f", result)
+                                    if success and success2 then
+                                        return formattedHex .. " (" .. formattedDec .. ")"
+                                    else
+                                        return tostring(result) .. " (format error)"
+                                    end
+                                end
+                            end
+                            
+                            if Group.func == API.Mem_Read_char then
+                                FormattedResult = SafeFormat(Result, "0x%02X", 2)
+                            elseif Group.func == API.Mem_Read_short then
+                                FormattedResult = SafeFormat(Result, "0x%04X", 4)
+                            elseif Group.func == API.Mem_Read_int then
+                                FormattedResult = SafeFormat(Result, "0x%08X", 8)
+                            elseif Group.func == API.Mem_Read_uint64 then
+                                FormattedResult = SafeFormat(Result, "0x%016X", 16)
+                            else
+                                FormattedResult = tostring(Result)
+                            end
+                        elseif ResultType == "string" then
+                            if Result == "" then
+                                FormattedResult = '"" (empty string)'
+                            else
+                                local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                    local byteVal = string.byte(c)
+                                    if byteVal and byteVal >= 0 and byteVal <= 255 then
+                                        return string.format("\\x%02X", byteVal)
+                                    else
+                                        return "\\x??"
+                                    end
+                                end)
+                                if string.len(EscapedResult) > 50 then
+                                    EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
+                                end
+                                FormattedResult = '"' .. EscapedResult .. '"'
+                            end
+                        else
+                            -- Handle other types (boolean, table, etc.)
+                            FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
+                        end
+                        
+                        -- Create function name with proper alignment
+                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
+                        if Group.func == API.ReadCharsLimit then
+                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                        end
+                        
+                        print(string.format(formatString, FunctionName, FormattedResult))
+                    else
+                        -- Create function name with proper alignment
+                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
+                        if Group.func == API.ReadCharsLimit then
+                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                        end
+                        
+                        local ErrorMsg = "Error"
+                        if not Success then
+                            ErrorMsg = "Failed"
+                        elseif not Result then
+                            ErrorMsg = "No Result"
+                        end
+                        
+                        print(string.format(formatString, FunctionName, ErrorMsg))
+                    end
+                end
+            end
+        else
+            print("|                                ")
+            print("|     --- MEMORY READS ---       ")
+            print("|   No memloc available          ")
+        end
+        
+        print("+=============================================+")
         print("")
         
         ::continue_element::
@@ -1685,6 +1886,89 @@ function Slib:InstanceTimerCheck(TimeToCheck)
     
     local Found = string.find(TimerText, TimeToCheck, 1, true)
     return Found ~= nil
+end
+
+-- Retrieves the kill counts for GWD1 (God Wars Dungeon 1) followers
+---@return table<string, number>|nil killCounts Table containing kill counts for each faction, or nil if failed to retrieve data
+function Slib:GetGWD1KillCounts()
+
+    local FactionNames = { "Armadyl", "Bandos", "Saradomin", "Zamorak", "Zaros" }
+    local Results = {}
+    local SuccessCount = 0
+
+    -- Process each faction
+    for i, BaseAddress in ipairs(self.Interfaces.GWD1KillCounts) do
+        local FactionName = FactionNames[i]
+        
+        -- Scan interface for faction data
+        local Data = API.ScanForInterfaceTest2Get(false, BaseAddress)
+        if not Data then
+            self:Warn(string.format("[GetGWD1KillCounts] Failed to scan interface for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        if type(Data) ~= "table" and type(Data) ~= "userdata" then
+            self:Error(string.format("[GetGWD1KillCounts] Invalid data type for %s: %s", FactionName, type(Data)))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        if #Data == 0 then
+            self:Warn(string.format("[GetGWD1KillCounts] No interface data found for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        -- Get the first element and validate it
+        local Element = Data[1]
+        if not Element or not Element.memloc then
+            self:Warn(string.format("[GetGWD1KillCounts] Invalid element data for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        -- Read kill count from memory
+        local Amount = API.ReadCharsLimit(Element.memloc + API.I_itemids3, 255)
+        if not Amount then
+            self:Warn(string.format("[GetGWD1KillCounts] Failed to read kill count for %s", FactionName))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        -- Convert to number
+        local KillCount = tonumber(Amount)
+        if not KillCount then
+            self:Warn(string.format("[GetGWD1KillCounts] Invalid kill count value for %s: %s", FactionName, tostring(Amount)))
+            Results[FactionName] = 0
+            goto continue
+        end
+        
+        Results[FactionName] = KillCount
+        SuccessCount = SuccessCount + 1
+        self:Info(string.format("[GetGWD1KillCounts] %s kill count: %d", FactionName, KillCount))
+        
+        ::continue::
+    end
+
+    -- Print formatted results
+    if SuccessCount > 0 then
+        self:Info("=== GWD1 Kill Counts ===")
+        print("+========================+")
+        print("|      GWD1 KILLS        |")
+        print("+========================+")
+        print("|   Armadyl   : " .. string.format("%-8s", tostring(Results.Armadyl or 0)) .. " |")
+        print("|   Bandos    : " .. string.format("%-8s", tostring(Results.Bandos or 0)) .. " |")
+        print("|   Saradomin : " .. string.format("%-8s", tostring(Results.Saradomin or 0)) .. " |")
+        print("|   Zamorak   : " .. string.format("%-8s", tostring(Results.Zamorak or 0)) .. " |")
+        print("|   Zaros     : " .. string.format("%-8s", tostring(Results.Zaros or 0)) .. " |")
+        print("+========================+")
+
+        return Results
+    else
+        self:Error("[GetGWD1KillCounts] Failed to retrieve any kill counts")
+        return nil
+    end
 end
 
 -- Retrieves the kill counts for GWD2 (God Wars Dungeon 2) followers
