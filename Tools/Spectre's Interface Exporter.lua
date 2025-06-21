@@ -1,6 +1,6 @@
 local ScriptName = "Interface Exporter"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.0"
+local ScriptVersion = "1.1.0"
 local ReleaseDate = "15-06-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -22,6 +22,12 @@ local DiscordHandle = "not_spectre011"
 Changelog:
 v1.0.0 - 15-06-2025
     - Initial release.
+
+v1.1.0 - 21-06-2025
+    - Added two new columns to CSV export:
+      * memloc+I_itemids3_Char: Result of API.ReadCharsLimit(interface.memloc + API.I_itemids3, 255)
+      * memloc+I_slides_Int: Result of API.Mem_Read_int(interface.memloc + API.I_slides)
+
 ]]
 
 local API = require("api")
@@ -221,6 +227,27 @@ local function scanAllInterfaces(currentPath, visitedPaths, allInterfaces, depth
                 seenMemlocs[interface.memloc] = true 
             end
 
+            -- Get additional data from memory using API functions
+            local memloc_I_itemids3_Char = ""
+            local memloc_I_slides_Int = ""
+            
+            if interface.memloc then
+                -- Safely call API functions with error handling
+                local success1, result1 = pcall(function()
+                    return API.ReadCharsLimit(interface.memloc + API.I_itemids3, 255)
+                end)
+                if success1 and result1 then
+                    memloc_I_itemids3_Char = tostring(result1)
+                end
+                
+                local success2, result2 = pcall(function()
+                    return API.Mem_Read_int(interface.memloc + API.I_slides)
+                end)
+                if success2 and result2 then
+                    memloc_I_slides_Int = tostring(result2)
+                end
+            end
+
             -- Create interface copy with additional metadata
             local interfaceCopy = {
                 _interfaceID = interfaceIDString,
@@ -249,7 +276,10 @@ local function scanAllInterfaces(currentPath, visitedPaths, allInterfaces, depth
                 fullIDpath = interface.fullIDpath,
                 notvisible = interface.notvisible,
                 OP = interface.OP,
-                xy = interface.xy
+                xy = interface.xy,
+                -- Add new columns
+                ["memloc+I_itemids3_Char"] = memloc_I_itemids3_Char,
+                ["memloc+I_slides_Int"] = memloc_I_slides_Int
             }
             
             table.insert(allInterfaces, interfaceCopy)
@@ -312,7 +342,8 @@ local function exportInterfacesToCSV()
         "interfaceID", "depth", "index", "x", "xs", "y", "ys", "box_x", "box_y", "scroll_y",
         "id1", "id2", "id3", "itemid1", "itemid1_size", "itemid2",
         "hov", "textids", "textitem", "memloc", "memloctop",
-        "fullpath", "fullIDpath", "notvisible", "OP", "xy"
+        "fullpath", "fullIDpath", "notvisible", "OP", "xy",
+        "memloc+I_itemids3_Char", "memloc+I_slides_Int"
     }
     
     file:write(table.concat(headers, ",") .. "\n")
@@ -346,7 +377,9 @@ local function exportInterfacesToCSV()
             escapeCSV(interface.fullIDpath),
             escapeCSV(boolToString(interface.notvisible)),
             escapeCSV(interface.OP),
-            escapeCSV(interface.xy)
+            escapeCSV(interface.xy),
+            escapeCSV(interface["memloc+I_itemids3_Char"]),
+            escapeCSV(interface["memloc+I_slides_Int"])
         }
         
         file:write(table.concat(rowData, ",") .. "\n")
