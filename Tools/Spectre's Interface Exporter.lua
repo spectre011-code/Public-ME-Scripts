@@ -367,17 +367,44 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
                             local ResultType = type(Result)
                             
                             if ResultType == "number" then
-                                -- Format numbers with both hexadecimal and decimal representations
-                                if Group.func == API.Mem_Read_char then
-                                    FormattedResult = string.format("0x%02X (%d)", Result, Result)
-                                elseif Group.func == API.Mem_Read_short then
-                                    FormattedResult = string.format("0x%04X (%d)", Result, Result)
-                                elseif Group.func == API.Mem_Read_int then
-                                    FormattedResult = string.format("0x%08X (%d)", Result, Result)
-                                elseif Group.func == API.Mem_Read_uint64 then
-                                    FormattedResult = string.format("0x%016X (%d)", Result, Result)
+                                -- Validate number is finite and can be formatted
+                                if Result == Result and Result ~= math.huge and Result ~= -math.huge then
+                                    -- Ensure Result is within valid integer range for formatting
+                                    local SafeResult = math.floor(Result + 0.5) -- Round to nearest integer
+                                    
+                                    -- Additional range validation for format safety
+                                    if SafeResult < 0 then
+                                        SafeResult = 0  -- Clamp negative values for hex formatting
+                                    end
+                                    
+                                    -- Safely format numbers with error handling
+                                    local formatSuccess, formattedValue = pcall(function()
+                                        if Group.func == API.Mem_Read_char then
+                                            return string.format("0x%02X (%d)", SafeResult % 256, SafeResult)
+                                        elseif Group.func == API.Mem_Read_short then
+                                            return string.format("0x%04X (%d)", SafeResult % 65536, SafeResult)
+                                        elseif Group.func == API.Mem_Read_int then
+                                            return string.format("0x%08X (%d)", SafeResult % 4294967296, SafeResult)
+                                        elseif Group.func == API.Mem_Read_uint64 then
+                                            -- For very large numbers, limit to safe range
+                                            if SafeResult > 9223372036854775807 then  -- Max safe integer
+                                                return "0xFFFFFFFFFFFFFFFF (overflow)"
+                                            else
+                                                return string.format("0x%016X (%d)", SafeResult, SafeResult)
+                                            end
+                                        else
+                                            return tostring(SafeResult)
+                                        end
+                                    end)
+                                    
+                                    if formatSuccess then
+                                        FormattedResult = formattedValue
+                                    else
+                                        FormattedResult = "Format Error (" .. tostring(SafeResult) .. ")"
+                                    end
                                 else
-                                    FormattedResult = tostring(Result)
+                                    -- Handle invalid numbers (NaN, infinity)
+                                    FormattedResult = "Invalid (" .. tostring(Result) .. ")"
                                 end
                             elseif ResultType == "string" then
                                 if Result == "" then
@@ -385,7 +412,12 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
                                 else
                                     -- Escape control characters and limit length for readability
                                     local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
-                                        return string.format("\\x%02X", string.byte(c))
+                                        local byteValue = string.byte(c)
+                                        if byteValue and byteValue >= 0 and byteValue <= 255 then
+                                            return string.format("\\x%02X", byteValue)
+                                        else
+                                            return "\\x??"  -- Fallback for invalid byte values
+                                        end
                                     end)
                                     
                                     if string.len(EscapedResult) > 50 then
