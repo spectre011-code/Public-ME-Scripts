@@ -1,6 +1,6 @@
 local ScriptName = "Interface Exporter"
 local Author = "Spectre011"
-local ScriptVersion = "1.1.0"
+local ScriptVersion = "1.2.0"
 local ReleaseDate = "15-06-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -28,6 +28,12 @@ v1.1.0 - 21-06-2025
       * memloc+I_itemids3_Char: Result of API.ReadCharsLimit(interface.memloc + API.I_itemids3, 255)
       * memloc+I_slides_Int: Result of API.Mem_Read_int(interface.memloc + API.I_slides)
 
+v1.2.0 - 21-06-2025
+    - Enhanced memory read functionality:
+      * Added comprehensive memory read columns for all API memory functions
+      * Includes Mem_Read_char, Mem_Read_short, Mem_Read_int, Mem_Read_uint64, and ReadCharsLimit
+      * Combined with all API constants (I_00textP, I_itemids3, I_itemids, I_itemstack, I_slides, I_buffb)
+      * Removed redundant specific memory read columns (now included in comprehensive reads)
 ]]
 
 local API = require("api")
@@ -122,6 +128,19 @@ local function escapeCSV(value)
         str = string.gsub(str, '"', '""') -- Double quotes to escape them
         str = '"' .. str .. '"'
     end
+    return str
+end
+
+-- Escapes column names for CSV headers (handles commas and other special characters)
+local function escapeColumnName(name)
+    if not name then
+        return ""
+    end
+    
+    local str = tostring(name)
+    -- Always wrap column names in quotes to handle commas and other special characters
+    str = string.gsub(str, '"', '""') -- Double quotes to escape them
+    str = '"' .. str .. '"'
     return str
 end
 
@@ -231,8 +250,132 @@ local function scanAllInterfaces(currentPath, visitedPaths, allInterfaces, depth
             local memloc_I_itemids3_Char = ""
             local memloc_I_slides_Int = ""
             
+            -- Additional memory reads (copied from slib logic)
+            local memoryReads = {}
+            
             if interface.memloc then
-                -- Safely call API functions with error handling
+                -- Define API constants
+                local ApiConstants = {
+                    {name = "I_00textP", value = API.I_00textP},
+                    {name = "I_itemids3", value = API.I_itemids3},
+                    {name = "I_itemids", value = API.I_itemids},
+                    {name = "I_itemstack", value = API.I_itemstack},
+                    {name = "I_slides", value = API.I_slides},
+                    {name = "I_buffb", value = API.I_buffb}
+                }
+                
+                -- Group memory reads by function type
+                local MemReadGroups = {
+                    {
+                        name = "Mem_Read_char",
+                        func = API.Mem_Read_char,
+                        reads = {
+                            {name = "memloc", offset = 0}
+                        }
+                    },
+                    {
+                        name = "Mem_Read_short", 
+                        func = API.Mem_Read_short,
+                        reads = {
+                            {name = "memloc", offset = 0}
+                        }
+                    },
+                    {
+                        name = "Mem_Read_int",
+                        func = API.Mem_Read_int,
+                        reads = {
+                            {name = "memloc", offset = 0}
+                        }
+                    },
+                    {
+                        name = "Mem_Read_uint64",
+                        func = API.Mem_Read_uint64,
+                        reads = {
+                            {name = "memloc", offset = 0}
+                        }
+                    },
+                    {
+                        name = "ReadCharsLimit",
+                        func = API.ReadCharsLimit,
+                        reads = {}
+                    }
+                }
+                
+                -- Add constant combinations to each group
+                for _, Constant in ipairs(ApiConstants) do
+                    if Constant.value and type(Constant.value) == "number" then
+                        -- Add to Mem_Read functions
+                        for _, Group in ipairs(MemReadGroups) do
+                            if Group.name ~= "ReadCharsLimit" then
+                                table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
+                            end
+                        end
+                        
+                        -- Add to ReadCharsLimit group
+                        table.insert(MemReadGroups[5].reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
+                    end
+                end
+                
+                -- Process each group and collect results
+                for _, Group in ipairs(MemReadGroups) do
+                    for _, Read in ipairs(Group.reads) do
+                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
+                        if Group.func == API.ReadCharsLimit then
+                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                        end
+                        
+                        local Success, Result = pcall(function()
+                            if Group.func == API.ReadCharsLimit then
+                                return Group.func(interface.memloc + Read.offset, Read.limit)
+                            else
+                                return Group.func(interface.memloc + Read.offset)
+                            end
+                        end)
+                        
+                        -- Store the result
+                        if Success and Result then
+                            local formattedResult
+                            local ResultType = type(Result)
+                            
+                            if ResultType == "number" then
+                                if Group.func == API.Mem_Read_char then
+                                    formattedResult = string.format("0x%02X (%d)", Result, Result)
+                                elseif Group.func == API.Mem_Read_short then
+                                    formattedResult = string.format("0x%04X (%d)", Result, Result)
+                                elseif Group.func == API.Mem_Read_int then
+                                    formattedResult = string.format("0x%08X (%d)", Result, Result)
+                                elseif Group.func == API.Mem_Read_uint64 then
+                                    formattedResult = string.format("0x%016X (%d)", Result, Result)
+                                else
+                                    formattedResult = tostring(Result)
+                                end
+                            elseif ResultType == "string" then
+                                if Result == "" then
+                                    formattedResult = '"" (empty string)'
+                                else
+                                    -- Escape special characters and limit length
+                                    local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                        return string.format("\\x%02X", string.byte(c))
+                                    end)
+                                    
+                                    if string.len(EscapedResult) > 50 then
+                                        EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
+                                    end
+                                    
+                                    formattedResult = '"' .. EscapedResult .. '"'
+                                end
+                            else
+                                formattedResult = tostring(Result) .. " (" .. ResultType .. ")"
+                            end
+                            
+                            memoryReads[FunctionName] = formattedResult
+                        else
+                            memoryReads[FunctionName] = "Error"
+                        end
+                    end
+                end
+                
+                -- Keep original specific reads for backward compatibility
                 local success1, result1 = pcall(function()
                     return API.ReadCharsLimit(interface.memloc + API.I_itemids3, 255)
                 end)
@@ -277,9 +420,8 @@ local function scanAllInterfaces(currentPath, visitedPaths, allInterfaces, depth
                 notvisible = interface.notvisible,
                 OP = interface.OP,
                 xy = interface.xy,
-                -- Add new columns
-                ["memloc+I_itemids3_Char"] = memloc_I_itemids3_Char,
-                ["memloc+I_slides_Int"] = memloc_I_slides_Int
+                -- Add all memory reads
+                _memoryReads = memoryReads
             }
             
             table.insert(allInterfaces, interfaceCopy)
@@ -342,11 +484,29 @@ local function exportInterfacesToCSV()
         "interfaceID", "depth", "index", "x", "xs", "y", "ys", "box_x", "box_y", "scroll_y",
         "id1", "id2", "id3", "itemid1", "itemid1_size", "itemid2",
         "hov", "textids", "textitem", "memloc", "memloctop",
-        "fullpath", "fullIDpath", "notvisible", "OP", "xy",
-        "memloc+I_itemids3_Char", "memloc+I_slides_Int"
+        "fullpath", "fullIDpath", "notvisible", "OP", "xy"
     }
     
-    file:write(table.concat(headers, ",") .. "\n")
+    -- Add memory read headers dynamically
+    local memoryReadHeaders = {}
+    if allInterfaces and #allInterfaces > 0 and allInterfaces[1]._memoryReads then
+        for functionName, _ in pairs(allInterfaces[1]._memoryReads) do
+            table.insert(memoryReadHeaders, functionName)
+        end
+        -- Sort headers for consistent ordering
+        table.sort(memoryReadHeaders)
+    end
+    
+    -- Combine all headers and escape them
+    local escapedHeaders = {}
+    for _, header in ipairs(headers) do
+        table.insert(escapedHeaders, escapeColumnName(header))
+    end
+    for _, header in ipairs(memoryReadHeaders) do
+        table.insert(escapedHeaders, escapeColumnName(header))
+    end
+    
+    file:write(table.concat(escapedHeaders, ",") .. "\n")
     
     -- Write interface data rows
     local exportedCount = 0
@@ -377,10 +537,25 @@ local function exportInterfacesToCSV()
             escapeCSV(interface.fullIDpath),
             escapeCSV(boolToString(interface.notvisible)),
             escapeCSV(interface.OP),
-            escapeCSV(interface.xy),
-            escapeCSV(interface["memloc+I_itemids3_Char"]),
-            escapeCSV(interface["memloc+I_slides_Int"])
+            escapeCSV(interface.xy)
         }
+        
+        -- Add memory read data
+        if interface._memoryReads then
+            for _, header in ipairs(memoryReadHeaders) do
+                local memoryData = interface._memoryReads[header]
+                if memoryData then
+                    table.insert(rowData, escapeCSV(memoryData))
+                else
+                    table.insert(rowData, escapeCSV(""))
+                end
+            end
+        else
+            -- Add empty values for memory reads if not available
+            for _ = 1, #memoryReadHeaders do
+                table.insert(rowData, escapeCSV(""))
+            end
+        end
         
         file:write(table.concat(rowData, ",") .. "\n")
         exportedCount = exportedCount + 1
