@@ -406,7 +406,7 @@ end
 
 -- Generic sleep function that automatically determines the best precision based on duration
 ---@param Duration number The sleep duration (must be positive)
----@param Unit string The time unit: "ms", "s", "m", "h" (milliseconds, seconds, minutes, hours)
+---@param Unit string The time unit: "ms", "s", "m", "h", "tick" (milliseconds, seconds, minutes, hours, ticks)
 ---@return boolean success True if sleep completed successfully, false if interrupted or invalid parameters
 function Slib:Sleep(Duration, Unit)
     -- Parameter validation
@@ -420,7 +420,20 @@ function Slib:Sleep(Duration, Unit)
     -- Normalize unit to lowercase
     Unit = string.lower(Unit)
     
-    -- Convert duration to seconds and implement sleep logic
+    -- Handle tick-based sleep separately
+    if Unit == "tick" or Unit == "ticks" or Unit == "t" then
+        local StartTick = API.Get_tick()
+        local TargetTick = StartTick + Duration
+        
+        while API.Read_LoopyLoop() and API.Get_tick() < TargetTick do
+            -- Yield CPU briefly while waiting for ticks
+            collectgarbage("step", 1)
+        end
+        
+        return API.Get_tick() >= TargetTick
+    end
+    
+    -- Convert duration to seconds and implement sleep logic for time-based units
     local TargetDuration
     local YieldInterval
     
@@ -437,7 +450,7 @@ function Slib:Sleep(Duration, Unit)
         TargetDuration = Duration * 3600
         YieldInterval = 0.5    -- 500ms yield for very long sleeps
     else
-        self:Error("Invalid time unit: " .. Unit .. ". Valid units: ms, s, m, h")
+        self:Error("Invalid time unit: " .. Unit .. ". Valid units: ms, s, m, h, tick")
         return false
     end
     
@@ -460,13 +473,8 @@ end
 -- Sleeps for a random duration between min and max values
 ---@param MinDuration number The minimum sleep duration (must be positive)
 ---@param MaxDuration number The maximum sleep duration (must be greater than MinDuration)
----@param Unit string The time unit: "ms", "s", "m", "h" (milliseconds, seconds, minutes, hours)
+---@param Unit string The time unit: "ms", "s", "m", "h", "tick" (milliseconds, seconds, minutes, hours, ticks)
 ---@return boolean success True if sleep completed successfully, false if interrupted or invalid parameters
----@usage
---- -- Sleep between 1-3 seconds
---- Slib:RandomSleep(1, 3, "s")
---- -- Sleep between 500-1500 milliseconds
---- Slib:RandomSleep(500, 1500, "ms")
 function Slib:RandomSleep(MinDuration, MaxDuration, Unit)
     -- Parameter validation
     if not self:ValidateParams({
@@ -484,8 +492,16 @@ function Slib:RandomSleep(MinDuration, MaxDuration, Unit)
     end
     
     -- Generate random duration
-    local Duration = MinDuration + math.random() * (MaxDuration - MinDuration)
-    self:Info(string.format("[RandomSleep] Sleeping for %.2f %s", Duration, Unit))
+    local Duration
+    if string.lower(Unit) == "tick" or string.lower(Unit) == "ticks" or string.lower(Unit) == "t" then
+        -- For ticks, use integer values
+        Duration = math.random(MinDuration, MaxDuration)
+        self:Info(string.format("[RandomSleep] Sleeping for %d %s", Duration, Unit))
+    else
+        -- For time-based units, use decimal values
+        Duration = MinDuration + math.random() * (MaxDuration - MinDuration)
+        self:Info(string.format("[RandomSleep] Sleeping for %.2f %s", Duration, Unit))
+    end
     
     -- Use existing Sleep function
     return self:Sleep(Duration, Unit)
@@ -1618,24 +1634,38 @@ function Slib:PrintCurrencyPouch()
             -- Process each item
             for _, Item in pairs(Interface) do
                 if Item and Item.itemid1 and Item.itemid1 >= 0 then
+                    TotalFound = TotalFound + 1
                     -- Format item information with nice borders
                     print("+================================+")
-                    print("|        CURRENCY ITEM           |")
+                    print("|      CURRENCY ITEM #" .. string.format("%-2s", TotalFound) .. "       |")
                     print("+================================+")
-                    print("|   Item ID         : " .. tostring(Item.itemid1))
-                    print("|   Amount/Text     : " .. tostring(Item.textitem or "N/A"))
-                    
-                    -- Add additional fields if they exist
-                    if Item.id1 then print("|   id1            : " .. tostring(Item.id1)) end
-                    if Item.id2 then print("|   id2            : " .. tostring(Item.id2)) end
-                    if Item.id3 then print("|   id3            : " .. tostring(Item.id3)) end
-                    if Item.memloc then print("|   memloc         : " .. tostring(Item.memloc)) end
-                    if Item.textids then print("|   textids        : " .. tostring(Item.textids)) end
+                    print("|   x              : " .. tostring(Item.x or "N/A"))
+                    print("|   xs             : " .. tostring(Item.xs or "N/A"))
+                    print("|   y              : " .. tostring(Item.y or "N/A"))
+                    print("|   ys             : " .. tostring(Item.ys or "N/A"))
+                    print("|   box_x          : " .. tostring(Item.box_x or "N/A"))
+                    print("|   box_y          : " .. tostring(Item.box_y or "N/A"))
+                    print("|   scroll_y       : " .. tostring(Item.scroll_y or "N/A"))
+                    print("|   id1            : " .. tostring(Item.id1 or "N/A"))
+                    print("|   id2            : " .. tostring(Item.id2 or "N/A"))
+                    print("|   id3            : " .. tostring(Item.id3 or "N/A"))
+                    print("|   itemid1        : " .. tostring(Item.itemid1 or "N/A"))
+                    print("|   itemid1_size   : " .. tostring(Item.itemid1_size or "N/A"))
+                    print("|   itemid2        : " .. tostring(Item.itemid2 or "N/A"))
+                    print("|   hov            : " .. tostring(Item.hov or "N/A"))
+                    print("|   textids        : " .. tostring(Item.textids or "N/A"))
+                    print("|   textitem       : " .. tostring(Item.textitem or "N/A"))
+                    print("|   memloc         : " .. tostring(Item.memloc or "N/A"))
+                    print("|   memloctop      : " .. tostring(Item.memloctop or "N/A"))
+                    print("|   index          : " .. tostring(Item.index or "N/A"))
+                    print("|   fullpath       : " .. tostring(Item.fullpath or "N/A"))
+                    print("|   fullIDpath     : " .. tostring(Item.fullIDpath or "N/A"))
+                    print("|   notvisible     : " .. tostring(Item.notvisible or "N/A"))
+                    print("|   OP             : " .. tostring(Item.OP or "N/A"))
+                    print("|   xy             : " .. tostring(Item.xy or "N/A"))
                     
                     print("+================================+")
                     print("")
-                    
-                    TotalFound = TotalFound + 1
                 end
             end
         end
@@ -2681,6 +2711,14 @@ function Slib:MemoryStrandTeleport()
         return false
     end
 
+    local PouchLoaded = true
+    local Bonds = API.ScanForInterfaceTest2Get(true, self.Interfaces.CurrencyPouch[1])[1]
+
+    if Bonds and Bonds.itemid2 == 0 then
+        API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 10, 4097, API.OFF_ACT_GeneralInterface_route) -- Open currency pouch
+        PouchLoaded = false
+    end
+
     while API.Read_LoopyLoop() and not (self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 5)) do
         self:Info("[MemoryStrandTeleport] Attempting to use Memory Strand teleport...")
         API.DoAction_Interface(0x24,0x9A3E,1,1473,21,10,API.OFF_ACT_GeneralInterface_route) -- Memory Strand teleport
@@ -2688,6 +2726,12 @@ function Slib:MemoryStrandTeleport()
             return self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 20)
         end, 6, 100)
     end
+
+    if not PouchLoaded then
+        API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 15, -1, API.OFF_ACT_GeneralInterface_route) -- Close currency pouch
+        PouchLoaded = true
+    end
+
     return true
 end
 
@@ -2732,12 +2776,29 @@ function Slib:CheckIncenseStick(BuffID)
             if level < 4 then
                 self:Info("[CheckIncenseStick] Buff level low (" .. level .. "), applying overload...")
                 API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
+                for i = 1, 5 do
+                    API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
+                    self:RandomSleep(50, 100, "ms")
+                end
             end
             
-            -- Check and extend duration if needed
+            -- Check and extend duration if needed with granular approach
+            local interactions = 0
             if time < 50 then
-                self:Info("[CheckIncenseStick] Buff duration low (" .. time .. "m), extending...")
-                for i = 1, 5 do
+                if time < 10 then
+                    interactions = 5
+                elseif time < 20 then
+                    interactions = 4
+                elseif time < 30 then
+                    interactions = 3
+                elseif time < 40 then
+                    interactions = 2
+                else -- time < 50
+                    interactions = 1
+                end
+                
+                self:Info("[CheckIncenseStick] Buff duration low (" .. time .. "m), extending " .. interactions .. " times...")
+                for i = 1, interactions do
                     API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
                     self:RandomSleep(100, 300, "ms")
                 end
