@@ -2773,6 +2773,8 @@ function Slib:GetInstanceInterfaceOptions()
     }
 end
 
+--- Checks if the text input interface is currently open
+--- @return boolean IsOpen True if text input interface is open, false otherwise
 function Slib:TextInputIsOpen()
     local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.TextInput[1])
     return #Interface > 0
