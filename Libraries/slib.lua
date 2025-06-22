@@ -38,10 +38,24 @@ local API = require("api")
 local Slib = {}
 
 Slib.ChatMessages = API.GatherEvents_chat_check()
+
 Slib.Interfaces = {}
 
+Slib.Interfaces.TextInput = { 
+    { { 1469,0,-1,0 }, { 1469,1,-1,0 } }
+}
+
+Slib.Interfaces.InstanceOptions = {
+    { {1591,15,-1,0} }, -- Base
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,45,-1,0}, {1591,46,-1,0}, {1591,74,-1,0} }, -- Max Players
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,49,-1,0}, {1591,76,-1,0}, {1591,83,-1,0} }, -- Min Combat
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,50,-1,0}, {1591,85,-1,0}, {1591,94,-1,0} }, -- Spawn Speed
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,51,-1,0}, {1591,52,-1,0}, {1591,102,-1,0} } -- Protection
+
+}
+
 Slib.Interfaces.InstanceTimer = { 
-    { 861,0,-1,0 }, { 861,2,-1,0 }, { 861,4,-1,0 }, { 861,8,-1,0 } 
+    { { 861,0,-1,0 }, { 861,2,-1,0 }, { 861,4,-1,0 }, { 861,8,-1,0 } } -- 1
 }
 
 Slib.Interfaces.GWD1KillCounts = {
@@ -61,6 +75,10 @@ Slib.Interfaces.GWD2KillCounts = {
 
 Slib.Interfaces.CurrencyPouch = {
     { {1473,0,-1,0}, {1473,13,-1,0}, {1473,17,-1,0}, {1473,18,-1,0}, {1473,21,-1,0} }
+}
+
+Slib.Interfaces.AreaLoot = {
+    { {1622,4,-1,0}, {1622,6,-1,0}, {1622,1,-1,0}, {1622,11,-1,0} }
 }
 
 -- ##################################
@@ -560,6 +578,72 @@ function Slib:SleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs)
     
     self:Warn("Loop stopped while waiting for condition after " .. CheckCount .. " checks")
     return false
+end
+
+--- Converts a character to its corresponding Windows Virtual-Key code
+--- Uses the Windows Virtual-Key code mappings for keyboard input simulation
+--- @param char string Single character to convert (letters, numbers, common symbols)
+--- @return number vkCode Virtual-Key code for the character (0x30-0x5A range for alphanumeric)
+function Slib:CharToVirtualKey(char)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {char, "string", "char"}
+    }) then
+        self:Error("[CharToVirtualKey] Invalid character parameter")
+        return 0x20 -- Return VK_SPACE as safe fallback
+    end
+    
+    if #char ~= 1 then
+        self:Error("[CharToVirtualKey] Parameter must be a single character, received: '" .. char .. "'")
+        return 0x20 -- Return VK_SPACE as safe fallback
+    end
+    
+    local byte = string.byte(char)
+    
+    -- Letters A-Z (convert both uppercase and lowercase to VK codes)
+    if (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122) then
+        local upperChar = string.upper(char)
+        return string.byte(upperChar) -- VK_A=0x41 through VK_Z=0x5A
+    end
+    
+    -- Numbers 0-9 (Virtual-Key codes match ASCII values)
+    if byte >= 48 and byte <= 57 then
+        return byte -- VK_0=0x30 through VK_9=0x39
+    end
+    
+    -- Common special characters with their Virtual-Key mappings
+    local specialCharacters = {
+        -- Basic punctuation
+        [" "] = 0x20, -- VK_SPACE
+        ["."] = 0xBE, -- VK_OEM_PERIOD
+        [","] = 0xBC, -- VK_OEM_COMMA
+        ["'"] = 0xDE, -- VK_OEM_7 (apostrophe/quote)
+        [";"] = 0xBA, -- VK_OEM_1 (semicolon)
+        
+        -- Mathematical operators
+        ["-"] = 0xBD, -- VK_OEM_MINUS
+        ["_"] = 0xBD, -- VK_OEM_MINUS (with shift modifier)
+        ["="] = 0xBB, -- VK_OEM_PLUS
+        ["+"] = 0xBB, -- VK_OEM_PLUS (with shift modifier)
+        
+        -- Brackets and braces
+        ["["] = 0xDB, -- VK_OEM_4 (left bracket)
+        ["]"] = 0xDD, -- VK_OEM_6 (right bracket)
+        ["\\"] = 0xDC, -- VK_OEM_5 (backslash)
+        ["/"] = 0xBF, -- VK_OEM_2 (forward slash)
+    }
+    
+    -- Check if character has a defined Virtual-Key mapping
+    if specialCharacters[char] then
+        return specialCharacters[char]
+    end
+    
+    -- Handle unsupported characters with detailed warning
+    self:Warn(string.format("[CharToVirtualKey] Unsupported character: '%s' (ASCII: %d, Hex: 0x%02X)", 
+        char, byte, byte))
+    self:Warn("[CharToVirtualKey] Returning ASCII value as fallback - may not work correctly")
+    
+    return byte -- Fallback to ASCII value (may not produce correct output)
 end
 
 -- ##################################
@@ -1861,7 +1945,7 @@ function Slib:GetInstanceTimer()
         return ""
     end
     
-    local Result = API.ScanForInterfaceTest2Get(false, self.Interfaces.InstanceTimer)
+    local Result = API.ScanForInterfaceTest2Get(false, self.Interfaces.InstanceTimer[1])
     if not Result then
         self:Warn("Failed to scan instance timer interface")
         return ""
@@ -1882,7 +1966,7 @@ function Slib:GetInstanceTimer()
         self:Warn("Timer element or textids not found")
         return ""
     end
-    
+
     return tostring(Element.textids)
 end
 
@@ -2485,6 +2569,215 @@ function Slib:CurrencyPouchContains(Ids)
     return true
 end
 
+-- Checks if the area loot interface is currently open
+---@return boolean isOpen True if area loot interface is open, false otherwise
+function Slib:AreaLootIsOpen()
+    -- Validate that AreaLoot interface is defined
+    if not self.Interfaces or not self.Interfaces.AreaLoot or not self.Interfaces.AreaLoot[1] then
+        self:Error("[AreaLootIsOpen] AreaLoot interface not defined")
+        return false
+    end
+    
+    -- Scan for the area loot interface
+    local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.AreaLoot[1])
+    if not Interface then
+        return false
+    end
+    
+    -- Validate interface data type
+    if type(Interface) ~= "table" and type(Interface) ~= "userdata" then
+        self:Error("[AreaLootIsOpen] Invalid interface data type: " .. type(Interface))
+        return false
+    end
+
+    if #Interface > 0 then
+        return true
+    end
+    
+    return false
+end
+
+-- Retrieves all items currently visible in the area loot interface
+---@return table|nil items Array of items {itemId, slotId} or nil if interface closed or no items found
+function Slib:AreaLootGetItems()
+    -- Check if area loot is open
+    if not self:AreaLootIsOpen() then
+        self:Warn("[AreaLootGetItems] Area loot interface is not open")
+        return nil
+    end
+    
+    -- Validate that AreaLoot interface is defined
+    if not self.Interfaces or not self.Interfaces.AreaLoot or not self.Interfaces.AreaLoot[1] then
+        self:Error("[AreaLootGetItems] AreaLoot interface not defined")
+        return nil
+    end
+    
+    -- Scan for the area loot interface
+    local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.AreaLoot[1])
+    if not Interface then
+        self:Error("[AreaLootGetItems] Failed to scan area loot interface")
+        return nil
+    end
+    
+    -- Validate interface data type
+    if type(Interface) ~= "table" and type(Interface) ~= "userdata" then
+        self:Error("[AreaLootGetItems] Invalid interface data type: " .. type(Interface))
+        return nil
+    end
+    
+    local Items = {}
+    local ItemCount = 0
+    
+    -- Process each interface element
+    for I, Item in pairs(Interface) do
+        -- Validate item structure
+        if not Item then
+            self:Warn("[AreaLootGetItems] Skipping nil item at index " .. tostring(I))
+            goto continue_item
+        end
+        
+        if type(Item) ~= "table" and type(Item) ~= "userdata" then
+            self:Warn("[AreaLootGetItems] Skipping invalid item at index " .. tostring(I) .. " (type: " .. type(Item) .. ")")
+            goto continue_item
+        end
+        
+        -- Check for valid item ID (not -1 which indicates empty slot)
+        if Item.itemid1 and Item.itemid1 ~= -1 and Item.itemid1 >= 0 then
+            ItemCount = ItemCount + 1
+            table.insert(Items, {Item.itemid1, Item.id3 or 0})
+        end
+        
+        ::continue_item::
+    end
+    
+    if ItemCount == 0 then
+        self:Info("[AreaLootGetItems] No valid items found in area loot")
+        return {}
+    end
+
+    return Items
+end
+
+-- Checks if the area loot contains all specified item IDs
+---@param ItemIds number|table The item ID or table of item IDs to check for
+---@return boolean allFound True if all specified items are found in area loot, false otherwise
+function Slib:AreaLootContains(ItemIds)
+    -- Parameter validation
+    if not self:Sanitize(ItemIds, {"number", "table_of_ids"}, "ItemIds") then
+        return false
+    end
+    
+    -- Convert to table for consistent processing
+    local IdTable = type(ItemIds) == "table" and ItemIds or {ItemIds}
+    
+    if not self:AreaLootIsOpen() then
+        return false
+    end
+
+    local Items = self:AreaLootGetItems()
+    if not Items then
+        return false
+    end
+    
+    -- Track which IDs have been found
+    local foundIds = {}
+    for _, targetId in ipairs(IdTable) do
+        foundIds[targetId] = false
+    end
+    
+    -- Check each item in area loot against all target IDs
+    for _, item in pairs(Items) do
+        for _, targetId in ipairs(IdTable) do
+            if item[1] == targetId then
+                foundIds[targetId] = true
+                self:Info("Item " .. targetId .. " found in area loot")
+            end
+        end
+    end
+    
+    -- Check if all IDs were found
+    for _, targetId in ipairs(IdTable) do
+        if not foundIds[targetId] then
+            self:Info("Item " .. targetId .. " not found in area loot")
+            return false
+        end
+    end
+    
+    self:Info("All specified items found in area loot")
+    return true
+end
+
+--- Checks if the instance interface is currently open
+--- @return boolean IsOpen True if instance interface is open, false otherwise
+function Slib:InstanceInterfaceIsOpen()
+    local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.InstanceOptions[1])
+    return #Interface > 0
+end
+
+--- Retrieves all available instance interface options and settings
+--- @return table|nil Options Table containing instance options or nil if interface is closed
+--- @return table Options.MaxPlayers Maximum players interface element
+--- @return table Options.MinCombat Minimum combat level interface element  
+--- @return table Options.SpawnSpeed Spawn speed interface element
+--- @return table Options.Protection Protection interface element
+--- @return boolean Options.PracticeMode Practice mode enabled state
+--- @return boolean Options.HardMode Hard mode enabled state
+function Slib:GetInstanceInterfaceOptions()
+    -- Validate interface state before proceeding
+    if not self:InstanceInterfaceIsOpen() then
+        self:Error("[GetInstanceInterfaceOptions] Instance interface is not open")
+        return nil
+    end
+
+    -- Retrieve interface elements for each option
+    local MaxPlayersRaw = API.ScanForInterfaceTest2Get(true, self.Interfaces.InstanceOptions[2])
+    local MinCombatRaw = API.ScanForInterfaceTest2Get(true, self.Interfaces.InstanceOptions[3])
+    local SpawnSpeedRaw = API.ScanForInterfaceTest2Get(true, self.Interfaces.InstanceOptions[4])
+    local ProtectionRaw = API.ScanForInterfaceTest2Get(true, self.Interfaces.InstanceOptions[5])
+    
+    -- Parse values with proper nil checking
+    local MaxPlayersTreated = tonumber(API.ReadCharsLimit(MaxPlayersRaw[1].memloc + API.I_itemids3, 255))
+    local MinCombatTreated = tonumber(API.ReadCharsLimit(MinCombatRaw[1].memloc + API.I_itemids3, 255))
+    local SpawnSpeedTreated = tostring(SpawnSpeedRaw[1].textids)
+    local ProtectionTreated = tostring(ProtectionRaw[1].textids)
+
+    
+    -- Get mode settings from varbits (convert 0/1 to false/true)
+    local PracticeMode = API.GetVarbitValue(27142) == 1
+    local HardMode = API.GetVarbitValue(27141) == 1
+
+    -- Debug output for interface values
+    if MaxPlayersTreated then
+        print("Max Players: " .. tostring(MaxPlayersTreated))
+    end
+    if MinCombatTreated then
+        print("Min Combat: " .. tostring(MinCombatTreated))
+    end
+    if SpawnSpeedTreated then
+        print("Spawn Speed: " .. SpawnSpeedTreated)
+    end
+    if ProtectionTreated then
+        print("Protection: " .. ProtectionTreated)
+    end
+    print("Practice Mode: " .. tostring(PracticeMode))
+    print("Hard Mode: " .. tostring(HardMode))
+
+    -- Return structured options table
+    return {
+        MaxPlayers = MaxPlayersTreated,
+        MinCombat = MinCombatTreated,
+        SpawnSpeed = SpawnSpeedTreated,
+        Protection = ProtectionTreated,
+        PracticeMode = PracticeMode,
+        HardMode = HardMode
+    }
+end
+
+function Slib:TextInputIsOpen()
+    local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.TextInput[1])
+    return #Interface > 0
+end
+
 -- ##################################
 -- #                                #
 -- #           PROCEDURES           #
@@ -2872,6 +3165,334 @@ function Slib:RechargeSilverhawkBoots(MinQuantity)
     
     self:Warn("[RechargeSilverhawkBoots] No feathers or down found in inventory")
     return false
+end
+
+-- Takes specified items from the area loot interface, prioritizing last slot first
+---@param ItemIds number|table|string The item ID, table of item IDs, or strings ("custom", "all") to take from area loot
+---@return boolean success True if all specified items were taken successfully, false otherwise
+function Slib:AreaLootTakeItems(ItemIds)
+    -- Parameter validation
+    if not self:Sanitize(ItemIds, {"number", "table_of_ids", "string"}, "ItemIds") then
+        return false
+    end
+
+     -- Check if area loot is open
+     if not self:AreaLootIsOpen() then
+        self:Error("[AreaLootTakeItems] Area loot interface is not open")
+        return false
+    end
+    
+    -- Handle special string cases
+    if type(ItemIds) == "string" then
+        local lowerItemIds = string.lower(ItemIds)
+        
+        if lowerItemIds == "custom" then
+            self:Info("[AreaLootTakeItems] Taking custom loot selection...")
+            API.DoAction_Interface(0x24, 0xffffffff, 1, 1622, 30, -1, API.OFF_ACT_GeneralInterface_route)
+            return true
+        elseif lowerItemIds == "all" then
+            self:Info("[AreaLootTakeItems] Taking all loot...")
+            API.DoAction_Interface(0x24, 0xffffffff, 1, 1622, 22, -1, API.OFF_ACT_GeneralInterface_route)
+            return true
+        else
+            self:Error("[AreaLootTakeItems] Invalid string parameter: '" .. ItemIds .. "'. Valid options: 'custom', 'all'")
+            return false
+        end
+    end
+    
+    -- Convert to table for consistent processing
+    local IdTable = type(ItemIds) == "table" and ItemIds or {ItemIds}
+
+    -- Get all items in area loot
+    local Items = self:AreaLootGetItems()
+    if not Items or #Items == 0 then
+        self:Warn("[AreaLootTakeItems] No items found in area loot")
+        return false
+    end
+    
+    -- Track which IDs we need to take
+    local targetIds = {}
+    for _, id in ipairs(IdTable) do
+        targetIds[id] = true
+    end
+    
+    -- Find matching items and sort by slot (highest slot first for last-slot-first priority)
+    local matchingItems = {}
+    for _, item in ipairs(Items) do
+        local itemId = item[1]
+        local itemSlot = item[2]
+        
+        if targetIds[itemId] then
+            table.insert(matchingItems, {itemId = itemId, slot = itemSlot})
+            self:Info("[AreaLootTakeItems] Found target item: ID " .. itemId .. " in slot " .. itemSlot)
+        end
+    end
+    
+    if #matchingItems == 0 then
+        self:Warn("[AreaLootTakeItems] No matching items found in area loot")
+        return false
+    end
+    
+    -- Sort by slot in descending order (highest slot first = last slot first)
+    table.sort(matchingItems, function(a, b)
+        return a.slot > b.slot
+    end)
+    
+    local takenCount = 0
+    local totalToTake = #matchingItems
+        
+    -- Take each matching item, starting from the last slot
+    for i, item in ipairs(matchingItems) do
+        local itemId = item.itemId
+        local itemSlot = item.slot
+        
+        self:Info("[AreaLootTakeItems] Taking item " .. i .. "/" .. totalToTake .. ": ID " .. itemId .. " from slot " .. itemSlot)
+        API.DoAction_Interface(0xffffffff, itemId, 1, 1622, 11, itemSlot, API.OFF_ACT_GeneralInterface_route)
+        takenCount = takenCount + 1
+            
+        -- Small delay between taking items to prevent spam
+        self:RandomSleep(50, 300, "ms")
+    end
+    
+    local success = takenCount == totalToTake
+    if success then
+        self:Info("[AreaLootTakeItems] Successfully took all " .. takenCount .. " items from area loot")
+    else
+        self:Warn("[AreaLootTakeItems] Only took " .. takenCount .. "/" .. totalToTake .. " items from area loot")
+    end
+    
+    return success
+end
+
+--- Sets instance interface options to specified values
+--- @param MaxPlayers number|nil Target maximum players (or nil to skip)
+--- @param MinCombat number|nil Target minimum combat level (or nil to skip)
+--- @param SpawnSpeed string|nil Target spawn speed ("Standard", "Fast", "Fastest", or nil to skip)
+--- @param Protection string|nil Target protection ("FFA", "PIN", "Friends only", "Friends Chat only", or nil to skip)
+--- @param PracticeMode boolean|nil Target practice mode state (or nil to skip)
+--- @param HardMode boolean|nil Target hard mode state (or nil to skip)
+--- @return boolean Success True if all settings were applied successfully
+function Slib:SetInstanceInterfaceOptions(MaxPlayers, MinCombat, SpawnSpeed, Protection, PracticeMode, HardMode)
+    if not self:InstanceInterfaceIsOpen() then
+        self:Error("[SetInstanceInterfaceOptions] Instance interface is not open")
+        return false
+    end
+
+    local CurrentOptions = self:GetInstanceInterfaceOptions()
+    if not CurrentOptions then
+        self:Error("[SetInstanceInterfaceOptions] Failed to get current interface options")
+        return false
+    end
+
+    -- Set PracticeMode
+    if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    -- Set HardMode
+    if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    CurrentOptions = self:GetInstanceInterfaceOptions()
+
+    -- Set MaxPlayers
+    if MaxPlayers and CurrentOptions.MaxPlayers then
+        local Difference = MaxPlayers - CurrentOptions.MaxPlayers
+        if Difference > 0 then
+            for i = 1, Difference do
+                API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 25, -1, API.OFF_ACT_GeneralInterface_route)
+                self:RandomSleep(100, 300, "ms")
+            end
+        elseif Difference < 0 then
+            for i = 1, math.abs(Difference) do
+                API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 24, -1, API.OFF_ACT_GeneralInterface_route)
+                self:RandomSleep(100, 300, "ms")
+            end
+        end
+    end
+
+    -- Set MinCombat
+    if MinCombat and CurrentOptions.MinCombat then
+        local Difference = MinCombat - CurrentOptions.MinCombat
+        if Difference > 0 then
+            for i = 1, Difference do
+                API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 29, -1, API.OFF_ACT_GeneralInterface_route)
+                self:RandomSleep(100, 300, "ms")
+            end
+        elseif Difference < 0 then
+            for i = 1, math.abs(Difference) do
+                API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 28, -1, API.OFF_ACT_GeneralInterface_route)
+                self:RandomSleep(100, 300, "ms")
+            end
+        end
+    end
+
+    -- Set SpawnSpeed
+    if SpawnSpeed then
+        local SpawnSpeedMap = {["Standard"] = 1, ["Fast"] = 2, ["Fastest"] = 3}
+        local CurrentSpeedMap = {["Standard"] = 1, ["Fast"] = 2, ["Fastest"] = 3}
+
+        local TargetIndex = SpawnSpeedMap[SpawnSpeed]
+        local CurrentIndex = CurrentSpeedMap[CurrentOptions.SpawnSpeed]
+
+        if TargetIndex and CurrentIndex then
+            local Difference = TargetIndex - CurrentIndex
+            if Difference > 0 then
+                for i = 1, Difference do
+                    API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 33, -1, API.OFF_ACT_GeneralInterface_route)
+                    self:RandomSleep(100, 300, "ms")
+                end
+            elseif Difference < 0 then
+                for i = 1, math.abs(Difference) do
+                    API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 32, -1, API.OFF_ACT_GeneralInterface_route)
+                    self:RandomSleep(100, 300, "ms")
+                end
+            end
+        end
+    end
+
+    -- Set Protection
+    if Protection then
+        local ProtectionMap = {["FFA"] = 1, ["PIN"] = 2, ["Friends only"] = 3, ["Friends Chat only"] = 4}
+
+        -- Helper function to get protection index from current value
+        local function GetProtectionIndex(ProtectionValue)
+            if not ProtectionValue then
+                return nil
+            end
+
+            if ProtectionValue == "FFA" then
+                return 1
+            elseif ProtectionValue:match("^PIN:") then -- Handles "PIN: 1", "PIN: 2", etc.
+                return 2
+            elseif ProtectionValue == "Friends only" then
+                return 3
+            elseif ProtectionValue == "Friends Chat only" then
+                return 4
+            end
+            return nil
+        end
+
+        local TargetIndex = ProtectionMap[Protection]
+        local CurrentIndex = GetProtectionIndex(CurrentOptions.Protection)
+
+        if TargetIndex and CurrentIndex then
+            local Difference = TargetIndex - CurrentIndex
+            if Difference > 0 then
+                for i = 1, Difference do
+                    API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 37, -1, API.OFF_ACT_GeneralInterface_route)
+                    self:RandomSleep(100, 300, "ms")
+                end
+            elseif Difference < 0 then
+                for i = 1, math.abs(Difference) do
+                    API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 36, -1, API.OFF_ACT_GeneralInterface_route)
+                    self:RandomSleep(100, 300, "ms")
+                end
+            end
+        end
+    end
+
+    self:Info("[SetInstanceInterfaceOptions] Successfully applied interface settings")
+    return true
+end
+
+--- Starts a new instance
+--- @return boolean
+function Slib:InstanceStart()
+    if not self:InstanceInterfaceIsOpen() then
+        self:Error("[InstanceStart] Instance interface is not open")
+        return false
+    end
+
+    API.DoAction_Interface(0x24, 0xffffffff, 1, 1591, 60, -1, API.OFF_ACT_GeneralInterface_route)
+    self:Info("[InstanceStart] Started instance")
+
+    return true
+end
+
+--- Joins another player's instance by typing their name
+--- @param PlayerName string The name of the player whose instance to join
+--- @return boolean Success True if join sequence completed successfully, false if interface not open or invalid name
+function Slib:InstanceJoin(PlayerName)
+    -- Validate interface state
+    if not self:InstanceInterfaceIsOpen() then
+        self:Error("[InstanceJoin] Instance interface is not open")
+        return false
+    end
+
+    -- Validate PlayerName parameter
+    if not self:ValidateParams({
+        {PlayerName, "non_empty_string", "PlayerName"}
+    }) then
+        self:Error("[InstanceJoin] Invalid player name provided")
+        return false
+    end
+
+    self:Info("[InstanceJoin] Initiating join to player: " .. PlayerName)
+    
+    -- Open text input dialog
+    local Result = API.DoAction_Interface(0x24, 0xffffffff, 1, 1591, 108, -1, API.OFF_ACT_GeneralInterface_route)
+    if not Result then
+        self:Error("[InstanceJoin] Failed to open text input dialog")
+        return false
+    end
+
+    -- Wait for text input interface to open
+    local InputOpened = self:SleepUntil(function()
+        return self:TextInputIsOpen()
+    end, 10, 100)
+
+    if not InputOpened then
+        self:Error("[InstanceJoin] Text input interface failed to open within timeout")
+        return false
+    end
+
+    -- Safety delay to ensure interface is fully loaded
+    self:RandomSleep(2000, 4000, "ms")
+
+    -- Type player name character by character using Virtual-Key codes
+    self:Info("[InstanceJoin] Typing player name: " .. PlayerName)
+    for i = 1, #PlayerName do
+        local char = PlayerName:sub(i, i)
+        local vkCode = self:CharToVirtualKey(char)
+        
+        self:Info(string.format("[InstanceJoin] Typing '%s' -> VK: %d (0x%02X)", char, vkCode, vkCode))
+        
+        local KeyResult = API.KeyboardPress2(vkCode, 40, 60)
+        if not KeyResult then
+            self:Warn("[InstanceJoin] Failed to send key for character: " .. char)
+        end
+        
+        self:RandomSleep(100, 200, "ms")
+    end
+    
+    -- Confirm input with Enter key
+    self:Info("[InstanceJoin] Confirming input with Enter key")
+    local EnterResult = API.KeyboardPress2(0x0D, 50, 80) -- VK_RETURN
+    if not EnterResult then
+        self:Error("[InstanceJoin] Failed to send Enter key")
+        return false
+    end
+    
+    self:Info("[InstanceJoin] Successfully completed join sequence for: " .. PlayerName)
+    return true
+end
+
+--- Rejoins an existing instance
+--- @return boolean
+function Slib:InstanceRejoin()
+    if not self:InstanceInterfaceIsOpen() then
+        self:Error("[InstanceRejoin] Instance interface is not open")
+        return false
+    end
+    
+    API.DoAction_Interface(0x24, 0xffffffff, 1, 1591, 122, -1, API.OFF_ACT_GeneralInterface_route)
+    self:Info("[InstanceRejoin] Rejoined instance")
+        
+    return true
 end
 
 return Slib
