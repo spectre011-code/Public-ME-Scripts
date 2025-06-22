@@ -3286,19 +3286,22 @@ function Slib:SetInstanceInterfaceOptions(MaxPlayers, MinCombat, SpawnSpeed, Pro
         return false
     end
 
-    -- Set PracticeMode
-    if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
-        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
-        self:RandomSleep(600, 1000, "ms")
+    for i = 1, 2 do --Needed to run 2 times in case HM is checked and practice mode is passed as true
+        -- Set PracticeMode
+        if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
+            API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
+            self:RandomSleep(600, 1000, "ms")
+        end
+
+        -- Set HardMode
+        if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
+            API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
+            self:RandomSleep(600, 1000, "ms")
+        end
+        self:RandomSleep(1000, 3000, "ms")
     end
 
-    -- Set HardMode
-    if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
-        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
-        self:RandomSleep(600, 1000, "ms")
-    end
-
-    CurrentOptions = self:GetInstanceInterfaceOptions()
+    CurrentOptions = self:GetInstanceInterfaceOptions() --Update options in case HM checkbox was checked, which makes MaxPlayers always 1 on the first read
 
     -- Set MaxPlayers
     if MaxPlayers and CurrentOptions.MaxPlayers then
