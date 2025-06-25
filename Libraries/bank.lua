@@ -2188,7 +2188,7 @@ function BANK:DepositAll(ItemID)
     end
 end
 
--- Deposits logs from wood boxes in inventory
+-- Deposits logs from wood boxes in inventory.
 ---@return boolean
 function BANK:WoodBoxDepositLogs()
     if not BANK:IsOpen() then
@@ -2252,7 +2252,7 @@ function BANK:WoodBoxDepositLogs()
     return success
 end
 
--- Deposits wood spirits from wood boxes in inventory
+-- Deposits wood spirits from wood boxes in inventory.
 ---@return boolean
 function BANK:WoodBoxDepositWoodSpirits()
     if not BANK:IsOpen() then
@@ -2317,7 +2317,7 @@ function BANK:WoodBoxDepositWoodSpirits()
     return success
 end
 
--- Deposits ore from ore boxes in inventory
+-- Deposits ore from ore boxes in inventory.
 ---@return boolean
 function BANK:OreBoxDepositOres()
     if not BANK:IsOpen() then
@@ -2382,7 +2382,7 @@ function BANK:OreBoxDepositOres()
     return success
 end
 
--- Deposits stone spirits from ore boxes in inventory
+-- Deposits stone spirits from ore boxes in inventory.
 ---@return boolean
 function BANK:OreBoxDepositStoneSpirits()
     if not BANK:IsOpen() then
