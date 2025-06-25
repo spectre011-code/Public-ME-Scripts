@@ -581,26 +581,31 @@ function Slib:SleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs)
 end
 
 -- Converts a character to its corresponding Windows Virtual-Key code
--- Uses the Windows Virtual-Key code mappings for keyboard input simulation
----@param char string Single character to convert (letters, numbers, common symbols)
----@return number vkCode Virtual-Key code for the character (0x30-0x5A range for alphanumeric)
+-- Only supports letters (A-Z, a-z), numbers (0-9), and spaces
+---@param char string Single character to convert (letters, numbers, spaces only)
+---@return number|nil vkCode Virtual-Key code for the character, or nil if unsupported character
 function Slib:CharToVirtualKey(char)
     -- Parameter validation
     if not self:ValidateParams({
         {char, "string", "char"}
     }) then
         self:Error("[CharToVirtualKey] Invalid character parameter")
-        return 0x20 -- Return VK_SPACE as safe fallback
+        return nil
     end
     
     if #char ~= 1 then
         self:Error("[CharToVirtualKey] Parameter must be a single character, received: '" .. char .. "'")
-        return 0x20 -- Return VK_SPACE as safe fallback
+        return nil
     end
     
     local byte = string.byte(char)
     
-    -- Letters A-Z (convert both uppercase and lowercase to VK codes)
+    -- Space character
+    if char == " " then
+        return 0x20 -- VK_SPACE
+    end
+    
+    -- Letters A-Z (convert both uppercase and lowercase to uppercase VK codes)
     if (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122) then
         local upperChar = string.upper(char)
         return string.byte(upperChar) -- VK_A=0x41 through VK_Z=0x5A
@@ -611,39 +616,12 @@ function Slib:CharToVirtualKey(char)
         return byte -- VK_0=0x30 through VK_9=0x39
     end
     
-    -- Common special characters with their Virtual-Key mappings
-    local specialCharacters = {
-        -- Basic punctuation
-        [" "] = 0x20, -- VK_SPACE
-        ["."] = 0xBE, -- VK_OEM_PERIOD
-        [","] = 0xBC, -- VK_OEM_COMMA
-        ["'"] = 0xDE, -- VK_OEM_7 (apostrophe/quote)
-        [";"] = 0xBA, -- VK_OEM_1 (semicolon)
-        
-        -- Mathematical operators
-        ["-"] = 0xBD, -- VK_OEM_MINUS
-        ["_"] = 0xBD, -- VK_OEM_MINUS (with shift modifier)
-        ["="] = 0xBB, -- VK_OEM_PLUS
-        ["+"] = 0xBB, -- VK_OEM_PLUS (with shift modifier)
-        
-        -- Brackets and braces
-        ["["] = 0xDB, -- VK_OEM_4 (left bracket)
-        ["]"] = 0xDD, -- VK_OEM_6 (right bracket)
-        ["\\"] = 0xDC, -- VK_OEM_5 (backslash)
-        ["/"] = 0xBF, -- VK_OEM_2 (forward slash)
-    }
-    
-    -- Check if character has a defined Virtual-Key mapping
-    if specialCharacters[char] then
-        return specialCharacters[char]
-    end
-    
-    -- Handle unsupported characters with detailed warning
-    self:Warn(string.format("[CharToVirtualKey] Unsupported character: '%s' (ASCII: %d, Hex: 0x%02X)", 
+    -- Unsupported character
+    self:Error(string.format("[CharToVirtualKey] Unsupported character: '%s' (ASCII: %d, Hex: 0x%02X)", 
         char, byte, byte))
-    self:Warn("[CharToVirtualKey] Returning ASCII value as fallback - may not work correctly")
+    self:Error("[CharToVirtualKey] Only letters (A-Z, a-z), numbers (0-9), and spaces are supported")
     
-    return byte -- Fallback to ASCII value (may not produce correct output)
+    return nil
 end
 
 -- ##################################
@@ -2822,6 +2800,58 @@ function Slib:PlayerFacing()
     return Direction
 end
 
+-- Checks if any object with specified ID and type has Bool1 property set to 1 within range
+---@param ObjId number|table The object ID(s) to search for
+---@param Range number Maximum search distance in tiles
+---@param ObjType number|table The object type(s) to search for
+---@return boolean hasBool1Object True if at least one object with Bool1=1 is found, false otherwise
+function Slib:CheckObjectBool1(ObjId, Range, ObjType)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {ObjId, {"number", "table_of_numbers"}, "ObjId"},
+        {Range, "non_negative_number", "Range"},
+        {ObjType, {"number", "table_of_numbers"}, "ObjType"}
+    }) then
+        return false
+    end
+    
+    -- Convert to tables for API call
+    local ObjIdTable = type(ObjId) == "table" and ObjId or {ObjId}
+    local ObjTypeTable = type(ObjType) == "table" and ObjType or {ObjType}
+    
+    -- Search for objects
+    local Objects = API.GetAllObjArray1(ObjIdTable, Range, ObjTypeTable)
+    
+    if not Objects then
+        self:Warn("[CheckObjectBool1] API returned nil for object search")
+        return false
+    end
+    
+    if type(Objects) ~= "table" and type(Objects) ~= "userdata" then
+        self:Error("[CheckObjectBool1] Invalid objects data type: " .. type(Objects))
+        return false
+    end
+    
+    if #Objects == 0 then
+        return false
+    end
+    
+    -- Check each object for Bool1 property
+    local Bool1Count = 0
+    for _, Object in ipairs(Objects) do
+        if Object and Object.Bool1 == 1 then
+            Bool1Count = Bool1Count + 1
+        end
+    end
+    
+    if Bool1Count > 0 then
+        self:Info("[CheckObjectBool1] Found " .. Bool1Count .. " object(s) with Bool1=1")
+        return true
+    end
+    
+    return false
+end
+
 -- ##################################
 -- #                                #
 -- #           PROCEDURES           #
@@ -2851,9 +2881,7 @@ function Slib:WalkToCoordinates(X, Y, Z)
         self:Info("[WalkToCoordinates] Already at destination coordinates")
         return true
     end
-    
-    self:Info("[WalkToCoordinates] Initiating walk...")
-    -- Attempt to walk
+
     local WalkResult = API.DoAction_Tile(WPOINT.new(X, Y, Z))
     if not WalkResult then
         self:Error("[WalkToCoordinates] Failed to initiate walk to (" .. X .. ", " .. Y .. ", " .. Z .. ")")
@@ -2861,34 +2889,6 @@ function Slib:WalkToCoordinates(X, Y, Z)
     end
 
     return true
-end
-
--- Attempts to use Surge ability if player is facing the specified orientation
----@param Orientation number The orientation angle to check (0-360 degrees)
----@return boolean success True if surge was used successfully, false if wrong orientation or ability unavailable
-function Slib:SurgeIfFacing(Orientation)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {Orientation, "number", "Orientation"}
-    }) then
-        return false
-    end
-
-    self:Info(string.format("[SurgeIfFacing] Checking if player is facing %d degrees...", Orientation))
-    
-    -- Normalize orientation values
-    local PlayerFacing = math.floor(API.calculatePlayerOrientation())
-    if PlayerFacing == 0 then PlayerFacing = 360 end
-    if Orientation == 0 then Orientation = 360 end
-    
-    -- Check if player is facing the correct direction
-    if Orientation ~= PlayerFacing then
-        self:Info(string.format("[SurgeIfFacing] Player facing %d degrees, not matching required %d degrees", PlayerFacing, Orientation))
-        return false
-    end
-    
-    self:Info("[SurgeIfFacing] Player facing correct direction, attempting to surge...")
-    return self:UseAbilityById(14233) --Surge ID
 end
 
 -- Dives to the specified coordinates using Bladed Dive or regular Dive
@@ -3090,8 +3090,12 @@ function Slib:MoveTo(X, Y, Z)
         
         -- Calculate distance to target
         local DistanceToTarget = math.sqrt((X - CurrentPos.x)^2 + (Y - CurrentPos.y)^2)
-        self:Info(string.format("[MoveTo] Current position: (%d, %d, %d), Distance to target: %.1f", 
-            CurrentPos.x, CurrentPos.y, CurrentPos.z, DistanceToTarget))
+        -- Only show position info every 10 iterations to reduce spam
+        LoopCount = (LoopCount or 0) + 1
+        if LoopCount % 10 == 1 then
+            self:Info(string.format("[MoveTo] Position: (%d, %d, %d), Distance: %.1f", 
+                CurrentPos.x, CurrentPos.y, CurrentPos.z, DistanceToTarget))
+        end
         
         -- Check if player is moving
         local IsMoving = API.IsPlayerMoving_(PlayerName)
@@ -3125,9 +3129,8 @@ function Slib:MoveTo(X, Y, Z)
                     -- Dive directly to destination if within 10 tiles, otherwise dive 10 tiles toward destination
                     if DistanceToTarget <= 10 then
                         -- Dive directly to destination
-                        self:Info("[MoveTo] Player moving, close to destination and dive available, diving to target")
                         if self:Dive(X, Y, Z) then
-                            self:Info("[MoveTo] Dive to destination successful, continuing with walk")
+                            self:Info("[MoveTo] Dive to destination successful")
                             self:RandomSleep(100, 200, "ms")  -- Short delay after dive
                             -- Continue walking from new position toward destination
                             local WalkDistance = math.random(15, 30)
@@ -3164,9 +3167,8 @@ function Slib:MoveTo(X, Y, Z)
                         local DiveX = math.floor(CurrentPos.x + (NormalizedX * DiveRange))
                         local DiveY = math.floor(CurrentPos.y + (NormalizedY * DiveRange))
                         
-                        self:Info(string.format("[MoveTo] Player moving, diving toward destination to (%d, %d, %d)", DiveX, DiveY, Z))
                         if self:Dive(DiveX, DiveY, Z) then
-                            self:Info("[MoveTo] Dive toward destination successful, continuing with walk")
+                            self:Info("[MoveTo] Dive toward destination successful")
                             self:RandomSleep(200, 400, "ms")  -- Short delay after dive
                             -- Continue walking from new position toward destination
                             local WalkDistance = math.random(15, 30)
@@ -3260,9 +3262,8 @@ function Slib:MoveTo(X, Y, Z)
                     end
                     
                     if CanSurgeInDirection then
-                        self:Info(string.format("[MoveTo] Player moving, facing compatible direction (%s for %s movement) and surge available, attempting surge", PlayerDirection, MovementDirection))
                         if self:UseAbilityById(14233) then  -- Surge ability ID
-                            self:Info("[MoveTo] Surge successful, continuing with walk")
+                            self:Info("[MoveTo] Surge successful")
                             self:RandomSleep(200, 400, "ms")  -- Short delay after surge
                             -- Continue walking from new position toward destination
                             local WalkDistance = math.random(15, 30)
@@ -3286,11 +3287,7 @@ function Slib:MoveTo(X, Y, Z)
                                 end
                             end
                             goto continue_loop
-                        else
-                            self:Info("[MoveTo] Surge failed")
                         end
-                    else
-                        self:Info(string.format("[MoveTo] Player facing %s but need %s for movement, can't surge efficiently", PlayerDirection, MovementDirection))
                     end
                 end
         else
@@ -3301,17 +3298,16 @@ function Slib:MoveTo(X, Y, Z)
             if LastWalkTarget == nil then
                 -- First iteration, always walk
                 ShouldWalk = true
-                self:Info("[MoveTo] First iteration - initiating walk")
+                self:Info("[MoveTo] Initiating walk")
             else
                 -- Calculate distance to last walk target
                 DistanceToLastWalk = math.sqrt((LastWalkTarget.x - CurrentPos.x)^2 + (LastWalkTarget.y - CurrentPos.y)^2)
                 
                 if DistanceToLastWalk <= 7 then
                     ShouldWalk = true
-                    self:Info(string.format("[MoveTo] Within 7 tiles of last walk target (%.1f tiles), starting new walk", DistanceToLastWalk))
                 else
                     ShouldWalk = true
-                    self:Info("[MoveTo] Player not moving but far from walk target, restarting walk")
+                    self:Info("[MoveTo] Restarting walk")
                 end
             end
             
@@ -3321,9 +3317,9 @@ function Slib:MoveTo(X, Y, Z)
                 
                 -- Walk directly to destination if within walk distance, otherwise walk intermediate distance
                 if DistanceToTarget <= WalkDistance then
-                    self:Info(string.format("[MoveTo] Target close (%.1f tiles), walking directly to destination", DistanceToTarget))
                     if self:WalkToCoordinates(X, Y, Z) then
                         LastWalkTarget = {x = X, y = Y, z = Z}
+                        self:Info("[MoveTo] Walking to destination")
                     else
                         self:Error("[MoveTo] Failed to walk to target coordinates")
                         return false
@@ -3341,11 +3337,9 @@ function Slib:MoveTo(X, Y, Z)
                     local WalkX = math.floor(CurrentPos.x + (NormalizedX * WalkDistance))
                     local WalkY = math.floor(CurrentPos.y + (NormalizedY * WalkDistance))
                     
-                    self:Info(string.format("[MoveTo] Walking %d tiles towards target to (%d, %d, %d)", 
-                        WalkDistance, WalkX, WalkY, Z))
-                    
                     if self:WalkToCoordinates(WalkX, WalkY, Z) then
                         LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                        self:Info(string.format("[MoveTo] Walking %d tiles toward target", WalkDistance))
                     else
                         self:Error("[MoveTo] Failed to walk to intermediate coordinates")
                         return false
@@ -3639,6 +3633,60 @@ function Slib:AreaLootTakeItems(ItemIds)
     return success
 end
 
+-- Types text character by character using virtual key codes with timing delays
+---@param Text string The text to type character by character
+---@return boolean success True if text was typed successfully, false if invalid parameters or typing failed
+function Slib:TypeText(Text)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {Text, "non_empty_string", "Text"}
+    }) then
+        return false
+    end
+    
+    self:Info("[TypeText] Starting to type text: '" .. Text .. "' (" .. #Text .. " characters)")
+    
+    local SuccessfulChars = 0
+    local TotalChars = #Text
+    
+    -- Iterate through each character in the text string
+    for CharacterIndex = 1, TotalChars do
+        -- Extract the current character from the text
+        local CurrentCharacter = Text:sub(CharacterIndex, CharacterIndex)
+        
+        -- Convert the character to its virtual key code
+        local VirtualKeyCode = self:CharToVirtualKey(CurrentCharacter)
+        
+        -- Validate that we got a valid key code
+        if not VirtualKeyCode or VirtualKeyCode == 0 then
+            self:Error("[TypeText] Failed to get virtual key code for character: '" .. CurrentCharacter .. "' at position " .. CharacterIndex)
+            return false
+        end
+        
+        -- Press the key with timing delays (40ms press, 60ms release)
+        local KeyResult = API.KeyboardPress2(VirtualKeyCode, 40, 60)
+        if not KeyResult then
+            self:Error("[TypeText] Failed to send key press for character: '" .. CurrentCharacter .. "' (VK: " .. VirtualKeyCode .. ") at position " .. CharacterIndex)
+            return false
+        end
+        
+        SuccessfulChars = SuccessfulChars + 1
+        
+        -- Small delay between characters to prevent input buffer overflow
+        if CharacterIndex < TotalChars then
+            self:Sleep(50, "ms")
+        end
+    end
+    
+    if SuccessfulChars == TotalChars then
+        self:Info("[TypeText] Successfully typed all " .. TotalChars .. " characters")
+        return true
+    else
+        self:Error("[TypeText] Only typed " .. SuccessfulChars .. "/" .. TotalChars .. " characters successfully")
+        return false
+    end
+end
+
 -- Sets instance interface options to specified values
 ---@param MaxPlayers number|nil Target maximum players (or nil to skip)
 ---@param MinCombat number|nil Target minimum combat level (or nil to skip)
@@ -3875,20 +3923,11 @@ function Slib:InstanceJoin(PlayerName)
     -- Safety delay to ensure interface is fully loaded
     self:RandomSleep(2000, 4000, "ms")
 
-    -- Type player name character by character using Virtual-Key codes
+    -- Type player name using TypeText function
     self:Info("[InstanceJoin] Typing player name: " .. PlayerName)
-    for i = 1, #PlayerName do
-        local char = PlayerName:sub(i, i)
-        local vkCode = self:CharToVirtualKey(char)
-        
-        self:Info(string.format("[InstanceJoin] Typing '%s' -> VK: %d (0x%02X)", char, vkCode, vkCode))
-        
-        local KeyResult = API.KeyboardPress2(vkCode, 40, 60)
-        if not KeyResult then
-            self:Warn("[InstanceJoin] Failed to send key for character: " .. char)
-        end
-        
-        self:RandomSleep(100, 200, "ms")
+    if not self:TypeText(PlayerName) then
+        self:Error("[InstanceJoin] Failed to type player name")
+        return false
     end
     
     -- Confirm input with Enter key
