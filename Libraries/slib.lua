@@ -10,8 +10,8 @@ local DiscordHandle = "not_spectre011"
 ======================================================================================
 
 A comprehensive utility library for RuneScape automation scripts to me used with ME,
-providing robust parameter validation, debugging tools, helper functions, and table 
-manipulation utilities designed specifically for the RuneScape API environment.
+providing robust parameter validation, debugging tools, helper functions and procedures
+designed specifically for RuneScape automation scripts.
 
 --------------------------------------------------------------------------------------
                                        CREDITS                                       
@@ -580,10 +580,10 @@ function Slib:SleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs)
     return false
 end
 
---- Converts a character to its corresponding Windows Virtual-Key code
---- Uses the Windows Virtual-Key code mappings for keyboard input simulation
---- @param char string Single character to convert (letters, numbers, common symbols)
---- @return number vkCode Virtual-Key code for the character (0x30-0x5A range for alphanumeric)
+-- Converts a character to its corresponding Windows Virtual-Key code
+-- Uses the Windows Virtual-Key code mappings for keyboard input simulation
+---@param char string Single character to convert (letters, numbers, common symbols)
+---@return number vkCode Virtual-Key code for the character (0x30-0x5A range for alphanumeric)
 function Slib:CharToVirtualKey(char)
     -- Parameter validation
     if not self:ValidateParams({
@@ -2707,21 +2707,21 @@ function Slib:AreaLootContains(ItemIds)
     return true
 end
 
---- Checks if the instance interface is currently open
---- @return boolean IsOpen True if instance interface is open, false otherwise
+-- Checks if the instance interface is currently open
+---@return boolean IsOpen True if instance interface is open, false otherwise
 function Slib:InstanceInterfaceIsOpen()
     local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.InstanceOptions[1])
     return #Interface > 0
 end
 
---- Retrieves all available instance interface options and settings
---- @return table|nil Options Table containing instance options or nil if interface is closed
---- @return table Options.MaxPlayers Maximum players interface element
---- @return table Options.MinCombat Minimum combat level interface element  
---- @return table Options.SpawnSpeed Spawn speed interface element
---- @return table Options.Protection Protection interface element
---- @return boolean Options.PracticeMode Practice mode enabled state
---- @return boolean Options.HardMode Hard mode enabled state
+-- Retrieves all available instance interface options and settings
+---@return table|nil Options Table containing instance options or nil if interface is closed
+---@return table Options.MaxPlayers Maximum players interface element
+---@return table Options.MinCombat Minimum combat level interface element  
+---@return table Options.SpawnSpeed Spawn speed interface element
+---@return table Options.Protection Protection interface element
+---@return boolean Options.PracticeMode Practice mode enabled state
+---@return boolean Options.HardMode Hard mode enabled state
 function Slib:GetInstanceInterfaceOptions()
     -- Validate interface state before proceeding
     if not self:InstanceInterfaceIsOpen() then
@@ -2773,11 +2773,53 @@ function Slib:GetInstanceInterfaceOptions()
     }
 end
 
---- Checks if the text input interface is currently open
---- @return boolean IsOpen True if text input interface is open, false otherwise
+-- Checks if the text input interface is currently open
+---@return boolean IsOpen True if text input interface is open, false otherwise
 function Slib:TextInputIsOpen()
     local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.TextInput[1])
     return #Interface > 0
+end
+
+-- Gets the player's facing direction as a compass direction
+---@return string direction The compass direction: "N", "NE", "E", "SE", "S", "SW", "W", "NW"
+function Slib:PlayerFacing()
+    local Azimuth = API.calculatePlayerOrientation()
+    
+    if not Azimuth then
+        self:Error("[PlayerFacing] Failed to get player orientation")
+        return "N" -- Default fallback
+    end
+    
+    -- Normalize azimuth to 0-360 range
+    Azimuth = Azimuth % 360
+    if Azimuth < 0 then
+        Azimuth = Azimuth + 360
+    end
+    
+    -- Convert azimuth to compass direction
+    -- Each direction covers 45° (360° / 8 = 45°)
+    -- Centered on: N=0°, NE=45°, E=90°, SE=135°, S=180°, SW=225°, W=270°, NW=315°
+    local Direction
+    if Azimuth >= 337.5 or Azimuth < 22.5 then
+        Direction = "N"
+    elseif Azimuth >= 22.5 and Azimuth < 67.5 then
+        Direction = "NE"
+    elseif Azimuth >= 67.5 and Azimuth < 112.5 then
+        Direction = "E"
+    elseif Azimuth >= 112.5 and Azimuth < 157.5 then
+        Direction = "SE"
+    elseif Azimuth >= 157.5 and Azimuth < 202.5 then
+        Direction = "S"
+    elseif Azimuth >= 202.5 and Azimuth < 247.5 then
+        Direction = "SW"
+    elseif Azimuth >= 247.5 and Azimuth < 292.5 then
+        Direction = "W"
+    elseif Azimuth >= 292.5 and Azimuth < 337.5 then
+        Direction = "NW"
+    end
+    
+    self:Info("[PlayerFacing] Player facing " .. Direction .. " (" .. string.format("%.1f", Azimuth) .. "°)")
+    return Direction
 end
 
 -- ##################################
@@ -2996,6 +3038,337 @@ function Slib:UseAbilityByName(AbilityName, ExactMatch)
     
     self:Info("[UseAbilityByName] Ability used successfully: " .. AbilityName)
     return true
+end
+
+-- Moves the player to target coordinates using Dive and Surge
+---@param X number The target X coordinate
+---@param Y number The target Y coordinate  
+---@param Z number The target Z coordinate
+---@return boolean success True if movement was successful, false on failure
+function Slib:MoveTo(X, Y, Z)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {X, "number", "X"},
+        {Y, "number", "Y"},
+        {Z, "number", "Z"}
+    }) then
+        return false
+    end
+    
+    self:Info(string.format("[MoveTo] Starting movement to coordinates (%d, %d, %d)", X, Y, Z))
+    
+    -- Check if already at destination
+    if self:IsPlayerAtCoords(X, Y, Z) then
+        self:Info("[MoveTo] Already at destination")
+        return true
+    end
+    
+    local LastWalkTarget = nil
+    local PlayerName = API.GetLocalPlayerName()
+    local StuckCheckCount = 0
+    local LastPosition = nil
+    local MaxStuckChecks = 10  -- Fail after 10 consecutive checks of no movement/position change
+    
+    if not PlayerName then
+        self:Error("[MoveTo] Failed to get player name")
+        return false
+    end
+    
+    while API.Read_LoopyLoop() do
+        -- Check if we've reached the destination
+        if self:IsPlayerAtCoords(X, Y, Z) then
+            self:Info("[MoveTo] Successfully reached destination")
+            return true
+        end
+        
+        -- Get current player position
+        local CurrentPos = API.PlayerCoord()
+        if not CurrentPos then
+            self:Error("[MoveTo] Failed to get player coordinates")
+            return false
+        end
+        
+        -- Calculate distance to target
+        local DistanceToTarget = math.sqrt((X - CurrentPos.x)^2 + (Y - CurrentPos.y)^2)
+        self:Info(string.format("[MoveTo] Current position: (%d, %d, %d), Distance to target: %.1f", 
+            CurrentPos.x, CurrentPos.y, CurrentPos.z, DistanceToTarget))
+        
+        -- Check if player is moving
+        local IsMoving = API.IsPlayerMoving_(PlayerName)
+        
+        -- Stuck detection - check if position hasn't changed and player isn't moving
+        if LastPosition then
+            local PositionChanged = (CurrentPos.x ~= LastPosition.x or CurrentPos.y ~= LastPosition.y)
+            if not PositionChanged and not IsMoving then
+                StuckCheckCount = StuckCheckCount + 1
+                self:Warn(string.format("[MoveTo] Player appears stuck (check %d/%d)", StuckCheckCount, MaxStuckChecks))
+                if StuckCheckCount >= MaxStuckChecks then
+                    self:Error("[MoveTo] Player stuck - movement failed")
+                    return false
+                end
+            else
+                StuckCheckCount = 0  -- Reset stuck counter if player moved or position changed
+            end
+        end
+        LastPosition = {x = CurrentPos.x, y = CurrentPos.y, z = CurrentPos.z}
+        
+        -- Try dive/surge when player is moving to enhance movement speed
+        if IsMoving then
+                -- Try dive first if available (bladed dive preferred over regular dive)
+                local BladedDive = API.GetABs_id(30331)
+                local RegularDive = API.GetABs_id(23714)
+                
+                local CanBladedDive = BladedDive and BladedDive.id ~= 0 and BladedDive.enabled and BladedDive.cooldown_timer < 1
+                local CanRegularDive = RegularDive and RegularDive.id ~= 0 and RegularDive.enabled and RegularDive.cooldown_timer < 1
+                
+                if (CanBladedDive or CanRegularDive) and DistanceToTarget > 1 then
+                    -- Dive directly to destination if within 10 tiles, otherwise dive 10 tiles toward destination
+                    if DistanceToTarget <= 10 then
+                        -- Dive directly to destination
+                        self:Info("[MoveTo] Player moving, close to destination and dive available, diving to target")
+                        if self:Dive(X, Y, Z) then
+                            self:Info("[MoveTo] Dive to destination successful, continuing with walk")
+                            self:RandomSleep(100, 200, "ms")  -- Short delay after dive
+                            -- Continue walking from new position toward destination
+                            local WalkDistance = math.random(15, 30)
+                            if DistanceToTarget > WalkDistance then
+                                -- Calculate new intermediate walk point
+                                local NewPos = API.PlayerCoord()
+                                if NewPos then
+                                    local DirectionX = X - NewPos.x
+                                    local DirectionY = Y - NewPos.y
+                                    local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
+                                    local NormalizedX = DirectionX / DirectionLength
+                                    local NormalizedY = DirectionY / DirectionLength
+                                    local WalkX = math.floor(NewPos.x + (NormalizedX * WalkDistance))
+                                    local WalkY = math.floor(NewPos.y + (NormalizedY * WalkDistance))
+                                    self:WalkToCoordinates(WalkX, WalkY, Z)
+                                    LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                                end
+                            else
+                                self:WalkToCoordinates(X, Y, Z)
+                                LastWalkTarget = {x = X, y = Y, z = Z}
+                            end
+                            goto continue_loop
+                        end
+                    else
+                        -- Dive 10 tiles toward destination (max dive range)
+                        local DiveRange = 10  -- Maximum dive distance
+                        local DirectionX = X - CurrentPos.x
+                        local DirectionY = Y - CurrentPos.y
+                        local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
+                        
+                        -- Calculate dive point (10 tiles toward destination)
+                        local NormalizedX = DirectionX / DirectionLength
+                        local NormalizedY = DirectionY / DirectionLength
+                        local DiveX = math.floor(CurrentPos.x + (NormalizedX * DiveRange))
+                        local DiveY = math.floor(CurrentPos.y + (NormalizedY * DiveRange))
+                        
+                        self:Info(string.format("[MoveTo] Player moving, diving toward destination to (%d, %d, %d)", DiveX, DiveY, Z))
+                        if self:Dive(DiveX, DiveY, Z) then
+                            self:Info("[MoveTo] Dive toward destination successful, continuing with walk")
+                            self:RandomSleep(200, 400, "ms")  -- Short delay after dive
+                            -- Continue walking from new position toward destination
+                            local WalkDistance = math.random(15, 30)
+                            if DistanceToTarget > WalkDistance then
+                                -- Calculate new intermediate walk point from new position
+                                local NewPos = API.PlayerCoord()
+                                if NewPos then
+                                    local NewDirectionX = X - NewPos.x
+                                    local NewDirectionY = Y - NewPos.y
+                                    local NewDirectionLength = math.sqrt(NewDirectionX^2 + NewDirectionY^2)
+                                    local NewNormalizedX = NewDirectionX / NewDirectionLength
+                                    local NewNormalizedY = NewDirectionY / NewDirectionLength
+                                    local WalkX = math.floor(NewPos.x + (NewNormalizedX * WalkDistance))
+                                    local WalkY = math.floor(NewPos.y + (NewNormalizedY * WalkDistance))
+                                    self:WalkToCoordinates(WalkX, WalkY, Z)
+                                    LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                                end
+                            else
+                                self:WalkToCoordinates(X, Y, Z)
+                                LastWalkTarget = {x = X, y = Y, z = Z}
+                            end
+                            goto continue_loop
+                        end
+                    end
+                end
+                
+                -- Try surge if available and facing a compatible direction
+                local Surge = API.GetABs_id(14233)
+                local CanSurge = Surge and Surge.id ~= 0 and Surge.enabled and Surge.cooldown_timer < 1
+                
+                if CanSurge then
+                    -- Get player facing direction using PlayerFacing helper function
+                    local PlayerDirection = self:PlayerFacing()
+                    
+                    -- Determine target direction (walk target if available, otherwise destination)
+                    local TargetX, TargetY
+                    if LastWalkTarget then
+                        TargetX = LastWalkTarget.x
+                        TargetY = LastWalkTarget.y
+                    else
+                        TargetX = X
+                        TargetY = Y
+                    end
+                    
+                    local DeltaX = TargetX - CurrentPos.x
+                    local DeltaY = TargetY - CurrentPos.y
+                    
+                    -- Calculate required movement direction based on position deltas
+                    local MovementDirection
+                    if math.abs(DeltaX) > math.abs(DeltaY) then
+                        -- More horizontal movement
+                        if DeltaX > 0 then
+                            MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NE" or "SE") or "E"
+                        else
+                            MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NW" or "SW") or "W"
+                        end
+                    else
+                        -- More vertical movement
+                        if DeltaY > 0 then
+                            MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "NE" or "NW") or "N"
+                        else
+                            MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "SE" or "SW") or "S"
+                        end
+                    end
+                    
+                    -- Check if player is facing movement direction or compatible adjacent direction
+                    local CanSurgeInDirection = false
+                    if PlayerDirection == MovementDirection then
+                        CanSurgeInDirection = true
+                    else
+                        -- Allow surge for adjacent compass directions (e.g., N and NE are compatible)
+                        local CompatibleDirections = {
+                            N = {"NE", "NW"},
+                            NE = {"N", "E"},
+                            E = {"NE", "SE"},
+                            SE = {"E", "S"},
+                            S = {"SE", "SW"},
+                            SW = {"S", "W"},
+                            W = {"SW", "NW"},
+                            NW = {"W", "N"}
+                        }
+                        
+                        if CompatibleDirections[PlayerDirection] then
+                            for _, compatDir in ipairs(CompatibleDirections[PlayerDirection]) do
+                                if compatDir == MovementDirection then
+                                    CanSurgeInDirection = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    
+                    if CanSurgeInDirection then
+                        self:Info(string.format("[MoveTo] Player moving, facing compatible direction (%s for %s movement) and surge available, attempting surge", PlayerDirection, MovementDirection))
+                        if self:UseAbilityById(14233) then  -- Surge ability ID
+                            self:Info("[MoveTo] Surge successful, continuing with walk")
+                            self:RandomSleep(200, 400, "ms")  -- Short delay after surge
+                            -- Continue walking from new position toward destination
+                            local WalkDistance = math.random(15, 30)
+                            local NewPos = API.PlayerCoord()
+                            if NewPos then
+                                local NewDistanceToTarget = math.sqrt((X - NewPos.x)^2 + (Y - NewPos.y)^2)
+                                if NewDistanceToTarget > WalkDistance then
+                                    -- Calculate new intermediate walk point from post-surge position
+                                    local DirectionX = X - NewPos.x
+                                    local DirectionY = Y - NewPos.y
+                                    local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
+                                    local NormalizedX = DirectionX / DirectionLength
+                                    local NormalizedY = DirectionY / DirectionLength
+                                    local WalkX = math.floor(NewPos.x + (NormalizedX * WalkDistance))
+                                    local WalkY = math.floor(NewPos.y + (NormalizedY * WalkDistance))
+                                    self:WalkToCoordinates(WalkX, WalkY, Z)
+                                    LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                                else
+                                    self:WalkToCoordinates(X, Y, Z)
+                                    LastWalkTarget = {x = X, y = Y, z = Z}
+                                end
+                            end
+                            goto continue_loop
+                        else
+                            self:Info("[MoveTo] Surge failed")
+                        end
+                    else
+                        self:Info(string.format("[MoveTo] Player facing %s but need %s for movement, can't surge efficiently", PlayerDirection, MovementDirection))
+                    end
+                end
+        else
+            -- Player not moving - initiate or restart walking
+            local ShouldWalk = false
+            local DistanceToLastWalk = 0
+            
+            if LastWalkTarget == nil then
+                -- First iteration, always walk
+                ShouldWalk = true
+                self:Info("[MoveTo] First iteration - initiating walk")
+            else
+                -- Calculate distance to last walk target
+                DistanceToLastWalk = math.sqrt((LastWalkTarget.x - CurrentPos.x)^2 + (LastWalkTarget.y - CurrentPos.y)^2)
+                
+                if DistanceToLastWalk <= 7 then
+                    ShouldWalk = true
+                    self:Info(string.format("[MoveTo] Within 7 tiles of last walk target (%.1f tiles), starting new walk", DistanceToLastWalk))
+                else
+                    ShouldWalk = true
+                    self:Info("[MoveTo] Player not moving but far from walk target, restarting walk")
+                end
+            end
+            
+            if ShouldWalk then
+                -- Walk 15-30 random tiles toward destination
+                local WalkDistance = math.random(15, 30)
+                
+                -- Walk directly to destination if within walk distance, otherwise walk intermediate distance
+                if DistanceToTarget <= WalkDistance then
+                    self:Info(string.format("[MoveTo] Target close (%.1f tiles), walking directly to destination", DistanceToTarget))
+                    if self:WalkToCoordinates(X, Y, Z) then
+                        LastWalkTarget = {x = X, y = Y, z = Z}
+                    else
+                        self:Error("[MoveTo] Failed to walk to target coordinates")
+                        return false
+                    end
+                else
+                    -- Calculate intermediate walk point toward destination
+                    local DirectionX = X - CurrentPos.x
+                    local DirectionY = Y - CurrentPos.y
+                    local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
+                    
+                    -- Normalize direction vector and scale to walk distance
+                    local NormalizedX = DirectionX / DirectionLength
+                    local NormalizedY = DirectionY / DirectionLength
+                    
+                    local WalkX = math.floor(CurrentPos.x + (NormalizedX * WalkDistance))
+                    local WalkY = math.floor(CurrentPos.y + (NormalizedY * WalkDistance))
+                    
+                    self:Info(string.format("[MoveTo] Walking %d tiles towards target to (%d, %d, %d)", 
+                        WalkDistance, WalkX, WalkY, Z))
+                    
+                    if self:WalkToCoordinates(WalkX, WalkY, Z) then
+                        LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                    else
+                        self:Error("[MoveTo] Failed to walk to intermediate coordinates")
+                        return false
+                    end
+                end
+                
+                -- Brief delay after initiating walk to allow movement to start
+                self:RandomSleep(500, 1000, "ms")
+            else
+                -- Wait briefly for movement status update
+                self:Sleep(200, "ms")
+            end
+        end
+        
+        ::continue_loop::
+        
+        -- Small delay before next loop iteration
+        self:Sleep(200, "ms")
+    end
+    
+    -- Movement loop exited without success (should not normally reach here)
+    self:Error("[MoveTo] Movement loop ended unexpectedly")
+    return false
 end
 
 -- Teleports the player to Guthix Memorial using the Memory Strand currency from the currency pouch
@@ -3266,15 +3639,59 @@ function Slib:AreaLootTakeItems(ItemIds)
     return success
 end
 
---- Sets instance interface options to specified values
---- @param MaxPlayers number|nil Target maximum players (or nil to skip)
---- @param MinCombat number|nil Target minimum combat level (or nil to skip)
---- @param SpawnSpeed string|nil Target spawn speed ("Standard", "Fast", "Fastest", or nil to skip)
---- @param Protection string|nil Target protection ("FFA", "PIN", "Friends only", "Friends Chat only", or nil to skip)
---- @param PracticeMode boolean|nil Target practice mode state (or nil to skip)
---- @param HardMode boolean|nil Target hard mode state (or nil to skip)
---- @return boolean Success True if all settings were applied successfully
+-- Sets instance interface options to specified values
+---@param MaxPlayers number|nil Target maximum players (or nil to skip)
+---@param MinCombat number|nil Target minimum combat level (or nil to skip)
+---@param SpawnSpeed string|nil Target spawn speed ("Standard", "Fast", "Fastest", or nil to skip)
+---@param Protection string|nil Target protection ("FFA", "PIN", "Friends only", "Friends Chat only", or nil to skip)
+---@param PracticeMode boolean|nil Target practice mode state (or nil to skip)
+---@param HardMode boolean|nil Target hard mode state (or nil to skip)
+---@return boolean Success True if all settings were applied successfully
 function Slib:SetInstanceInterfaceOptions(MaxPlayers, MinCombat, SpawnSpeed, Protection, PracticeMode, HardMode)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {MaxPlayers, "positive_number", "MaxPlayers", true}, -- allow_nil = true
+        {MinCombat, "non_negative_number", "MinCombat", true}, -- allow_nil = true
+        {SpawnSpeed, "string", "SpawnSpeed", true}, -- allow_nil = true
+        {Protection, "string", "Protection", true}, -- allow_nil = true
+        {PracticeMode, "boolean", "PracticeMode", true}, -- allow_nil = true
+        {HardMode, "boolean", "HardMode", true} -- allow_nil = true
+    }) then
+        return false
+    end
+    
+    -- Validate SpawnSpeed against allowed values
+    if SpawnSpeed ~= nil then
+        local ValidSpawnSpeeds = {"Standard", "Fast", "Fastest"}
+        local SpeedValid = false
+        for _, ValidSpeed in ipairs(ValidSpawnSpeeds) do
+            if SpawnSpeed == ValidSpeed then
+                SpeedValid = true
+                break
+            end
+        end
+        if not SpeedValid then
+            self:Error("[SetInstanceInterfaceOptions] Invalid SpawnSpeed. Must be one of: Standard, Fast, Fastest (got: " .. tostring(SpawnSpeed) .. ")")
+            return false
+        end
+    end
+    
+    -- Validate Protection against allowed values
+    if Protection ~= nil then
+        local ValidProtections = {"FFA", "PIN", "Friends only", "Friends Chat only"}
+        local ProtectionValid = false
+        for _, ValidProtection in ipairs(ValidProtections) do
+            if Protection == ValidProtection then
+                ProtectionValid = true
+                break
+            end
+        end
+        if not ProtectionValid then
+            self:Error("[SetInstanceInterfaceOptions] Invalid Protection. Must be one of: FFA, PIN, Friends only, Friends Chat only (got: " .. tostring(Protection) .. ")")
+            return false
+        end
+    end
+
     if not self:InstanceInterfaceIsOpen() then
         self:Error("[SetInstanceInterfaceOptions] Instance interface is not open")
         return false
@@ -3404,8 +3821,8 @@ function Slib:SetInstanceInterfaceOptions(MaxPlayers, MinCombat, SpawnSpeed, Pro
     return true
 end
 
---- Starts a new instance
---- @return boolean
+-- Starts a new instance
+---@return boolean
 function Slib:InstanceStart()
     if not self:InstanceInterfaceIsOpen() then
         self:Error("[InstanceStart] Instance interface is not open")
@@ -3418,9 +3835,9 @@ function Slib:InstanceStart()
     return true
 end
 
---- Joins another player's instance by typing their name
---- @param PlayerName string The name of the player whose instance to join
---- @return boolean Success True if join sequence completed successfully, false if interface not open or invalid name
+-- Joins another player's instance by typing their name
+---@param PlayerName string The name of the player whose instance to join
+---@return boolean Success True if join sequence completed successfully, false if interface not open or invalid name
 function Slib:InstanceJoin(PlayerName)
     -- Validate interface state
     if not self:InstanceInterfaceIsOpen() then
@@ -3486,8 +3903,8 @@ function Slib:InstanceJoin(PlayerName)
     return true
 end
 
---- Rejoins an existing instance
---- @return boolean
+-- Rejoins an existing instance
+---@return boolean
 function Slib:InstanceRejoin()
     if not self:InstanceInterfaceIsOpen() then
         self:Error("[InstanceRejoin] Instance interface is not open")
