@@ -1,6 +1,6 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.9"
+local ScriptVersion = "1.0.10"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -88,7 +88,12 @@ v1.0.9 - 14-06-2025
         BANK:Close()      
         BANK:DepositBoxClose()
         BANK:CollectionBoxClose()
-
+v1.0.10 - 25-06-2025
+    - Added functions:
+        BANK:WoodBoxDepositLogs()
+        BANK:WoodBoxDepositWoodSpirits()
+        BANK:OreBoxDepositOres()
+        BANK:OreBoxDepositStoneSpirits()
 ]]
 
 local API = require("api")
@@ -96,6 +101,8 @@ local API = require("api")
 local BANK = {}
 
 BANK.Interfaces = {}
+BANK.Items = {}
+
 BANK.Interfaces.PresetSettings = {}
 
 BANK.Interfaces.PIN = { 
@@ -209,6 +216,34 @@ BANK.Interfaces.PresetSettings.Equipment = {
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,281,-1,0 }, { 517,283,-1,0 }, { 517,284,-1,0 }, { 517,286,-1,0 }, { 517,290,-1,0 }, { 517,290,13,0 } },
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,281,-1,0 }, { 517,283,-1,0 }, { 517,284,-1,0 }, { 517,286,-1,0 }, { 517,290,-1,0 }, { 517,290,14,0 } },
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,281,-1,0 }, { 517,283,-1,0 }, { 517,284,-1,0 }, { 517,286,-1,0 }, { 517,290,-1,0 }, { 517,290,17,0 } }
+}
+
+BANK.Items.OreBoxes = {
+    44779, -- Bronze
+    44781, -- Iron
+    44783, -- Steel
+    44785, -- Mithril
+    44787, -- Adamant
+    44789, -- Rune
+    44791, -- Orikalkum
+    44793, -- Necronium
+    44795, -- Bane
+    44797, -- Elder rune
+    57172 -- Primal
+}
+
+BANK.Items.WoodBoxes = {
+    54895, -- Wood
+    54897, -- Oak
+    54899, -- Willow
+    54901, -- Teak
+    54903, -- Maple
+    54905, -- Acadia
+    54907, -- Mahogany
+    54909, -- Yew
+    54911, -- Magic
+    54913, -- Elder
+    58253 -- Eternal magic
 }
 
 -- ##################################
@@ -365,7 +400,7 @@ end
 
 -- Get the total number of spaces in the bank.
 ---@return number
-function BANK:GetTotalSpaces()    
+function BANK:GetTotalSpaces()
     local TotalSpace = API.ScanForInterfaceTest2Get(false, self.Interfaces.BankSpaces[2])
     local CleanText = string.gsub(TotalSpace[1].textids, ",", "")
     local SpaceCount = tonumber(CleanText)
@@ -1092,7 +1127,7 @@ function BANK:SetQuantity(Qtitty)
     end    
 end
 
--- Retrieves the currently X quantity value from the interface.
+-- Retrieves the currently X quantity value from the VB.
 ---@return number
 function BANK:GetXQuantity()
     local XValue = API.VB_FindPSettinOrder(111).state
@@ -2151,6 +2186,265 @@ function BANK:DepositAll(ItemID)
         print("[BANK] Invalid input type for DepositAll. Expected number or table, got "..type(ItemID))
         return false
     end
+end
+
+-- Deposits logs from wood boxes in inventory
+---@return boolean
+function BANK:WoodBoxDepositLogs()
+    if not BANK:IsOpen() then
+        print("[BANK] Bank interface is not open.")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or inventory is empty.")
+        return false
+    end
+    
+    local woodBoxesFound = {}
+    local success = true
+    
+    -- Find all wood boxes in inventory
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 then
+            for _, woodBoxId in ipairs(self.Items.WoodBoxes) do
+                if item.item_id == woodBoxId then
+                    table.insert(woodBoxesFound, {
+                        id = item.item_id,
+                        slot = item.item_slot,
+                        stack = item.item_stack
+                    })
+                    print("[BANK] Found wood box ID: " .. item.item_id .. " in slot " .. item.item_slot)
+                    break
+                end
+            end
+        end
+    end
+    
+    if #woodBoxesFound == 0 then
+        print("[BANK] No wood boxes found in inventory.")
+        return false
+    end
+    
+    print("[BANK] Found " .. #woodBoxesFound .. " wood box(es). Depositing logs...")
+    
+    -- Deposit logs from each wood box found
+    for _, woodBox in ipairs(woodBoxesFound) do
+        local ItemIDHex = string.format("0x%X", woodBox.id)
+        
+        -- Use the "Deposit logs" option (option 8) on the wood box
+        print("[BANK] Depositing logs from wood box ID: " .. woodBox.id)
+        local result = API.DoAction_Interface(0xffffffff, ItemIDHex, 8, 517, 15, woodBox.slot, API.OFF_ACT_GeneralInterface_route2)
+        
+        if not result then
+            print("[BANK] Failed to deposit logs from wood box ID: " .. woodBox.id)
+            success = false
+        end
+    end
+    
+    if success then
+        print("[BANK] Successfully deposited logs from all wood boxes.")
+    else
+        print("[BANK] Some wood box log deposits may have failed.")
+    end
+    
+    return success
+end
+
+-- Deposits wood spirits from wood boxes in inventory
+---@return boolean
+function BANK:WoodBoxDepositWoodSpirits()
+    if not BANK:IsOpen() then
+        print("[BANK] Bank interface is not open.")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or inventory is empty.")
+        return false
+    end
+    
+    local woodBoxesFound = {}
+    local success = true
+    
+    -- Find all wood boxes in inventory
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 then
+            -- Check if this item ID is in our wood boxes table
+            for _, woodBoxId in ipairs(self.Items.WoodBoxes) do
+                if item.item_id == woodBoxId then
+                    table.insert(woodBoxesFound, {
+                        id = item.item_id,
+                        slot = item.item_slot,
+                        stack = item.item_stack
+                    })
+                    print("[BANK] Found wood box ID: " .. item.item_id .. " in slot " .. item.item_slot)
+                    break
+                end
+            end
+        end
+    end
+    
+    if #woodBoxesFound == 0 then
+        print("[BANK] No wood boxes found in inventory.")
+        return false
+    end
+    
+    print("[BANK] Found " .. #woodBoxesFound .. " wood box(es). Depositing wood spirits...")
+    
+    -- Deposit wood spirits from each wood box found
+    for _, woodBox in ipairs(woodBoxesFound) do
+        local ItemIDHex = string.format("0x%X", woodBox.id)
+        
+        -- Use the "Deposit wood spirits" option (option 9) on the wood box
+        print("[BANK] Depositing wood spirits from wood box ID: " .. woodBox.id)
+        local result = API.DoAction_Interface(0xffffffff, ItemIDHex, 9, 517, 15, woodBox.slot, API.OFF_ACT_GeneralInterface_route2)
+        
+        if not result then
+            print("[BANK] Failed to deposit wood spirits from wood box ID: " .. woodBox.id)
+            success = false
+        end
+    end
+    
+    if success then
+        print("[BANK] Successfully deposited wood spirits from all wood boxes.")
+    else
+        print("[BANK] Some wood box wood spirit deposits may have failed.")
+    end
+    
+    return success
+end
+
+-- Deposits ore from ore boxes in inventory
+---@return boolean
+function BANK:OreBoxDepositOres()
+    if not BANK:IsOpen() then
+        print("[BANK] Bank interface is not open.")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or inventory is empty.")
+        return false
+    end
+    
+    local oreBoxesFound = {}
+    local success = true
+    
+    -- Find all ore boxes in inventory
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 then
+            -- Check if this item ID is in our ore boxes table
+            for _, oreBoxId in ipairs(self.Items.OreBoxes) do
+                if item.item_id == oreBoxId then
+                    table.insert(oreBoxesFound, {
+                        id = item.item_id,
+                        slot = item.item_slot,
+                        stack = item.item_stack
+                    })
+                    print("[BANK] Found ore box ID: " .. item.item_id .. " in slot " .. item.item_slot)
+                    break
+                end
+            end
+        end
+    end
+    
+    if #oreBoxesFound == 0 then
+        print("[BANK] No ore boxes found in inventory.")
+        return false
+    end
+    
+    print("[BANK] Found " .. #oreBoxesFound .. " ore box(es). Depositing ore...")
+    
+    -- Deposit ore from each ore box found
+    for _, oreBox in ipairs(oreBoxesFound) do
+        local ItemIDHex = string.format("0x%X", oreBox.id)
+        
+        -- Use the "Deposit ore" option (option 8) on the ore box
+        print("[BANK] Depositing ore from ore box ID: " .. oreBox.id)
+        local result = API.DoAction_Interface(0xffffffff, ItemIDHex, 8, 517, 15, oreBox.slot, API.OFF_ACT_GeneralInterface_route2)
+        
+        if not result then
+            print("[BANK] Failed to deposit ore from ore box ID: " .. oreBox.id)
+            success = false
+        end
+    end
+    
+    if success then
+        print("[BANK] Successfully deposited ore from all ore boxes.")
+    else
+        print("[BANK] Some ore box ore deposits may have failed.")
+    end
+    
+    return success
+end
+
+-- Deposits stone spirits from ore boxes in inventory
+---@return boolean
+function BANK:OreBoxDepositStoneSpirits()
+    if not BANK:IsOpen() then
+        print("[BANK] Bank interface is not open.")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or inventory is empty.")
+        return false
+    end
+    
+    local oreBoxesFound = {}
+    local success = true
+    
+    -- Find all ore boxes in inventory
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_stack > 0 then
+            -- Check if this item ID is in our ore boxes table
+            for _, oreBoxId in ipairs(self.Items.OreBoxes) do
+                if item.item_id == oreBoxId then
+                    table.insert(oreBoxesFound, {
+                        id = item.item_id,
+                        slot = item.item_slot,
+                        stack = item.item_stack
+                    })
+                    print("[BANK] Found ore box ID: " .. item.item_id .. " in slot " .. item.item_slot)
+                    break
+                end
+            end
+        end
+    end
+    
+    if #oreBoxesFound == 0 then
+        print("[BANK] No ore boxes found in inventory.")
+        return false
+    end
+    
+    print("[BANK] Found " .. #oreBoxesFound .. " ore box(es). Depositing stone spirits...")
+    
+    -- Deposit stone spirits from each ore box found
+    for _, oreBox in ipairs(oreBoxesFound) do
+        local ItemIDHex = string.format("0x%X", oreBox.id)
+        
+        -- Use the "Deposit stone spirits" option (option 9) on the ore box
+        print("[BANK] Depositing stone spirits from ore box ID: " .. oreBox.id)
+        local result = API.DoAction_Interface(0xffffffff, ItemIDHex, 9, 517, 15, oreBox.slot, API.OFF_ACT_GeneralInterface_route2)
+        
+        if not result then
+            print("[BANK] Failed to deposit stone spirits from ore box ID: " .. oreBox.id)
+            success = false
+        end
+    end
+    
+    if success then
+        print("[BANK] Successfully deposited stone spirits from all ore boxes.")
+    else
+        print("[BANK] Some ore box stone spirit deposits may have failed.")
+    end
+    
+    return success
 end
 
 -- Equips an item from your bank.
