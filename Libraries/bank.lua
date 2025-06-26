@@ -1,6 +1,6 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.10"
+local ScriptVersion = "1.0.11"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -94,6 +94,9 @@ v1.0.10 - 25-06-2025
         BANK:WoodBoxDepositWoodSpirits()
         BANK:OreBoxDepositOres()
         BANK:OreBoxDepositStoneSpirits()
+v1.0.11 - 26-06-2025
+    - Added function:
+        BANK:SoilBoxDepositSoil()
 ]]
 
 local API = require("api")
@@ -2445,6 +2448,36 @@ function BANK:OreBoxDepositStoneSpirits()
     end
     
     return success
+end
+
+-- Deposits soil from soil box in inventory.
+---@return boolean
+function BANK:SoilBoxDepositSoil()
+    if not BANK:IsOpen() then
+        print("[BANK] Bank interface is not open.")
+        return false
+    end
+    
+    local Items = API.Container_Get_all(93)
+    if not Items or #Items == 0 then
+        print("[BANK] Could not read inventory items or inventory is empty.")
+        return false
+    end
+
+    local soilBoxId = 49538 -- Soil box item ID
+
+    -- Find the soil box in inventory
+    for _, item in ipairs(Items) do
+        if item.item_id and item.item_id == soilBoxId and item.item_stack > 0 then
+            API.DoAction_Interface(0xffffffff, 0xc182, 9, 517, 15, item.item_slot, API.OFF_ACT_GeneralInterface_route2)
+            
+            print("[BANK] Deposited soil from soil box")
+            return true
+        end
+    end
+
+    print("[BANK] No soil box found in inventory.")
+    return false 
 end
 
 -- Equips an item from your bank.
