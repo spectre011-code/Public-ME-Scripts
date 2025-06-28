@@ -23,7 +23,7 @@ Your final structure should look like this:
 
 ```
 MemoryError\Lua_Scripts
-├── Woodcutting AIO
+└── Woodcutting AIO
       ├── Spectre's Woodcutting AIO.lua
       ├── config.lua
       └── modules\
@@ -35,8 +35,8 @@ MemoryError\Lua_Scripts
 
 1. Open the **Script Manager** in your bot client.
 2. Find **Spectre's Woodcutting AIO** in the script list.
-3. Configure your preferences (location, axe, powerchop, banking, etc.).
-4. Click **Save**.
+3. Configure your preferences (Tree to cut, where to bank, buffs, etc...).
+4. Click **Save and close**.
 5. Click **Run** to start chopping!
 
 ---
@@ -45,8 +45,6 @@ MemoryError\Lua_Scripts
 
 - Multiple woodcutting locations supported
 - Banking and powerchopping options
-- Axe detection and switching
-- Modular, extensible architecture
 - Easy configuration through GUI
 
 ---
