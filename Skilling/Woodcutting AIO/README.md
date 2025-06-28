@@ -33,7 +33,7 @@ MemoryError\Lua_Scripts
 
 ## ▶️ Usage
 
-1. Open the **Script Manager** in your bot client.
+1. Open the **Script Manager** in your client.
 2. Find **Spectre's Woodcutting AIO** in the script list.
 3. Configure your preferences (Tree to cut, where to bank, buffs, etc...).
 4. Click **Save and close**.
