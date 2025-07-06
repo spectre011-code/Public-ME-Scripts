@@ -23,10 +23,10 @@ Your final structure should look like this:
 
 ```
 MemoryError\Lua_Scripts
-               └── Woodcutting AIO
-                     ├── Spectre's Woodcutting AIO.lua
-                     ├── config.lua
-                     └── modules\
+└── Woodcutting AIO
+      ├── Spectre's Woodcutting AIO.lua
+      ├── config.lua
+      └── modules\
 ```
 
 ---
@@ -37,8 +37,7 @@ MemoryError\Lua_Scripts
 2. Find **Spectre's Woodcutting AIO** in the script list.
 3. Configure your preferences (Tree to cut, where to bank, buffs, etc...).
 4. Click **Save and close**.
-5. Load preset once.
-6. Click Run to start chopping!
+5. Click **Run** to start chopping!
 
 ---
 

@@ -704,6 +704,18 @@ function PROC:HandleAtBankState(config)
         Interact:Object("Log Pile", "Deposit Logs", 100)
         Slib:RandomSleep(1000, 2000, "ms")
     else
+        if FUNC:GetWoodBox() ~= nil then
+            BANK:Open()
+            Slib:SleepUntil(function()
+                return BANK:IsOpen()
+            end, 30, 100)
+            Slib:RandomSleep(1000, 2000, "ms")
+            local id, slot = FUNC:GetWoodBoxHexIdAndSlot()
+            API.DoAction_Interface(0xffffffff,id,8,517,15,slot,API.OFF_ACT_GeneralInterface_route2)
+        else
+            print("No wood box found")
+        end
+
         if config.RegularJuju == true or config.RegularJuju == "true" then
             if not BANK:IsOpen() then
                 BANK:Open()

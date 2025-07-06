@@ -1,12 +1,12 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.1.0
+-- Version: 1.1.1
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.1.0"
+ScriptVersion = "1.1.1"
 ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
 
@@ -21,6 +21,9 @@ v1.1.0 - 06-07-2025
     - Fixed PROC:HandleAtTreesState() to not crash the script if FUNC:GetBestTree() returns nil.
     - Added API.DoRandomEvents() to the main loop.
     - Changed API.GetSkillByName() to API.GetSkillsTableSkill(16) so ME can read the skill level without needing the tab open.
+v1.1.1 - 06-07-2025
+    - Added FUNC:GetWoodBoxHexIdAndSlot() to return the correct hex ID and slot to empty the wood box into the bank.
+    - Modified PROC:HandleAtBankState() to empty the wood box into the bank.
 ]]
 
 local API = require("api")

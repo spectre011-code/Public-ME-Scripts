@@ -335,4 +335,23 @@ function FUNC:isWoodBoxFull(config)
     return currentCount >= maxCapacity
 end
 
+function FUNC:GetWoodBoxHexIdAndSlot()
+    local inventory = API.Container_Get_all(93) -- Get inventory contents
+    
+    -- Loop through inventory slots
+    for slot, item in pairs(inventory) do
+        -- Check if this item is a wood box
+        for _, woodBox in pairs(DATA.ITEMS["Wood boxes"]) do
+            if item.item_id == woodBox.id then
+                -- Convert decimal ID to hex format
+                local hexId = string.format("0x%x", item.item_id)
+                return hexId, (slot - 1)
+            end
+        end
+    end
+    
+    -- Return nil if no wood box found
+    return nil, nil
+end
+
 return FUNC
