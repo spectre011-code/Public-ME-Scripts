@@ -21,7 +21,7 @@ SM:AddTab("At bank")
 SM:Checkbox("Use regular juju?", "RegularJuju", false)
 SM:Checkbox("Use perfect juju?", "PerfectJuju", false)
 SM:Checkbox("Use perfect plus?", "PerfectPlus", false)
-SM:Checkbox("Recharge GOTE? (not fully implemented)", "Gote", false)
+SM:Checkbox("Recharge GOTE?", "Gote", false)
 SM:Checkbox("Siphon hatchet at level 12? (not implemented)", "Siphon", false)
 
 

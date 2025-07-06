@@ -23,7 +23,20 @@ DATA.ITEMS = {
     ["Perfect Juju"] = {32753, 32755, 32757, 32759, 32849, 32851, 32853, 32855, 32857, 32859},
     ["Perfect Plus"] = {33224, 33226, 33228, 33230, 33232, 33234},
     ["GOTE"] = {44550},
-    ["Sign of the Porter"] = {29275, 29276, 29277, 29278, 29279, 29280, 29281, 29282, 29283, 29284, 29285, 39493, 39494, 39495, 51487, 51490}
+    ["Sign of the Porter"] = {29275, 29276, 29277, 29278, 29279, 29280, 29281, 29282, 29283, 29284, 29285, 39493, 39494, 39495, 51487, 51490},
+    ["Wood boxes"] = {
+        { id = 54895, capacity = 70 },  -- Wood box
+        { id = 54897, capacity = 80 },  -- Oak wood box
+        { id = 54899, capacity = 90 },  -- Willow wood box
+        { id = 54901, capacity = 100 }, -- Teak wood box
+        { id = 54903, capacity = 110 }, -- Maple wood box
+        { id = 54905, capacity = 120 }, -- Acadia wood box
+        { id = 54907, capacity = 130 }, -- Mahogany wood box
+        { id = 54909, capacity = 140 }, -- Yew wood box
+        { id = 54911, capacity = 150 }, -- Magic wood box
+        { id = 54913, capacity = 160 }, -- Elder wood box
+        { id = 58253, capacity = 170 }  -- Eternal magic wood box
+    }
 }
 
 DATA.LOGS = {
@@ -33,6 +46,7 @@ DATA.LOGS = {
     {id = 6333, name = "Teak logs"},
     {id = 1517, name = "Maple logs"},
     {id = 40285, name = "Acadia logs"},
+    {id = 12581, name = "Eucalyptus logs"},
     {id = 6332, name = "Mahogany logs"},
     {id = 1515, name = "Yew logs"},
     {id = 1513, name = "Magic logs"},
@@ -54,6 +68,11 @@ DATA.NESTS = {
 }
 
 DATA.TREES = {}
+
+DATA.LOGPILE = {
+    id = 125466,
+    name = "Log pile"
+}
 
 DATA.TREES.REGULAR = {
     NAME = "Tree",

@@ -426,12 +426,24 @@ function PROC:HandleAtTreesState(config)
     end
 
     if Inventory:IsFull() then
+        print("Inventory is full")
+        if not FUNC:GetWoodBox() then
+            print("No wood box found")
+            return "MOVING_TO_BANK"
+        end
+        
+        if not FUNC:isWoodBoxFull(config) then
+            print("Wood box is not full")
+            API.DoAction_Inventory1(FUNC:GetWoodBox().id,0,1,API.OFF_ACT_GeneralInterface_route)
+            Slib:RandomSleep(1000, 2000, "ms")
+            return "AT_TREES"
+        end
         return "MOVING_TO_BANK"
     end
 
-    local BestTree = FUNC:GetBestTree(CONFIG)
-    print("DEBUG: BestTree = " .. tostring(BestTree.Name))
+    local BestTree = FUNC:GetBestTree(CONFIG)    
     if BestTree then
+        print("BestTree = " .. tostring(BestTree.Name))
         if config.Crystalize == true or config.Crystalize == "true" then
             API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,181,API.OFF_ACT_Bladed_interface_route)
             Slib:RandomSleep(100, 200, "ms")
@@ -464,6 +476,10 @@ function PROC:HandleAtTreesState(config)
         end
         Slib:RandomSleep(1000, 5000, "ms")
         return "AT_TREES"
+    else
+        print("No best tree found")
+        Slib:RandomSleep(1000, 5000, "ms")
+        return "MOVING_TO_TREES"
     end
 
 end
@@ -683,103 +699,115 @@ function PROC:HandleAtBankState(config)
         return "MOVING_TO_TREES"
     end
 
-    if config.RegularJuju == true or config.RegularJuju == "true" then
-        if not BANK:IsOpen() then
-            BANK:Open()
-            Slib:SleepUntil(function()
-                return BANK:IsOpen()
-            end, 30, 100)
-            Slib:RandomSleep(1000, 2000, "ms")
-            if BANK:ContainsAny(DATA.ITEMS["Regular Juju"]) then
-                local juju = FUNC:GetRegularJuju()
+    if config.Bank == "Woodcutters grove - Log pile" then
+        print("Bank: Woodcutters grove - Log pile")
+        Interact:Object("Log Pile", "Deposit Logs", 100)
+        Slib:RandomSleep(1000, 2000, "ms")
+    else
+        if config.RegularJuju == true or config.RegularJuju == "true" then
+            if not BANK:IsOpen() then
+                BANK:Open()
+                Slib:SleepUntil(function()
+                    return BANK:IsOpen()
+                end, 30, 100)
+                Slib:RandomSleep(1000, 2000, "ms")
+                if BANK:ContainsAny(DATA.ITEMS["Regular Juju"]) then
+                    local juju = FUNC:GetRegularJuju()
+                    BANK:SetNoteMode(false)
+                    BANK:Withdraw1(juju)
+                    Slib:RandomSleep(1000, 2000, "ms")
+                    BANK:Close()
+                    Slib:RandomSleep(1000, 2000, "ms")
+                    API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                    Slib:RandomSleep(1000, 2000, "ms")
+                else
+                    print("No regular juju found in bank")
+                end
+            end
+        end
+
+        if config.PerfectJuju == true or config.PerfectJuju == "true" then
+            if not BANK:IsOpen() then
+                BANK:Open()
+                Slib:SleepUntil(function()
+                    return BANK:IsOpen()
+                end, 30, 100)
+
+                Slib:RandomSleep(1000, 2000, "ms")
+                if BANK:ContainsAny(DATA.ITEMS["Perfect Juju"]) then
+                    local juju = FUNC:GetPerfectJuju()
+                    BANK:SetNoteMode(false)
+                    BANK:Withdraw1(juju)
+                    Slib:RandomSleep(1000, 2000, "ms")
+                    BANK:Close()
+                    Slib:RandomSleep(1000, 2000, "ms")
+                    API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                    Slib:RandomSleep(1000, 2000, "ms")
+                else
+                    print("No perfect juju found in bank")
+                end
+            end
+        end
+
+        if config.PerfectPlus == true or config.PerfectPlus == "true" then
+            if not BANK:IsOpen() then
+                BANK:Open()
+                Slib:SleepUntil(function()
+                    return BANK:IsOpen()
+                end, 30, 100)
+                Slib:RandomSleep(1000, 2000, "ms")
+                if BANK:ContainsAny(DATA.ITEMS["Perfect Plus"]) then
+                    local perfectPlus = FUNC:GetPerfectPlus()
+                    BANK:SetNoteMode(false)
+                    BANK:Withdraw1(perfectPlus)
+                    Slib:RandomSleep(1000, 2000, "ms")
+                    BANK:Close()
+                    API.DoAction_Inventory1(perfectPlus, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                    Slib:RandomSleep(1000, 2000, "ms")
+                else
+                    print("No perfect plus found in bank")
+                end
+            end
+        end
+
+        if config.Gote == true or config.Gote == "true" then
+            while API.Read_LoopyLoop() and (FUNC:GetGOTECharges() <= (FUNC:GetGOTEMaxCharges() - 50)) do
+                print("GOTE Charges: " .. tostring(FUNC:GetGOTECharges()))
+                print("GOTE Max Charges: " .. tostring(FUNC:GetGOTEMaxCharges()))
+                BANK:Open()
+                Slib:SleepUntil(function()
+                    return BANK:IsOpen()
+                end, 30, 100)
+                Slib:RandomSleep(1000, 2000, "ms")
                 BANK:SetNoteMode(false)
-                BANK:Withdraw1(juju)
+                BANK:DepositEquipment()
+                BANK:DepositInventory()
                 Slib:RandomSleep(1000, 2000, "ms")
-                BANK:Close()
+                BANK:Withdraw1(DATA.ITEMS["GOTE"])
+                local signOfThePorter = FUNC:GetSignOfThePorter()  
+                if BANK:ContainsAny(DATA.ITEMS["Sign of the Porter"]) then      
+                    BANK:WithdrawAll(signOfThePorter)
+                    BANK:Close()
+                    Slib:RandomSleep(1000, 2000, "ms")
+                else
+                    print("No sign of the porter found in bank")
+                    BANK:LoadLastPreset()
+                    Slib:RandomSleep(1000, 5000, "ms")
+                    return "MOVING_TO_TREES"
+                end
+                Inventory:UseItemOnItem(signOfThePorter, DATA.ITEMS["GOTE"][1])
+                Slib:SleepUntil(function()
+                    return FUNC:GOTEInterfaceIsOpen()
+                end, 5, 100)
                 Slib:RandomSleep(1000, 2000, "ms")
-                API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
-                Slib:RandomSleep(1000, 2000, "ms")
-            else
-                print("No regular juju found in bank")
-            end
-        end
-    end
-
-    if config.PerfectJuju == true or config.PerfectJuju == "true" then
-        if not BANK:IsOpen() then
-            BANK:Open()
-            Slib:SleepUntil(function()
-                return BANK:IsOpen()
-            end, 30, 100)
-
-            Slib:RandomSleep(1000, 2000, "ms")
-            if BANK:ContainsAny(DATA.ITEMS["Perfect Juju"]) then
-                local juju = FUNC:GetPerfectJuju()
-                BANK:SetNoteMode(false)
-                BANK:Withdraw1(juju)
-                Slib:RandomSleep(1000, 2000, "ms")
-                BANK:Close()
-                Slib:RandomSleep(1000, 2000, "ms")
-                API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
-                Slib:RandomSleep(1000, 2000, "ms")
-            else
-                print("No perfect juju found in bank")
-            end
-        end
-    end
-
-    if config.PerfectPlus == true or config.PerfectPlus == "true" then
-        if not BANK:IsOpen() then
-            BANK:Open()
-            Slib:SleepUntil(function()
-                return BANK:IsOpen()
-            end, 30, 100)
-            Slib:RandomSleep(1000, 2000, "ms")
-            if BANK:ContainsAny(DATA.ITEMS["Perfect Plus"]) then
-                local perfectPlus = FUNC:GetPerfectPlus()
-                BANK:SetNoteMode(false)
-                BANK:Withdraw1(perfectPlus)
-                Slib:RandomSleep(1000, 2000, "ms")
-                BANK:Close()
-                API.DoAction_Inventory1(perfectPlus, 0, 1, API.OFF_ACT_GeneralInterface_route)
-                Slib:RandomSleep(1000, 2000, "ms")
-            else
-                print("No perfect plus found in bank")
-            end
-        end
-    end
-
-    if config.Gote == true or config.Gote == "true" then
-        if not BANK:IsOpen() then
-            BANK:Open()
-            Slib:SleepUntil(function()
-                return BANK:IsOpen()
-            end, 30, 100)
-            Slib:RandomSleep(1000, 2000, "ms")
-            BANK:SetNoteMode(false)
-            BANK:DepositEquipment()
-            BANK:DepositInventory()
-            Slib:RandomSleep(1000, 2000, "ms")
-            BANK:Withdraw1(DATA.ITEMS["GOTE"])
-            local signOfThePorter = FUNC:GetSignOfThePorter()  
-            if BANK:ContainsAny(DATA.ITEMS["Sign of the Porter"]) then      
-                BANK:WithdrawAll(signOfThePorter)
-                BANK:Close()
+                API.DoAction_Interface(0xffffffff,0xffffffff,0,847,22,-1,API.OFF_ACT_GeneralInterface_Choose_option) --Use all
                 Slib:RandomSleep(1000, 2000, "ms")
             end
-            Inventory:UseItemOnItem(signOfThePorter, DATA.ITEMS["GOTE"][1])
-            Slib:SleepUntil(function()
-                return FUNC:GOTEInterfaceIsOpen()
-            end, 30, 100)
-            Slib:RandomSleep(1000, 2000, "ms")
-            API.DoAction_Interface(0xffffffff,0xffffffff,0,847,22,-1,API.OFF_ACT_GeneralInterface_Choose_option) --Use all
-            Slib:RandomSleep(1000, 2000, "ms")
-
         end
-    end
 
-    BANK:LoadLastPreset()
-    Slib:RandomSleep(1000, 5000, "ms")
+        BANK:LoadLastPreset()
+        Slib:RandomSleep(1000, 5000, "ms")
+    end
 
     return "MOVING_TO_TREES"
 end

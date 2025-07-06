@@ -1,14 +1,27 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.0.0
+-- Version: 1.1.0
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.0.0"
+ScriptVersion = "1.1.0"
 ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
+
+--[[
+Changelog:
+v1.0.0 - 28-06-2025
+    - Initial release.
+v1.1.0 - 06-07-2025
+    - Added wood box support.
+    - Fully implemented GOTE recharging support(500 and 2000 charges).
+    - Added log pile bank logic.
+    - Fixed PROC:HandleAtTreesState() to not crash the script if FUNC:GetBestTree() returns nil.
+    - Added API.DoRandomEvents() to the main loop.
+    - Changed API.GetSkillByName() to API.GetSkillsTableSkill(16) so ME can read the skill level without needing the tab open.
+]]
 
 local API = require("api")
 local Slib = require("Woodcutting AIO.modules.slib")
@@ -126,7 +139,7 @@ while (API.Read_LoopyLoop()) do
         goto continue
     end
 
-    if API.GetSkillByName("WOODCUTTING").level >= tonumber(CONFIG.MaxLevel) then
+    if API.GetSkillsTableSkill(16) >= tonumber(CONFIG.MaxLevel) then
         print("Woodcutting level is greater than max level. Halting script.")
         API.Write_LoopyLoop(false)
         goto continue
@@ -137,6 +150,7 @@ while (API.Read_LoopyLoop()) do
         IsFirstRun = false
     end
 
+    API.DoRandomEvents()
     if CurrentState == States.STARTING then
         UpdateStatus("Starting")
         CurrentState = PROC:HandleStartingState(CONFIG)

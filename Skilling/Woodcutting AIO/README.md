@@ -23,10 +23,10 @@ Your final structure should look like this:
 
 ```
 MemoryError\Lua_Scripts
-└── Woodcutting AIO
-      ├── Spectre's Woodcutting AIO.lua
-      ├── config.lua
-      └── modules\
+               └── Woodcutting AIO
+                     ├── Spectre's Woodcutting AIO.lua
+                     ├── config.lua
+                     └── modules\
 ```
 
 ---
