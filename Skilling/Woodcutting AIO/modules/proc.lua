@@ -723,18 +723,19 @@ function PROC:HandleAtBankState(config)
                     return BANK:IsOpen()
                 end, 30, 100)
                 Slib:RandomSleep(1000, 2000, "ms")
-                if BANK:ContainsAny(DATA.ITEMS["Regular Juju"]) then
-                    local juju = FUNC:GetRegularJuju()
-                    BANK:SetNoteMode(false)
-                    BANK:Withdraw1(juju)
-                    Slib:RandomSleep(1000, 2000, "ms")
-                    BANK:Close()
-                    Slib:RandomSleep(1000, 2000, "ms")
-                    API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
-                    Slib:RandomSleep(1000, 2000, "ms")
-                else
-                    print("No regular juju found in bank")
-                end
+            end
+                
+            if BANK:ContainsAny(DATA.ITEMS["Regular Juju"]) then
+                local juju = FUNC:GetRegularJuju()
+                BANK:SetNoteMode(false)
+                BANK:Withdraw1(juju)
+                Slib:RandomSleep(1000, 2000, "ms")
+                BANK:Close()
+                Slib:RandomSleep(1000, 2000, "ms")
+                API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                Slib:RandomSleep(1000, 2000, "ms")
+            else
+                print("No regular juju found in bank")
             end
         end
 
@@ -744,20 +745,20 @@ function PROC:HandleAtBankState(config)
                 Slib:SleepUntil(function()
                     return BANK:IsOpen()
                 end, 30, 100)
-
                 Slib:RandomSleep(1000, 2000, "ms")
-                if BANK:ContainsAny(DATA.ITEMS["Perfect Juju"]) then
-                    local juju = FUNC:GetPerfectJuju()
-                    BANK:SetNoteMode(false)
-                    BANK:Withdraw1(juju)
-                    Slib:RandomSleep(1000, 2000, "ms")
-                    BANK:Close()
-                    Slib:RandomSleep(1000, 2000, "ms")
-                    API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
-                    Slib:RandomSleep(1000, 2000, "ms")
-                else
-                    print("No perfect juju found in bank")
-                end
+            end
+
+            if BANK:ContainsAny(DATA.ITEMS["Perfect Juju"]) then
+                local juju = FUNC:GetPerfectJuju()
+                BANK:SetNoteMode(false)
+                BANK:Withdraw1(juju)
+                Slib:RandomSleep(1000, 2000, "ms")
+                BANK:Close()
+                Slib:RandomSleep(1000, 2000, "ms")
+                API.DoAction_Inventory1(juju, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                Slib:RandomSleep(1000, 2000, "ms")
+            else
+                print("No perfect juju found in bank")
             end
         end
 
@@ -768,17 +769,19 @@ function PROC:HandleAtBankState(config)
                     return BANK:IsOpen()
                 end, 30, 100)
                 Slib:RandomSleep(1000, 2000, "ms")
-                if BANK:ContainsAny(DATA.ITEMS["Perfect Plus"]) then
-                    local perfectPlus = FUNC:GetPerfectPlus()
-                    BANK:SetNoteMode(false)
-                    BANK:Withdraw1(perfectPlus)
-                    Slib:RandomSleep(1000, 2000, "ms")
-                    BANK:Close()
-                    API.DoAction_Inventory1(perfectPlus, 0, 1, API.OFF_ACT_GeneralInterface_route)
-                    Slib:RandomSleep(1000, 2000, "ms")
-                else
-                    print("No perfect plus found in bank")
-                end
+            end
+                
+            if BANK:ContainsAny(DATA.ITEMS["Perfect Plus"]) then
+                local perfectPlus = FUNC:GetPerfectPlus()
+                BANK:SetNoteMode(false)
+                BANK:Withdraw1(perfectPlus)
+                Slib:RandomSleep(1000, 2000, "ms")
+                BANK:Close()
+                Slib:RandomSleep(1000, 2000, "ms")
+                API.DoAction_Inventory1(perfectPlus, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                Slib:RandomSleep(1000, 2000, "ms")
+            else
+                print("No perfect plus found in bank")
             end
         end
 

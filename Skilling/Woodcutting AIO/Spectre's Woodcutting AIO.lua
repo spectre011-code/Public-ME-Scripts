@@ -1,12 +1,12 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.1.1
+-- Version: 1.1.2
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.1.1"
+ScriptVersion = "1.1.2"
 ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
 
@@ -24,6 +24,8 @@ v1.1.0 - 06-07-2025
 v1.1.1 - 06-07-2025
     - Added FUNC:GetWoodBoxHexIdAndSlot() to return the correct hex ID and slot to empty the wood box into the bank.
     - Modified PROC:HandleAtBankState() to empty the wood box into the bank.
+v1.1.2 - 06-07-2025
+    - Fixed PROC:HandleAtBankState() juju, perfect juju and perfect plus logic.
 ]]
 
 local API = require("api")
