@@ -84,53 +84,192 @@ Slib.Interfaces.AreaLoot = {
 -- #                                #
 -- ##################################
 
+-- Static flag to track if logs directory has been created
+Slib._logsDirectoryCreated = false
+
+-- Helper function to create logs directory without command prompt flash
+---@return boolean success True if directory exists or was created successfully
+function Slib:EnsureLogsDirectory()
+    -- Only try to create directory once per script run
+    if self._logsDirectoryCreated then
+        return true
+    end
+    
+    -- Get the logs directory path
+    local LogsDir = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\logs\\"
+    
+    -- Try to create a test file in the logs directory
+    local TestFilePath = LogsDir .. "test.tmp"
+    local TestFile = io.open(TestFilePath, "w")
+    if TestFile then
+        -- Directory exists, clean up test file
+        TestFile:close()
+        os.remove(TestFilePath)
+        self._logsDirectoryCreated = true
+        return true
+    end
+    
+    -- Directory doesn't exist, try to create it using file system approach
+    local Success = pcall(function()
+        -- Create the full directory path using mkdir with /p flag for creating parent directories
+        local Handle = io.popen('mkdir "' .. LogsDir .. '" 2>nul', 'r')
+        if Handle then
+            Handle:close()
+        end
+    end)
+    
+    -- Verify directory was created by testing file creation again
+    local VerifyFile = io.open(TestFilePath, "w")
+    if VerifyFile then
+        VerifyFile:close()
+        os.remove(TestFilePath)
+        self._logsDirectoryCreated = true
+        return true
+    end
+    
+    return false
+end
+
+-- Helper function to write log messages to file
+---@param Level string The log level (LOG, INFO, WARN, ERROR)
+---@param Message string The message to write to file
+---@return boolean success True if file write was successful, false otherwise
+function Slib:WriteToLogFile(Level, Message)
+    -- Get player name for filename
+    local PlayerName = API.GetLocalPlayerName()
+    if not PlayerName or PlayerName == "" then
+        PlayerName = "Unknown_Player"
+    end
+    
+    -- Clean player name for filename (remove invalid characters)
+    PlayerName = string.gsub(PlayerName, "[<>:\"/\\|?*]", "_")
+    
+    -- Create logs directory path
+    local LogsDir = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\logs\\"
+    local LogFileName = PlayerName .. ".txt"
+    local LogFilePath = LogsDir .. LogFileName
+    
+    -- Ensure logs directory exists (only once per script run)
+    if not self:EnsureLogsDirectory() then
+        return false
+    end
+    
+    -- Get current timestamp
+    local Timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    
+    -- Format log entry
+    local LogEntry = string.format("[%s] [Slib][%s] %s\n", Timestamp, Level, Message)
+    
+    -- Write to file
+    local File, Err = io.open(LogFilePath, "a")
+    if not File then
+        -- Silent failure to avoid logging errors in logging system
+        return false
+    end
+    
+    local Success, WriteErr = pcall(function()
+        File:write(LogEntry)
+        File:flush()
+        File:close()
+    end)
+    
+    if not Success then
+        -- Silent failure to avoid logging errors in logging system
+        if File then
+            pcall(File.close, File)
+        end
+        return false
+    end
+    
+    return true
+end
+
 -- Logs a general message with Slib prefix
 ---@param Message string The message to log
+---@param WriteToFile boolean|nil Whether to write to log file (optional, default: false)
 ---@return string Message The logged message
-function Slib:Log(Message)
+function Slib:Log(Message, WriteToFile)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
     end
+    -- Default WriteToFile to false if not provided
+    WriteToFile = WriteToFile or false
+    
     API.printlua("[Slib][LOG] " .. tostring(Message), 0, false)
+    if WriteToFile then
+        self:WriteToLogFile("LOG", tostring(Message))
+    end
     return Message
 end
 
 -- Logs an informational message with INFO level
 ---@param Message string The informational message to log
+---@param WriteToFile boolean|nil Whether to write to log file (optional, default: false)
 ---@return string Message The logged message
-function Slib:Info(Message)
+function Slib:Info(Message, WriteToFile)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
     end
+    -- Default WriteToFile to false if not provided
+    WriteToFile = WriteToFile or false
+    
     API.printlua("[Slib][INFO] " .. tostring(Message), 7, false)
+    if WriteToFile then
+        self:WriteToLogFile("INFO", tostring(Message))
+    end
     return Message
 end
 
 -- Logs a warning message with WARN level
 ---@param Message string The warning message to log
+---@param WriteToFile boolean|nil Whether to write to log file (optional, default: false)
 ---@return string Message The logged message
-function Slib:Warn(Message)
+function Slib:Warn(Message, WriteToFile)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
     end
+    -- Default WriteToFile to false if not provided
+    WriteToFile = WriteToFile or false
+    
     API.printlua("[Slib][WARN] " .. tostring(Message), 2, false)
+    if WriteToFile then
+        self:WriteToLogFile("WARN", tostring(Message))
+    end
     return Message
 end
 
 -- Logs an error message with ERROR level
 ---@param Message string The error message to log
+---@param WriteToFile boolean|nil Whether to write to log file (optional, default: false)
 ---@return string Message The logged message
-function Slib:Error(Message)
+function Slib:Error(Message, WriteToFile)
     -- Manual validation to avoid circular dependency with sanitization system
     if Message == nil then
         API.printlua("[Slib][ERROR] Error function received nil message", 4, false)
+        -- For error cases, respect WriteToFile parameter
+        WriteToFile = WriteToFile or false
+        if WriteToFile then
+            self:WriteToLogFile("ERROR", "Error function received nil message")
+        end
         return ""
     end
     if type(Message) ~= "string" then
-        API.printlua("[Slib][ERROR] Error function received non-string message: " .. tostring(Message), 4, false)
+        local ErrorMsg = "Error function received non-string message: " .. tostring(Message)
+        API.printlua("[Slib][ERROR] " .. ErrorMsg, 4, false)
+        -- For error cases, respect WriteToFile parameter
+        WriteToFile = WriteToFile or false
+        if WriteToFile then
+            self:WriteToLogFile("ERROR", ErrorMsg)
+        end
         return tostring(Message)
     end
+    -- Default WriteToFile to false if not provided
+    WriteToFile = WriteToFile or false
+    
     API.printlua("[Slib][ERROR] " .. tostring(Message), 4, false)
+    if WriteToFile then
+        self:WriteToLogFile("ERROR", tostring(Message))
+    end
     return Message
 end
 
@@ -4100,4 +4239,3 @@ function Slib:InstanceRejoin()
 end
 
 return Slib
-
