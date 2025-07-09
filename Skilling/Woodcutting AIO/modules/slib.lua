@@ -2,7 +2,7 @@
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
 local ScriptVersion = "1.0.0"
-local ReleaseDate = "15-06-2025"
+local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
 --[[
@@ -26,7 +26,7 @@ This library was developed with AI assistance for:
 ---------------------------------------------------------------------------------------
 
 Changelog:
-v1.0.0 - 15-06-2025
+v1.0.0 - 09-07-2025
     - Initial release
 ]]
 
@@ -84,6 +84,122 @@ Slib.Interfaces.AreaLoot = {
 -- #                                #
 -- ##################################
 
+-- Static flag to track if logs directory has been created
+Slib._logsDirectoryCreated = false
+
+-- Static cache for player name to avoid issues when character goes to lobby/dc
+Slib._cachedPlayerName = nil
+
+-- Static flag to control file writing behavior
+-- Set this to true at the start of your script to enable file logging
+Slib._writeToFile = false
+
+-- Helper function to create logs directory without command prompt flash
+---@return boolean success True if directory exists or was created successfully
+function Slib:EnsureLogsDirectory()
+    -- Only try to create directory once per script run
+    if self._logsDirectoryCreated then
+        return true
+    end
+    
+    -- Get the logs directory path
+    local LogsDir = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\logs\\"
+    
+    -- Try to create a test file in the logs directory
+    local TestFilePath = LogsDir .. "test.tmp"
+    local TestFile = io.open(TestFilePath, "w")
+    if TestFile then
+        -- Directory exists, clean up test file
+        TestFile:close()
+        os.remove(TestFilePath)
+        self._logsDirectoryCreated = true
+        return true
+    end
+    
+    -- Directory doesn't exist, try to create it using file system approach
+    local Success = pcall(function()
+        -- Create the full directory path using mkdir with /p flag for creating parent directories
+        local Handle = io.popen('mkdir "' .. LogsDir .. '" 2>nul', 'r')
+        if Handle then
+            Handle:close()
+        end
+    end)
+    
+    -- Verify directory was created by testing file creation again
+    local VerifyFile = io.open(TestFilePath, "w")
+    if VerifyFile then
+        VerifyFile:close()
+        os.remove(TestFilePath)
+        self._logsDirectoryCreated = true
+        return true
+    end
+    
+    return false
+end
+
+-- Helper function to write log messages to file
+---@param Level string The log level (LOG, INFO, WARN, ERROR)
+---@param Message string The message to write to file
+---@return boolean success True if file write was successful, false otherwise
+function Slib:WriteToLogFile(Level, Message)
+    -- Get player name for filename (use cached name if available)
+    local PlayerName = self._cachedPlayerName
+    
+    -- If no cached name, try to get current player name
+    if not PlayerName then
+        local CurrentPlayerName = API.GetLocalPlayerName()
+        if CurrentPlayerName and CurrentPlayerName ~= "" then
+            -- Cache the valid player name for future use
+            self._cachedPlayerName = CurrentPlayerName
+            PlayerName = CurrentPlayerName
+        else
+            PlayerName = "Unknown_Player"
+        end
+    end
+    
+    -- Clean player name for filename (remove invalid characters)
+    PlayerName = string.gsub(PlayerName, "[<>:\"/\\|?*]", "_")
+    
+    -- Create logs directory path
+    local LogsDir = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\logs\\"
+    local LogFileName = PlayerName .. ".txt"
+    local LogFilePath = LogsDir .. LogFileName
+    
+    -- Ensure logs directory exists (only once per script run)
+    if not self:EnsureLogsDirectory() then
+        return false
+    end
+    
+    -- Get current timestamp
+    local Timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    
+    -- Format log entry
+    local LogEntry = string.format("[%s] [Slib][%s] %s\n", Timestamp, Level, Message)
+    
+    -- Write to file
+    local File, Err = io.open(LogFilePath, "a")
+    if not File then
+        -- Silent failure to avoid logging errors in logging system
+        return false
+    end
+    
+    local Success, WriteErr = pcall(function()
+        File:write(LogEntry)
+        File:flush()
+        File:close()
+    end)
+    
+    if not Success then
+        -- Silent failure to avoid logging errors in logging system
+        if File then
+            pcall(File.close, File)
+        end
+        return false
+    end
+    
+    return true
+end
+
 -- Logs a general message with Slib prefix
 ---@param Message string The message to log
 ---@return string Message The logged message
@@ -91,7 +207,11 @@ function Slib:Log(Message)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
     end
+    
     API.printlua("[Slib][LOG] " .. tostring(Message), 0, false)
+    if self._writeToFile then
+        self:WriteToLogFile("LOG", tostring(Message))
+    end
     return Message
 end
 
@@ -102,7 +222,11 @@ function Slib:Info(Message)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
     end
+    
     API.printlua("[Slib][INFO] " .. tostring(Message), 7, false)
+    if self._writeToFile then
+        self:WriteToLogFile("INFO", tostring(Message))
+    end
     return Message
 end
 
@@ -113,7 +237,11 @@ function Slib:Warn(Message)
     if not self:Sanitize(Message, "string", "Message") then
         return ""
     end
+    
     API.printlua("[Slib][WARN] " .. tostring(Message), 2, false)
+    if self._writeToFile then
+        self:WriteToLogFile("WARN", tostring(Message))
+    end
     return Message
 end
 
@@ -124,13 +252,24 @@ function Slib:Error(Message)
     -- Manual validation to avoid circular dependency with sanitization system
     if Message == nil then
         API.printlua("[Slib][ERROR] Error function received nil message", 4, false)
+        if self._writeToFile then
+            self:WriteToLogFile("ERROR", "Error function received nil message")
+        end
         return ""
     end
     if type(Message) ~= "string" then
-        API.printlua("[Slib][ERROR] Error function received non-string message: " .. tostring(Message), 4, false)
+        local ErrorMsg = "Error function received non-string message: " .. tostring(Message)
+        API.printlua("[Slib][ERROR] " .. ErrorMsg, 4, false)
+        if self._writeToFile then
+            self:WriteToLogFile("ERROR", ErrorMsg)
+        end
         return tostring(Message)
     end
+    
     API.printlua("[Slib][ERROR] " .. tostring(Message), 4, false)
+    if self._writeToFile then
+        self:WriteToLogFile("ERROR", tostring(Message))
+    end
     return Message
 end
 
@@ -778,6 +917,116 @@ function Slib:PrintDebuffs()
     return true
 end
 
+-- Checks if a specific buff is currently active
+---@param BuffId number The buff ID to check for
+---@return boolean found True if the buff is currently active, false otherwise
+function Slib:HasBuff(BuffId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {BuffId, "id", "BuffId"}
+    }) then
+        return false
+    end
+    
+    -- Protected API call with validation
+    local Buffs = API.Buffbar_GetAllIDs()
+    
+    -- Check if API returned valid data
+    if not Buffs then
+        self:Error("[HasBuff] API returned nil for buffs")
+        return false
+    end
+    
+    if type(Buffs) ~= "table" and type(Buffs) ~= "userdata" then
+        self:Error("[HasBuff] API returned invalid buff data type: " .. type(Buffs))
+        return false
+    end
+    
+    if #Buffs == 0 then
+        return false
+    end
+    
+    -- Safe iteration with bounds checking
+    for I = 1, #Buffs do
+        local Buff = Buffs[I]
+        
+        -- Check if buff exists and is valid
+        if not Buff then
+            goto continue
+        end
+        
+        if type(Buff) ~= "table" and type(Buff) ~= "userdata" then
+            goto continue
+        end
+        
+        -- Check if this is the buff we're looking for
+        if Buff.id == BuffId then
+            self:Info("[HasBuff] Found active buff with ID: " .. BuffId)
+            return true
+        end
+        
+        ::continue::
+    end
+    
+    return false
+end
+
+-- Checks if a specific debuff is currently active
+---@param DebuffId number The debuff ID to check for
+---@return boolean found True if the debuff is currently active, false otherwise
+function Slib:HasDebuff(DebuffId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {DebuffId, "id", "DebuffId"}
+    }) then
+        return false
+    end
+    
+    -- Protected API call with validation
+    local Debuffs = API.DeBuffbar_GetAllIDs()
+    
+    -- Check if API returned valid data
+    if not Debuffs then
+        self:Error("[HasDebuff] API returned nil for debuffs")
+        return false
+    end
+    
+    if type(Debuffs) ~= "table" and type(Debuffs) ~= "userdata" then
+        self:Error("[HasDebuff] API returned invalid debuff data type: " .. type(Debuffs))
+        return false
+    end
+    
+    if #Debuffs == 0 then
+        return false
+    end
+    
+    -- Safe iteration with bounds checking
+    for I = 1, #Debuffs do
+        local Debuff = Debuffs[I]
+        
+        -- Check if debuff exists and is valid
+        if not Debuff then
+            goto continue
+        end
+        
+        if type(Debuff) ~= "table" and type(Debuff) ~= "userdata" then
+            goto continue
+        end
+        
+        -- Check if this is the debuff we're looking for
+        if Debuff.id == DebuffId then
+            self:Info("[HasDebuff] Found active debuff with ID: " .. DebuffId)
+            return true
+        end
+        
+        ::continue::
+    end
+    
+    return false
+end
+
+
+
 -- Prints container contents with detailed information for each item (93 = inventory, 94 = equipment, 95 = bank)
 ---@param ContainerId number
 ---@return boolean Success
@@ -866,7 +1115,7 @@ function Slib:PrintContainer(ContainerId)
         
         -- Format item information with nice borders
         print("+========================+")
-        print("|      ITEM SLOT #" .. I .. "      |")
+        print("|      ITEM #" .. I .. "          |")
         print("+========================+")
         print("|   Item Name      : " .. tostring(ItemName or "N/A"))
         print("|   Item ID        : " .. tostring(Item.item_id or "N/A"))
@@ -919,6 +1168,151 @@ function Slib:PrintContainer(ContainerId)
     
     self:Info("Container scan completed successfully")
     return true
+end
+
+-- Searches containers 1-10000 for a specific item ID and returns detailed results
+---@param ItemId number The item ID to search for
+---@return table|nil results Table containing search results, or nil if item not found
+---@return table results.containers Array of container data where item was found
+---@return number results.total_found Total number of containers containing the item
+---@return number results.total_quantity Total quantity of the item found across all containers
+function Slib:FindItemInContainers(ItemId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {ItemId, "id", "ItemId"}
+    }) then
+        return nil
+    end
+    
+    -- Progress is always printed every 1000 containers
+    
+    self:Info("Starting search for item ID " .. ItemId .. " in containers 1-10000...")
+    
+    local Results = {
+        containers = {},
+        total_found = 0,
+        total_quantity = 0
+    }
+    
+    local ContainersScanned = 0
+    local ContainersWithItems = 0
+    local ContainersWithTargetItem = 0
+    
+    -- Search through containers 1 to 10000
+    for ContainerId = 1, 10000 do
+        ContainersScanned = ContainersScanned + 1
+        
+        -- Progress reporting every 1000 containers
+        if ContainerId % 1000 == 0 then
+            self:Info(string.format("Progress: Scanned %d/10000 containers, found item in %d containers so far", 
+                ContainerId, ContainersWithTargetItem))
+        end
+        
+        -- Get container contents
+        local Items = API.Container_Get_all(ContainerId)
+        
+        -- Skip if API returned invalid data
+        if not Items then
+            goto continue_container
+        end
+        
+        if type(Items) ~= "table" and type(Items) ~= "userdata" then
+            goto continue_container
+        end
+        
+        if #Items == 0 then
+            goto continue_container
+        end
+        
+        ContainersWithItems = ContainersWithItems + 1
+        
+        -- Check each item in the container
+        local ItemsFound = {}
+        local ContainerQuantity = 0
+        
+        for I = 1, #Items do
+            local Item = Items[I]
+            
+            -- Validate item
+            if not Item then
+                goto continue_item
+            end
+            
+            if type(Item) ~= "table" and type(Item) ~= "userdata" then
+                goto continue_item
+            end
+            
+            -- Check if this is our target item
+            if Item.item_id == ItemId then
+                local ItemStack = Item.item_stack or 1
+                local ItemSlot = Item.item_slot or I
+                
+                table.insert(ItemsFound, {
+                    slot = ItemSlot,
+                    stack = ItemStack
+                })
+                
+                ContainerQuantity = ContainerQuantity + ItemStack
+            end
+            
+            ::continue_item::
+        end
+        
+        -- If we found the target item in this container, record it
+        if #ItemsFound > 0 then
+            ContainersWithTargetItem = ContainersWithTargetItem + 1
+            
+            table.insert(Results.containers, {
+                container_id = ContainerId,
+                items_found = ItemsFound,
+                total_in_container = ContainerQuantity
+            })
+            
+            Results.total_quantity = Results.total_quantity + ContainerQuantity
+            
+            self:Info(string.format("Found item ID %d in container %d (quantity: %d)", 
+                ItemId, ContainerId, ContainerQuantity))
+        end
+        
+        ::continue_container::
+    end
+    
+    Results.total_found = ContainersWithTargetItem
+    
+    -- Print summary
+    self:Info("=== Search Complete ===")
+    self:Info(string.format("Containers scanned: %d", ContainersScanned))
+    self:Info(string.format("Containers with items: %d", ContainersWithItems))
+    self:Info(string.format("Containers containing item ID %d: %d", ItemId, Results.total_found))
+    self:Info(string.format("Total quantity found: %d", Results.total_quantity))
+    
+    if Results.total_found > 0 then
+        print("")
+        print("+=================================+")
+        print("|          SEARCH RESULTS         |")
+        print("+=================================+")
+        print(string.format("|   Item ID        : %-12s |", ItemId))
+        print(string.format("|   Containers     : %-12s |", Results.total_found))
+        print(string.format("|   Total Quantity : %-12s |", Results.total_quantity))
+        print("+=================================+")
+        print("")
+        
+        -- Print details for each container
+        for I, Container in ipairs(Results.containers) do
+            print(string.format("Container %d (ID: %d) - Quantity: %d", 
+                I, Container.container_id, Container.total_in_container))
+            
+            for J, Item in ipairs(Container.items_found) do
+                print(string.format("  Slot %d: Stack %d", Item.slot, Item.stack))
+            end
+            print("")
+        end
+        
+        return Results
+    else
+        self:Info("Item ID " .. ItemId .. " was not found in any containers")
+        return nil
+    end
 end
 
 -- Prints all abilities from specified ability bar(s)
@@ -1224,13 +1618,13 @@ end
 
 -- Prints detailed information about interface elements
 ---@param TargetUnder boolean
----@param InterfaceToScan table
+---@param InterfaceToScan table|userdata
 ---@return boolean Success
 function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
     -- Parameter validation
     if not self:ValidateParams({
         {TargetUnder, "boolean", "TargetUnder"},
-        {InterfaceToScan, "table", "InterfaceToScan"}
+        {InterfaceToScan, {"table", "userdata"}, "InterfaceToScan"}
     }) then
         return false
     end
@@ -2565,9 +2959,11 @@ function Slib:AreaLootIsOpen()
     end
 
     if #Interface > 0 then
+        self:Info("[AreaLootIsOpen] Area loot interface is open")
         return true
     end
     
+    self:Warn("[AreaLootIsOpen] Area loot interface is closed")
     return false
 end
 
@@ -3369,10 +3765,23 @@ function Slib:MemoryStrandTeleport()
         return false
     end
 
+    local MemStrandSlot = nil
+    for I = 1, #self.Interfaces.CurrencyPouch do
+        local Interface = API.ScanForInterfaceTest2Get(true, self.Interfaces.CurrencyPouch[I])
+        if Interface and (type(Interface) == "table" or type(Interface) == "userdata") then
+            for _, Item in pairs(Interface) do
+                if Item and Item.itemid1 and Item.itemid1 == 39486 then
+                    MemStrandSlot = Item.id3
+                    break
+                end
+            end
+        end
+    end
+
     while API.Read_LoopyLoop() and not (self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 5)) do
         self:Info("[MemoryStrandTeleport] Attempting to use Memory Strand teleport...")
         API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 10, 4097, API.OFF_ACT_GeneralInterface_route) -- Open currency pouch
-        API.DoAction_Interface(0x24,0x9A3E,1,1473,21,10,API.OFF_ACT_GeneralInterface_route) -- Memory Strand teleport
+        API.DoAction_Interface(0x24,0x9A3E,1,1473,21,MemStrandSlot,API.OFF_ACT_GeneralInterface_route) -- Memory Strand teleport
         self:SleepUntil(function()
             return self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 20)
         end, 6, 100)
@@ -3519,6 +3928,34 @@ function Slib:RechargeSilverhawkBoots(MinQuantity)
     
     self:Warn("[RechargeSilverhawkBoots] No feathers or down found in inventory")
     return false
+end
+
+-- Opens the area loot interface
+---@return boolean success True if interface was opened successfully
+function Slib:AreaLootOpen()
+    -- Check if already open
+    if self:AreaLootIsOpen() then
+        self:Info("[AreaLootOpen] Area loot interface is already open")
+        return true
+    end
+    
+    self:Info("[AreaLootOpen] Attempting to open area loot interface...")
+    
+    -- Attempt to open the interface
+    API.DoAction_Interface(0xffffffff,0xffffffff,1,1678,8,-1,API.OFF_ACT_GeneralInterface_route)
+    
+    -- Wait for the interface to actually open
+    local Success = self:SleepUntil(function()
+        return self:AreaLootIsOpen()
+    end, 1, 100) -- 1 second timeout, check every 100ms
+    
+    if Success then
+        self:Info("[AreaLootOpen] Area loot interface opened successfully")
+        return true
+    else
+        self:Error("[AreaLootOpen] Failed to open area loot interface within timeout")
+        return false
+    end
 end
 
 -- Takes specified items from the area loot interface, prioritizing last slot first
