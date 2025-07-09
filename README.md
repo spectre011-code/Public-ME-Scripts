@@ -2,7 +2,7 @@
 
 Welcome to my collection of **public Lua scripts** designed for use with **Memory Error**, an automation tool for RuneScape 3.
 
-🧠 **Memory Error Discord:** [Join Here](https://discord.gg/ywSDHbXmF5)
+🧠 **Memory Error Discord:** [Join Here](https://discord.gg/FNEBPh6pdD)
 
 These scripts are shared to help the community automate various in-game tasks using Memory Error. Use them at your own risk and make sure you understand how the tool works before diving in.
 
