@@ -11,11 +11,11 @@ FUNC = {}
 
 function FUNC:PrintConfig(config)
     if config then
-        print("\n--- All CONFIG keys and values ---")
+        Slib:Info("--- All CONFIG keys and values ---")
         for key, value in pairs(config) do
-            print(tostring(key) .. ": " .. tostring(value))
+            Slib:Info(tostring(key) .. ": " .. tostring(value))
         end
-        print("---------------------------------")
+        Slib:Info("---------------------------------")
     end
 end
 
@@ -91,12 +91,12 @@ end
 
 function FUNC:GetBestTree(config)
     if not config then
-        print("DEBUG: GetBestTree returning nil - config is nil")
+        Slib:Warn("DEBUG: GetBestTree returning nil - config is nil")
         return nil
     end
     
     if not config.Tree then
-        print("DEBUG: GetBestTree returning nil - config.Tree is nil")
+        Slib:Warn("DEBUG: GetBestTree returning nil - config.Tree is nil")
         return nil
     end
     
@@ -110,7 +110,7 @@ function FUNC:GetBestTree(config)
     end
     
     if #treeParts < 2 then
-        print("DEBUG: GetBestTree returning nil - not enough tree parts parsed (got " .. #treeParts .. ", expected at least 2)")
+        Slib:Warn("DEBUG: GetBestTree returning nil - not enough tree parts parsed (got " .. #treeParts .. ", expected at least 2)")
         return nil
     end
     
@@ -144,7 +144,7 @@ function FUNC:GetBestTree(config)
     end
     
     if not treeData then
-        print("DEBUG: GetBestTree returning nil - no tree data found for type: '" .. tostring(treeType) .. "'")
+        Slib:Warn("DEBUG: GetBestTree returning nil - no tree data found for type: '" .. tostring(treeType) .. "'")
         return nil
     end
     
@@ -159,11 +159,11 @@ function FUNC:GetBestTree(config)
     end
     
     if not locationData or not locationData.area then
-        print("DEBUG: GetBestTree returning nil - no location data or area found for location: '" .. tostring(location) .. "'")
-        print("DEBUG: Available locations for " .. tostring(treeType) .. ":")
+        Slib:Warn("DEBUG: GetBestTree returning nil - no location data or area found for location: '" .. tostring(location) .. "'")
+        Slib:Info("DEBUG: Available locations for " .. tostring(treeType) .. ":")
         for key, data in pairs(treeData) do
             if type(key) == "string" and key ~= "NAME" then
-                print("DEBUG:   - '" .. key .. "'")
+                Slib:Info("DEBUG:   - '" .. key .. "'")
             end
         end
         return nil
@@ -174,7 +174,7 @@ function FUNC:GetBestTree(config)
     local trees = API.ReadAllObjectsArray({ 0, 12 }, {-1}, { treeName })
     
     if not trees or #trees == 0 then
-        print("DEBUG: GetBestTree returning nil - no trees found with name: '" .. tostring(treeName) .. "'")
+        Slib:Warn("DEBUG: GetBestTree returning nil - no trees found with name: '" .. tostring(treeName) .. "'")
         return nil
     end
     
@@ -210,7 +210,7 @@ function FUNC:GetBestTree(config)
     end
     
     if #validTrees == 0 then
-        print("DEBUG: GetBestTree returning nil - no valid trees found in area after filtering")
+        Slib:Warn("DEBUG: GetBestTree returning nil - no valid trees found in area after filtering")
         return nil
     end
     

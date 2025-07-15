@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.0"
+local ScriptVersion = "1.0.2"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -28,6 +28,11 @@ This library was developed with AI assistance for:
 Changelog:
 v1.0.0 - 09-07-2025
     - Initial release
+v1.0.1 - 12-07-2025
+    - Added RandomNumber function
+v1.0.2 - 15-07-2025
+    - Added write to file logging functionality.
+
 ]]
 
 local API = require("api")
@@ -759,6 +764,25 @@ function Slib:CharToVirtualKey(char)
     return nil
 end
 
+-- Generates a random number between Min and Max and adds it to the Base
+---@param Base number The base number to add the random number to
+---@param Min number The minimum value of the random number
+---@param Max number The maximum value of the random number
+---@return number RandomNumber The random number generated
+function Slib:RandomNumber(Base, Min, Max)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {Base, "number", "Base"},
+        {Min, "number", "Min"},
+        {Max, "number", "Max"}
+    }) then
+        return false
+    end
+
+    local RandomNumber = math.random(Min, Max)
+    return Base + RandomNumber
+end
+
 -- ##################################
 -- #                                #
 -- #       DEBUG FUNCTIONS          #
@@ -1024,8 +1048,6 @@ function Slib:HasDebuff(DebuffId)
     
     return false
 end
-
-
 
 -- Prints container contents with detailed information for each item (93 = inventory, 94 = equipment, 95 = bank)
 ---@param ContainerId number

@@ -1,12 +1,12 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.1.2
+-- Version: 1.2.0
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.1.2"
+ScriptVersion = "1.2.0"
 ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
 
@@ -26,6 +26,11 @@ v1.1.1 - 06-07-2025
     - Modified PROC:HandleAtBankState() to empty the wood box into the bank.
 v1.1.2 - 06-07-2025
     - Fixed PROC:HandleAtBankState() juju, perfect juju and perfect plus logic.
+v1.2.0 - 15-07-2025
+    - Added Lumberjack's Intuition support.
+    - Added Guthix Memorial bank logic.
+    - Updated Slib to v1.0.2
+    - Changed print statements to Slib logging functions.
 ]]
 
 local API = require("api")
@@ -35,7 +40,6 @@ local PROC = require("Woodcutting AIO.modules.proc")
 
 --------------------START GUI STUFF--------------------
 local CurrentStatus = "Starting"
-local cycles = 0
 local UIComponents = {}
 local function GetComponentAmount()
     local amount = 0
@@ -111,7 +115,6 @@ local function UpdateStatus(newStatus)
     end
 end
 
-
 CreateGUI()
 GUIDraw()
 --------------------END GUI STUFF--------------------
@@ -133,19 +136,19 @@ API.SetMaxIdleTime(7)
 API.Write_fake_mouse_do(false)
 while (API.Read_LoopyLoop()) do
     if not API.CacheEnabled then
-        print("Cache is not enabled. Halting script.")
+        Slib:Error("Cache is not enabled. Halting script.")
         API.Write_LoopyLoop(false)
         goto continue
     end
 
     if (API.ScriptRuntime()/60) > tonumber(CONFIG.MaxTime) then
-        print("Script runtime is greater than max time. Halting script.")
+        Slib:Warn("Script runtime is greater than max time. Halting script.")
         API.Write_LoopyLoop(false)
         goto continue
     end
 
     if API.GetSkillsTableSkill(16) >= tonumber(CONFIG.MaxLevel) then
-        print("Woodcutting level is greater than max level. Halting script.")
+        Slib:Warn("Woodcutting level is greater than max level. Halting script.")
         API.Write_LoopyLoop(false)
         goto continue
     end
@@ -172,16 +175,16 @@ while (API.Read_LoopyLoop()) do
         UpdateStatus("At Bank")
         CurrentState = PROC:HandleAtBankState(CONFIG)
     elseif CurrentState == States.ERROR then
-        print("Error. Halting script.")
+        Slib:Error("Error. Halting script.")
         API.Write_LoopyLoop(false)
         goto continue
     else
         if CurrentState then
-            print("Unknown state: " .. CurrentState .. ". Halting script.")
+            Slib:Error("Unknown state: " .. CurrentState .. ". Halting script.")
             API.Write_LoopyLoop(false)
             goto continue
         else
-            print("CurrentState is nil. Halting script.")
+            Slib:Error("CurrentState is nil. Halting script.")
             API.Write_LoopyLoop(false)
             goto continue
         end
