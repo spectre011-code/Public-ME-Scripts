@@ -6,7 +6,7 @@
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.2.0"
+ScriptVersion = "1.2.1"
 ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
 
@@ -31,6 +31,8 @@ v1.2.0 - 15-07-2025
     - Added Guthix Memorial bank logic.
     - Updated Slib to v1.0.2
     - Changed print statements to Slib logging functions.
+v1.2.1 - 25-07-2025
+    - Fixed an Aura issue where the script would get stuck if the player had no aura resets.
 ]]
 
 local API = require("api")

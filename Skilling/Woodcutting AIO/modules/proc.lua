@@ -426,7 +426,7 @@ function PROC:HandleAtTreesState(config)
 
     --End action skipping
 
-    if config.Aura ~= "None" then
+    if config.Aura ~= "None" and not AURAS.noResets then
         if not AURAS.isAuraActive() then
             AURAS.activateAura(config.Aura)
             return "AT_TREES"
