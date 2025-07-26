@@ -1,6 +1,6 @@
 local ScriptName = "Spectre's Bank Evaluator"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.0"
+local ScriptVersion = "1.1.0"
 local ReleaseDate = "26-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -19,6 +19,8 @@ local DiscordHandle = "not_spectre011"
 Changelog:
 v1.0.0 - 26-07-2025
     - Initial release.
+v1.1.0 - 26-07-2025
+    - Added support for augmented items.
 ]]
 
 local API = require("api")
@@ -104,7 +106,42 @@ local function GetTradeableAlternativeValue(ItemName, OriginalItemId)
         return 0
     end
     
-    -- Use Item:GetAll to search for similar items by name
+    -- Special handling for augmented items - try to find base item value
+    if string.sub(ItemName, 1, 10) == "Augmented " then
+        local BaseItemName = string.sub(ItemName, 11) -- Remove "Augmented " prefix
+        
+        Slib:Info("Detected augmented item: '" .. ItemName .. "', searching for base item: '" .. BaseItemName .. "'")
+        
+        -- Try to find the base item by name
+        local BaseSearchResults = nil
+        if _G.Item and _G.Item.GetAll then
+            local Success, Results = pcall(_G.Item.GetAll, _G.Item, BaseItemName, false) -- exact_match = false for flexibility
+            if Success and Results then
+                BaseSearchResults = Results
+            end
+        end
+        
+        if BaseSearchResults then
+            -- Look for exact or close match to base item name
+            for _, ResultItem in ipairs(BaseSearchResults) do
+                if ResultItem and ResultItem.id and ResultItem.id ~= OriginalItemId then
+                    -- Check for exact match or very close match
+                    if ResultItem.name == BaseItemName or 
+                       (ResultItem.name and string.find(ResultItem.name:lower(), BaseItemName:lower(), 1, true)) then
+                        if ResultItem.tradeable then
+                            local GeValue = API.GetExchangePrice(ResultItem.id)
+                            if GeValue and GeValue > 0 then
+                                Slib:Info("Found base item for augmented item '" .. ItemName .. "': '" .. ResultItem.name .. "' ID " .. ResultItem.id .. " (Value: " .. GeValue .. " GP)")
+                                return GeValue
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Fallback: Use general search for similar items by name
     local SearchResults = nil
     if _G.Item and _G.Item.GetAll then
         local Success, Results = pcall(_G.Item.GetAll, _G.Item, ItemName, true) -- partial_match = true
