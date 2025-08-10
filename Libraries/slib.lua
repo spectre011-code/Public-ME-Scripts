@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.0"
+local ScriptVersion = "1.0.3"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -27,16 +27,60 @@ This library was developed with AI assistance for:
 
 Changelog:
 v1.0.0 - 09-07-2025
-    - Initial release
+    - Initial release.
+v1.0.1 - 12-07-2025
+    - Added RandomNumber function.
+v1.0.2 - 15-07-2025
+    - Added write to file logging functionality.
+v1.0.3 - 01-08-2025
+    - Added lobby fuction.
+    - Modified logging system to write files per session instead of just one file per account.
 ]]
 
 local API = require("api")
 
 local Slib = {}
 
-Slib.ChatMessages = API.GatherEvents_chat_check()
-
+Slib.Items = {}
 Slib.Interfaces = {}
+Slib.ChatMessages = {}
+
+Slib.Items.Runes = {
+    Normal = { --Normal runes.
+        Fire =      {Id = 554, InventoryVB = 5888, Name = "Fire rune"},
+        Water =     {Id = 555, InventoryVB = 5887, Name = "Water rune"},
+        Air =       {Id = 556, InventoryVB = 5886, Name = "Air rune"},
+        Earth =     {Id = 557, InventoryVB = 5889, Name = "Earth rune"},
+        Mind =      {Id = 558, InventoryVB = 5902, Name = "Mind rune"},
+        Body =      {Id = 559, InventoryVB = 5896, Name = "Body rune"},
+        Death =     {Id = 560, InventoryVB = 5901, Name = "Death rune"},
+        Nature =    {Id = 561, InventoryVB = 5899, Name = "Nature rune"},
+        Chaos =     {Id = 562, InventoryVB = 5898, Name = "Chaos rune"},
+        Law =       {Id = 563, InventoryVB = 5900, Name = "Law rune"},
+        Cosmic =    {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"},
+        Blood =     {Id = 565, InventoryVB = 5904, Name = "Blood rune"},
+        Soul =      {Id = 566, InventoryVB = 5905, Name = "Soul rune"},
+        Astral =    {Id = 9075, InventoryVB = 5903, Name = "Astral rune"},
+        Armadyl =   {Id = 21773, InventoryVB = 5906, Name = "Armadyl rune"},
+        Time =      {Id = 58450, InventoryVB = 8291, Name = "Time rune"},
+    },
+
+    Combination = { --They dont have an InventoryVB as they change the InventoryVB of the runes that were combined.
+        Steam =     {Id = 4694, Name = "Steam rune"}, -- Water + Fire
+        Mist =      {Id = 4695, Name = "Mist rune"}, -- Air + Water
+        Dust =      {Id = 4696, Name = "Dust rune"}, -- Air + Earth
+        Smoke =     {Id = 4697, Name = "Smoke rune"}, -- Air + Fire
+        Mud =       {Id = 4698, Name = "Mud rune"}, -- Water + Earth
+        Lava =      {Id = 4699, Name = "Lava rune"}, -- Earth + Fire
+    },
+
+    Necromancy = { --They dont have an InventoryVB but can be read from container 953 if inside nexus.
+        Spirit =    {Id = 55337, Name = "Spirit rune"},
+        Bone =      {Id = 55338, Name = "Bone rune"},
+        Flesh =     {Id = 55339, Name = "Flesh rune"},
+        Miasma =    {Id = 55340, Name = "Miasma rune"}
+    }
+}
 
 Slib.Interfaces.TextInput = { 
     { { 1469,0,-1,0 }, { 1469,1,-1,0 } }
@@ -78,6 +122,8 @@ Slib.Interfaces.AreaLoot = {
     { {1622,4,-1,0}, {1622,6,-1,0}, {1622,1,-1,0}, {1622,11,-1,0} }
 }
 
+Slib.ChatMessages = API.GatherEvents_chat_check()
+
 -- ##################################
 -- #                                #
 -- #       LOGGING FUNCTIONS        #
@@ -89,6 +135,9 @@ Slib._logsDirectoryCreated = false
 
 -- Static cache for player name to avoid issues when character goes to lobby/dc
 Slib._cachedPlayerName = nil
+
+-- Static cache for session-specific log filename
+Slib._sessionLogFileName = nil
 
 -- Static flag to control file writing behavior
 -- Set this to true at the start of your script to enable file logging
@@ -142,28 +191,36 @@ end
 ---@param Message string The message to write to file
 ---@return boolean success True if file write was successful, false otherwise
 function Slib:WriteToLogFile(Level, Message)
-    -- Get player name for filename (use cached name if available)
-    local PlayerName = self._cachedPlayerName
-    
-    -- If no cached name, try to get current player name
-    if not PlayerName then
-        local CurrentPlayerName = API.GetLocalPlayerName()
-        if CurrentPlayerName and CurrentPlayerName ~= "" then
-            -- Cache the valid player name for future use
-            self._cachedPlayerName = CurrentPlayerName
-            PlayerName = CurrentPlayerName
-        else
-            PlayerName = "Unknown_Player"
+    -- Generate session-specific filename if not already cached
+    if not self._sessionLogFileName then
+        -- Get player name for filename (use cached name if available)
+        local PlayerName = self._cachedPlayerName
+        
+        -- If no cached name, try to get current player name
+        if not PlayerName then
+            local CurrentPlayerName = API.GetLocalPlayerName()
+            if CurrentPlayerName and CurrentPlayerName ~= "" then
+                -- Cache the valid player name for future use
+                self._cachedPlayerName = CurrentPlayerName
+                PlayerName = CurrentPlayerName
+            else
+                PlayerName = "Unknown_Player"
+            end
         end
+        
+        -- Clean player name for filename (remove invalid characters)
+        PlayerName = string.gsub(PlayerName, "[<>:\"/\\|?*]", "_")
+        
+        -- Generate session timestamp for unique filename
+        local SessionTimestamp = os.date("%Y-%m-%d_%H-%M-%S")
+        
+        -- Create session-specific filename and cache it
+        self._sessionLogFileName = PlayerName .. "_" .. SessionTimestamp .. ".txt"
     end
-    
-    -- Clean player name for filename (remove invalid characters)
-    PlayerName = string.gsub(PlayerName, "[<>:\"/\\|?*]", "_")
     
     -- Create logs directory path
     local LogsDir = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\logs\\"
-    local LogFileName = PlayerName .. ".txt"
-    local LogFilePath = LogsDir .. LogFileName
+    local LogFilePath = LogsDir .. self._sessionLogFileName
     
     -- Ensure logs directory exists (only once per script run)
     if not self:EnsureLogsDirectory() then
@@ -759,6 +816,25 @@ function Slib:CharToVirtualKey(char)
     return nil
 end
 
+-- Generates a random number between Min and Max and adds it to the Base
+---@param Base number The base number to add the random number to
+---@param Min number The minimum value of the random number
+---@param Max number The maximum value of the random number
+---@return number RandomNumber The random number generated
+function Slib:RandomNumber(Base, Min, Max)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {Base, "number", "Base"},
+        {Min, "number", "Min"},
+        {Max, "number", "Max"}
+    }) then
+        return false
+    end
+
+    local RandomNumber = math.random(Min, Max)
+    return Base + RandomNumber
+end
+
 -- ##################################
 -- #                                #
 -- #       DEBUG FUNCTIONS          #
@@ -1024,8 +1100,6 @@ function Slib:HasDebuff(DebuffId)
     
     return false
 end
-
-
 
 -- Prints container contents with detailed information for each item (93 = inventory, 94 = equipment, 95 = bank)
 ---@param ContainerId number
@@ -2141,6 +2215,96 @@ function Slib:PrintCurrencyPouch()
     return true
 end
 
+-- Prints all rune types with their current quantities in an organized format
+---@return boolean success True if all rune information was printed successfully, false if error occurred
+function Slib:PrintRunes()
+    self:Info("=== Rune Inventory Report ===")
+    
+    -- Print Normal Runes (from pouches + inventory)
+    print("Normal Runes (Pouches + Inventory):")
+    print("+================================+")
+    
+    for _, Rune in pairs(self.Items.Runes.Normal) do
+        local Success, Result = pcall(function()
+            return API.VB_FindPSettinOrder(Rune.InventoryVB, 1)
+        end)
+        
+        local RuneAmount = 0
+        if Success and Result and Result.state then
+            RuneAmount = tonumber(Result.state) or 0
+        end
+        
+        print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), RuneAmount))
+    end
+    
+    print("+================================+")
+    print("")
+    
+    -- Print Combination Runes (inventory only)
+    print("Combination Runes (Inventory Only):")
+    print("+================================+")
+    
+    for _, Rune in pairs(self.Items.Runes.Combination) do
+        local Success, RuneAmount = pcall(function()
+            return tonumber(Inventory:GetItemAmount(Rune.Id)) or 0
+        end)
+        
+        if not Success then
+            RuneAmount = 0
+        end
+        
+        print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), RuneAmount))
+    end
+    
+    print("+================================+")
+    print("")
+    
+    -- Print Necromancy Runes (inventory + nexus)
+    print("Necromancy Runes (Inventory + Nexus):")
+    print("+================================+")
+    
+    local NexusRunes = API.Container_Get_all(953)
+    
+    for _, Rune in pairs(self.Items.Runes.Necromancy) do
+        -- Get inventory amount
+        local InventoryAmount = 0
+        local Success, Result = pcall(function()
+            return Inventory:GetItemAmount(Rune.Id)
+        end)
+        
+        if Success and Result then
+            InventoryAmount = Result
+        end
+        
+        -- Get nexus amount
+        local NexusAmount = 0
+        if NexusRunes then
+            for _, ContainerItem in pairs(NexusRunes) do
+                if ContainerItem and ContainerItem.item_id == Rune.Id then
+                    NexusAmount = NexusAmount + (ContainerItem.item_stack or 0)
+                end
+            end
+        end
+        
+        local TotalAmount = InventoryAmount + NexusAmount
+        
+        -- Show breakdown if there are runes in both locations
+        if InventoryAmount > 0 and NexusAmount > 0 then
+            print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), TotalAmount))
+            print(string.format("|     Inventory  : %8d   |", InventoryAmount))
+            print(string.format("|     Nexus      : %8d   |", NexusAmount))
+        else
+            print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), TotalAmount))
+        end
+    end
+    
+    print("+================================+")
+    print("")
+    
+    self:Info("Rune inventory report completed successfully")
+    return true
+end
+
 -- Prints a table's contents in a formatted, readable way
 ---@param Tbl table The table to print (supports nested tables)
 ---@return boolean success True if table was printed successfully, false if invalid table
@@ -2435,17 +2599,6 @@ function Slib:GetGWD1KillCounts()
 
     -- Print formatted results
     if SuccessCount > 0 then
-        self:Info("=== GWD1 Kill Counts ===")
-        print("+========================+")
-        print("|      GWD1 KILLS        |")
-        print("+========================+")
-        print("|   Armadyl   : " .. string.format("%-8s", tostring(Results.Armadyl or 0)) .. " |")
-        print("|   Bandos    : " .. string.format("%-8s", tostring(Results.Bandos or 0)) .. " |")
-        print("|   Saradomin : " .. string.format("%-8s", tostring(Results.Saradomin or 0)) .. " |")
-        print("|   Zamorak   : " .. string.format("%-8s", tostring(Results.Zamorak or 0)) .. " |")
-        print("|   Zaros     : " .. string.format("%-8s", tostring(Results.Zaros or 0)) .. " |")
-        print("+========================+")
-
         return Results
     else
         self:Error("[GetGWD1KillCounts] Failed to retrieve any kill counts")
@@ -2518,16 +2671,6 @@ function Slib:GetGWD2KillCounts()
 
     -- Print formatted results
     if SuccessCount > 0 then
-        self:Info("=== GWD2 Kill Counts ===")
-        print("+========================+")
-        print("|      GWD2 KILLS        |")
-        print("+========================+")
-        print("|   Seren    : " .. string.format("%-8s", tostring(Results.Seren or 0)) .. " |")
-        print("|   Sliske   : " .. string.format("%-8s", tostring(Results.Sliske or 0)) .. " |")
-        print("|   Zamorak  : " .. string.format("%-8s", tostring(Results.Zamorak or 0)) .. " |")
-        print("|   Zaros    : " .. string.format("%-8s", tostring(Results.Zaros or 0)) .. " |")
-        print("+========================+")
-
         return Results
     else
         self:Error("[GetGWD2KillCounts] Failed to retrieve any kill counts")
@@ -3242,6 +3385,76 @@ function Slib:CheckObjectBool1(ObjId, Range, ObjType)
     end
     
     return false
+end
+
+-- Returns a simple table containing rune quantities organized by type
+---@return table runes Table containing rune amounts organized by type
+---@return table runes.Normal Normal runes amounts (from pouches and inventory)
+---@return table runes.Combination Combination runes amounts (from inventory only)
+---@return table runes.Necromancy Necromancy runes amounts (inventory + nexus total)
+function Slib:GetRuneAmounts()
+    local RuneAmounts = {
+        Normal = {},
+        Combination = {},
+        Necromancy = {}
+    }
+    
+    -- Get Normal Runes (from pouches + inventory)
+    for RuneName, Rune in pairs(self.Items.Runes.Normal) do
+        local Success, Result = pcall(function()
+            return API.VB_FindPSettinOrder(Rune.InventoryVB, 1)
+        end)
+        
+        local RuneAmount = 0
+        if Success and Result and Result.state then
+            RuneAmount = tonumber(Result.state) or 0
+        end
+        
+        RuneAmounts.Normal[RuneName] = RuneAmount
+    end
+    
+    -- Get Combination Runes (inventory only)
+    for RuneName, Rune in pairs(self.Items.Runes.Combination) do
+        local Success, RuneAmount = pcall(function()
+            return tonumber(Inventory:GetItemAmount(Rune.Id)) or 0
+        end)
+        
+        if not Success then
+            RuneAmount = 0
+        end
+        
+        RuneAmounts.Combination[RuneName] = RuneAmount
+    end
+    
+    -- Get Necromancy Runes (inventory + nexus)
+    local NexusRunes = API.Container_Get_all(953)
+    
+    for RuneName, Rune in pairs(self.Items.Runes.Necromancy) do
+        -- Get inventory amount
+        local InventoryAmount = 0
+        local Success, Result = pcall(function()
+            return Inventory:GetItemAmount(Rune.Id)
+        end)
+        
+        if Success and Result then
+            InventoryAmount = Result
+        end
+        
+        -- Get nexus amount
+        local NexusAmount = 0
+        if NexusRunes then
+            for _, ContainerItem in pairs(NexusRunes) do
+                if ContainerItem and ContainerItem.item_id == Rune.Id then
+                    NexusAmount = NexusAmount + (ContainerItem.item_stack or 0)
+                end
+            end
+        end
+        
+        local TotalAmount = InventoryAmount + NexusAmount
+        RuneAmounts.Necromancy[RuneName] = TotalAmount
+    end
+    
+    return RuneAmounts
 end
 
 -- ##################################
@@ -4377,5 +4590,23 @@ function Slib:InstanceRejoin()
         
     return true
 end
+
+-- Leaves the game to lobby
+---@return boolean
+function Slib:Lobby()
+    if API.GetGameState2() == 3 then --In game
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,1431,0,7,API.OFF_ACT_GeneralInterface_route) --Config
+        self:RandomSleep(1000, 3000, "ms")
+        API.DoAction_Interface(0x24,0xffffffff,1,1433,68,-1,API.OFF_ACT_GeneralInterface_route) --Lobby
+        self:RandomSleep(1000, 3000, "ms")
+
+        return true
+    end
+
+    self:Error("[Lobby] Needs to be in game to leave to lobby.")
+    return false
+    
+end
+
 
 return Slib
