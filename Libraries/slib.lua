@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.3"
+local ScriptVersion = "1.0.4"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -35,6 +35,10 @@ v1.0.2 - 15-07-2025
 v1.0.3 - 01-08-2025
     - Added lobby fuction.
     - Modified logging system to write files per session instead of just one file per account.
+v1.0.4 - 22-08-2025
+    - Added GetSpellBook function.
+    - Added Note function.
+    - Added HighAlch function.
 ]]
 
 local API = require("api")
@@ -47,38 +51,38 @@ Slib.ChatMessages = {}
 
 Slib.Items.Runes = {
     Normal = { --Normal runes.
-        Fire =      {Id = 554, InventoryVB = 5888, Name = "Fire rune"},
-        Water =     {Id = 555, InventoryVB = 5887, Name = "Water rune"},
-        Air =       {Id = 556, InventoryVB = 5886, Name = "Air rune"},
-        Earth =     {Id = 557, InventoryVB = 5889, Name = "Earth rune"},
-        Mind =      {Id = 558, InventoryVB = 5902, Name = "Mind rune"},
-        Body =      {Id = 559, InventoryVB = 5896, Name = "Body rune"},
-        Death =     {Id = 560, InventoryVB = 5901, Name = "Death rune"},
-        Nature =    {Id = 561, InventoryVB = 5899, Name = "Nature rune"},
-        Chaos =     {Id = 562, InventoryVB = 5898, Name = "Chaos rune"},
-        Law =       {Id = 563, InventoryVB = 5900, Name = "Law rune"},
-        Cosmic =    {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"},
-        Blood =     {Id = 565, InventoryVB = 5904, Name = "Blood rune"},
-        Soul =      {Id = 566, InventoryVB = 5905, Name = "Soul rune"},
-        Astral =    {Id = 9075, InventoryVB = 5903, Name = "Astral rune"},
-        Armadyl =   {Id = 21773, InventoryVB = 5906, Name = "Armadyl rune"},
-        Time =      {Id = 58450, InventoryVB = 8291, Name = "Time rune"},
+        Fire    = {Id = 554, InventoryVB = 5888, Name = "Fire rune"},
+        Water   = {Id = 555, InventoryVB = 5887, Name = "Water rune"},
+        Air     = {Id = 556, InventoryVB = 5886, Name = "Air rune"},
+        Earth   = {Id = 557, InventoryVB = 5889, Name = "Earth rune"},
+        Mind    = {Id = 558, InventoryVB = 5902, Name = "Mind rune"},
+        Body    = {Id = 559, InventoryVB = 5896, Name = "Body rune"},
+        Death   = {Id = 560, InventoryVB = 5901, Name = "Death rune"},
+        Nature  = {Id = 561, InventoryVB = 5899, Name = "Nature rune"},
+        Chaos   = {Id = 562, InventoryVB = 5898, Name = "Chaos rune"},
+        Law     = {Id = 563, InventoryVB = 5900, Name = "Law rune"},
+        Cosmic  = {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"},
+        Blood   = {Id = 565, InventoryVB = 5904, Name = "Blood rune"},
+        Soul    = {Id = 566, InventoryVB = 5905, Name = "Soul rune"},
+        Astral  = {Id = 9075, InventoryVB = 5903, Name = "Astral rune"},
+        Armadyl = {Id = 21773, InventoryVB = 5906, Name = "Armadyl rune"},
+        Time    = {Id = 58450, InventoryVB = 8291, Name = "Time rune"},
     },
 
     Combination = { --They dont have an InventoryVB as they change the InventoryVB of the runes that were combined.
-        Steam =     {Id = 4694, Name = "Steam rune"}, -- Water + Fire
-        Mist =      {Id = 4695, Name = "Mist rune"}, -- Air + Water
-        Dust =      {Id = 4696, Name = "Dust rune"}, -- Air + Earth
-        Smoke =     {Id = 4697, Name = "Smoke rune"}, -- Air + Fire
-        Mud =       {Id = 4698, Name = "Mud rune"}, -- Water + Earth
-        Lava =      {Id = 4699, Name = "Lava rune"}, -- Earth + Fire
+        Steam   = {Id = 4694, Name = "Steam rune"}, -- Water + Fire
+        Mist    = {Id = 4695, Name = "Mist rune"}, -- Air + Water
+        Dust    = {Id = 4696, Name = "Dust rune"}, -- Air + Earth
+        Smoke   = {Id = 4697, Name = "Smoke rune"}, -- Air + Fire
+        Mud     = {Id = 4698, Name = "Mud rune"}, -- Water + Earth
+        Lava    = {Id = 4699, Name = "Lava rune"}, -- Earth + Fire
     },
 
     Necromancy = { --They dont have an InventoryVB but can be read from container 953 if inside nexus.
-        Spirit =    {Id = 55337, Name = "Spirit rune"},
-        Bone =      {Id = 55338, Name = "Bone rune"},
-        Flesh =     {Id = 55339, Name = "Flesh rune"},
-        Miasma =    {Id = 55340, Name = "Miasma rune"}
+        Spirit  = {Id = 55337, Name = "Spirit rune"},
+        Bone    = {Id = 55338, Name = "Bone rune"},
+        Flesh   = {Id = 55339, Name = "Flesh rune"},
+        Miasma  = {Id = 55340, Name = "Miasma rune"}
     }
 }
 
@@ -3457,6 +3461,20 @@ function Slib:GetRuneAmounts()
     return RuneAmounts
 end
 
+--- Get the currently active spellbook
+---@return string|nil spellbook_name The name of the active spellbook ("Normal", "Ancient", "Lunar") or nil if unknown
+function Slib:GetSpellBook()
+    local spellbook = API.GetVarbitValue(39733)
+    if spellbook == 0 then
+        return "Normal"
+    elseif spellbook == 1 then
+        return "Ancient"
+    elseif spellbook == 2 then
+        return "Lunar"
+    end
+    return "Unknown"
+end
+
 -- ##################################
 -- #                                #
 -- #           PROCEDURES           #
@@ -4608,5 +4626,83 @@ function Slib:Lobby()
     
 end
 
+--- High Alch an item or items
+---@param ItemIds number|number[] The ID or IDs of the items to High Alch
+---@return boolean success True if High Alch was successful, false if it failed
+function Slib:HighAlch(ItemIds)
+    -- Parameter validation
+    if not self:Sanitize(ItemIds, {"number", "table_of_ids"}, "ItemIds") then
+        return false
+    end
+    
+    if self:GetSpellBook() ~= "Normal" then
+        self:Error("[HighAlch] Must be on Normal spellbook to use High Alch")
+        return false
+    end
+
+    local Runes = self:GetRuneAmounts()
+    if Runes.Normal.Nature < 1 then
+        self:Error("[HighAlch] Not enough Nature runes")
+        return false
+    end
+    if Runes.Normal.Fire < 5 then
+        self:Error("[HighAlch] Not enough Fire runes")
+        return false
+    end
+
+    -- Convert to table for consistent processing
+    local idTable = type(ItemIds) == "table" and ItemIds or {ItemIds}
+
+    for _, itemId in ipairs(idTable) do
+        if not Inventory:Contains(itemId) then
+            goto skip
+        end
+
+        API.DoAction_DontResetSelection()
+        API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,47,API.OFF_ACT_Bladed_interface_route) -- Select High Alch
+        self:RandomSleep(50, 100, "ms")
+        API.DoAction_Inventory1(itemId,0,0,API.OFF_ACT_GeneralInterface_route1)
+        self:RandomSleep(50, 100, "ms")
+        ::skip::
+    end
+    
+    return true
+end
+
+--- Note an item or items
+---@param ItemIds number|number[] The ID or IDs of the items to Note
+---@return boolean success True if Note was successful, false if it failed
+function Slib:Note(ItemIds)
+    -- Parameter validation
+    if not self:Sanitize(ItemIds, {"number", "table_of_ids"}, "ItemIds") then
+        return false
+    end
+
+    -- Convert to table for consistent processing
+    local idTable = type(ItemIds) == "table" and ItemIds or {ItemIds}
+
+    for _, itemId in ipairs(idTable) do
+        if not Inventory:Contains(30372) and not Inventory:Contains(43045) then
+            self:Error("[Note] No notepaper.")
+            return false
+        end
+
+        if not Inventory:Contains(itemId) then
+            goto skip
+        else
+            API.DoAction_DontResetSelection()
+            if Inventory:Contains(30372) then
+                Inventory:UseItemOnItem(itemId, 30372)
+            elseif Inventory:Contains(43045) then
+                Inventory:UseItemOnItem(itemId, 43045)
+            else --Redundant check, but just in case
+                self:Error("[Note] No notepaper.")
+                return false
+            end
+        end
+
+        ::skip::
+    end
+end
 
 return Slib
