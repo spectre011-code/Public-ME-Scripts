@@ -1,6 +1,6 @@
 local ScriptName = "Interface Exporter"
 local Author = "Spectre011"
-local ScriptVersion = "1.2.0"
+local ScriptVersion = "1.3.0"
 local ReleaseDate = "15-06-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -33,6 +33,10 @@ v1.2.0 - 21-06-2025
       * Includes Mem_Read_char, Mem_Read_short, Mem_Read_int, Mem_Read_uint64, and ReadCharsLimit
       * Combined with all API constants (I_00textP, I_itemids3, I_itemids, I_itemstack, I_slides, I_buffb)
       * Removed redundant specific memory read columns (now included in comprehensive reads)
+
+v1.3.0 - 28-08-2025
+    - Added parentInterfaceID column to CSV export
+    - Added proper interfaceID column to CSV export
 ]]
 
 local API = require("api")
@@ -455,10 +459,20 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
                 end
             end
 
+            -- Create proper InterfaceID by appending current interface's id1, id2, id3
+            local ProperInterfaceID = "{ "
+            for I, Segment in ipairs(CurrentPath) do
+                if I > 1 then ProperInterfaceID = ProperInterfaceID .. ", " end
+                ProperInterfaceID = ProperInterfaceID .. "{" .. table.concat(Segment, ",") .. "}"
+            end
+            -- Append current interface's id values
+            ProperInterfaceID = ProperInterfaceID .. ", {" .. (Interface.id1 or 0) .. "," .. (Interface.id2 or 0) .. "," .. (Interface.id3 or 0) .. ",0} }"
+
             -- Create comprehensive interface data structure for CSV export
             local InterfaceCopy = {
                 -- Metadata fields
-                _interfaceID = InterfaceIDString,
+                _parentInterfaceID = InterfaceIDString,
+                _interfaceID = ProperInterfaceID,
                 _depth = Depth,
                 -- Standard interface properties from API
                 index = Interface.index,
@@ -550,7 +564,7 @@ local function ExportInterfacesToCSV()
     
     -- Define standard CSV column headers for interface properties
     local Headers = {
-        "interfaceID", "depth", "index", "x", "xs", "y", "ys", "box_x", "box_y", "scroll_y",
+        "parentInterfaceID", "interfaceID", "depth", "index", "x", "xs", "y", "ys", "box_x", "box_y", "scroll_y",
         "id1", "id2", "id3", "itemid1", "itemid1_size", "itemid2",
         "hov", "textids", "textitem", "memloc", "memloctop",
         "fullpath", "fullIDpath", "notvisible", "OP", "xy"
@@ -583,6 +597,7 @@ local function ExportInterfacesToCSV()
     for I, Interface in ipairs(AllInterfaces) do
         -- Build standard data columns with proper CSV escaping
         local RowData = {
+            EscapeCSV(Interface._parentInterfaceID),
             EscapeCSV(Interface._interfaceID),
             EscapeCSV(Interface._depth),
             EscapeCSV(Interface.index),

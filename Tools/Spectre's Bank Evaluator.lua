@@ -7,7 +7,6 @@ local DiscordHandle = "not_spectre011"
 --[[
 ╔═════════════════════════════════════════════════════════════════════════════╗
 ║                           BANK EVALUATOR                                    ║
-║                           BY SPECTRE011                                     ║
 ╠═════════════════════════════════════════════════════════════════════════════╣
 ║  Description: Scans all bank items and exports item data to CSV             ║
 ║  Usage:       Have bank open and execute script                             ║
@@ -49,7 +48,7 @@ local function GenerateFilename()
     local PlayerName = GetSafePlayerName()
     local DateString = os.date("%Y-%m-%d_%H-%M-%S")
     
-    return "bank_evaluation_" .. PlayerName .. "_" .. DateString .. ".csv"
+    return "Bank_Evaluation_" .. PlayerName .. "_" .. DateString .. ".csv"
 end
 
 -- Configuration for output settings
