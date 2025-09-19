@@ -1,6 +1,6 @@
-ScriptName = "AIO Agility"
+ScriptName = "Agility AIO"
 Author = "Spectre011"
-ScriptVersion = "2.2.1"
+ScriptVersion = "2.2.2"
 ReleaseDate = "06-09-2024"
 DiscordHandle = "not_spectre011"
 
@@ -61,6 +61,9 @@ v2.2.0 - 27-04-2025
     - Changed logic for wildy course
 v2.2.1 - 27-04-2025
     - Decreased anim check interval for wildy course
+v2.2.2 - 19-09-2025
+    - Changed inventory check to use Inventory:Contains instead of API.CheckInvStuff0
+    - Changed inventory check to use Inventory:IsFull instead of API.InvFull_
 
 Move to the starting location of the circuit and set the course]]
 
@@ -282,8 +285,8 @@ local function RechargeSilverhawkBoots(minQuantity)
     local item = API.Container_Get_s(94,30924)
     if item.item_id == 30924 then
         if item.Extra_ints[2] < minQuantity then
-            local silverhawkFeather = API.CheckInvStuff0(30915)
-            local silverhawkDown = API.CheckInvStuff0(34823)
+            local silverhawkFeather = Inventory:Contains(30915)
+            local silverhawkDown = Inventory:Contains(34823)
             if silverhawkFeather ~= false then
                 API.DoAction_Inventory1(30915,0,1,API.OFF_ACT_GeneralInterface_route)
                 return
@@ -718,12 +721,12 @@ local stageFunctions = {
             UTILS.randomSleep(1000)
         end
         local function FullInvCheck()
-            if API.InvFull_() then
+            if Inventory:IsFull() then
                 while API.Read_LoopyLoop() and not API.CheckBankVarp() do
                     API.DoAction_Object1(0x2e,API.OFF_ACT_GeneralObject_route1,{92692},50)
                     UTILS.randomSleep(2000)
                 end
-                while API.Read_LoopyLoop() and API.InvFull_()do
+                while API.Read_LoopyLoop() and Inventory:IsFull()do
                     API.DoAction_Interface(0xffffffff,0xffffffff,1,517,39,-1,API.OFF_ACT_GeneralInterface_route)
                     UTILS.randomSleep(2000)
                     API.KeyboardPress2(0x33, 60, 100)
