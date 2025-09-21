@@ -1,6 +1,6 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.1.0"
+local ScriptVersion = "1.2.0"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -100,8 +100,13 @@ v1.0.11 - 26-06-2025
 v1.1.0 - 06-08-2025
     - Added bank table BANK.Banks
     - Added function:
-        BANK:GetNearestBank()
+        GetNearestBank()
     - Changed functions BANK:Open(), BANK:LoadLastPreset() and BANK:CollectionBoxOpen() to use the nearest bank.
+v1.2.0 - 99-99-2025
+    - Added banks:
+        Emerald Benedict
+        Gundai
+        Dead man's chest
 ]]
 
 local API = require("api")
@@ -109,19 +114,19 @@ local API = require("api")
 local BANK = {}
 
 BANK.Banks = {
+    {Name = "Gundai", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
     {Name = "Banker", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
-    {Name = "Bank chest", OpenAction = "Use", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
-    {Name = "Bank booth", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
-    {Name = "Counter", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
     {Name = "Head Guard", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
-    {Name = "Gnome Banker", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"}    
+    {Name = "Gnome Banker", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
+    {Name = "Emerald Benedict", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
+
+    {Name = "Counter", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
+    {Name = "Bank chest", OpenAction = "Use", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
+    {Name = "Bank booth", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},    
+    {Name = "Dead man's chest", OpenAction = "Use", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"}
 }
 
-
 BANK.Interfaces = {}
-BANK.Items = {}
-
-BANK.Interfaces.PresetSettings = {}
 
 BANK.Interfaces.PIN = { 
     { 759,5,-1,0 } 
@@ -189,6 +194,8 @@ BANK.Interfaces.CollectionBoxSlots = { -- https://imgur.com/WN60RRo.
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,27,-1,0 }, { 109,67,-1,0 }, { 109,67,3,0 } } -- Slot 16
 }
 
+BANK.Interfaces.PresetSettings = {}
+
 BANK.Interfaces.PresetSettings.Inventory = { 
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,277,-1,0 }, { 517,280,-1,0 }, { 517,280,0,0 } },
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,277,-1,0 }, { 517,280,-1,0 }, { 517,280,1,0 } },
@@ -236,6 +243,8 @@ BANK.Interfaces.PresetSettings.Equipment = {
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,281,-1,0 }, { 517,283,-1,0 }, { 517,284,-1,0 }, { 517,286,-1,0 }, { 517,290,-1,0 }, { 517,290,17,0 } }
 }
 
+BANK.Items = {}
+
 BANK.Items.OreBoxes = {
     44779, -- Bronze
     44781, -- Iron
@@ -264,7 +273,6 @@ BANK.Items.WoodBoxes = {
     58253 -- Eternal magic
 }
 
-
 -- ##################################
 -- #                                #
 -- #     GENERAL BANK FUNCTIONS     #
@@ -273,7 +281,7 @@ BANK.Items.WoodBoxes = {
 
 -- Returns the nearest bank's name, open action, load preset action, collection box action, and interact type.
 ---@return table | false -- {name, OpenAction, LoadLastPresetAction, CollectionBoxAction, InteractType} or false
-function BANK:GetNearestBank()
+local function GetNearestBank()
     local BankNames = {}
     for _, bank in ipairs(BANK.Banks) do
         table.insert(BankNames, bank.Name)
@@ -331,7 +339,7 @@ end
 ---@return boolean
 function BANK:Open()
     print("[BANK] Opening nearest bank:")
-    local NearestBank = BANK:GetNearestBank()
+    local NearestBank = GetNearestBank()
     
     if not NearestBank then
         print("[BANK] No bank found nearby or no matching bank in configuration.")
@@ -371,7 +379,7 @@ end
 ---@return boolean
 function BANK:LoadLastPreset()
     print("[BANK] Loading last preset from nearest bank:")
-    local NearestBank = BANK:GetNearestBank()
+    local NearestBank = GetNearestBank()
     
     if not NearestBank then
         print("[BANK] No bank found nearby or no matching bank in configuration.")
@@ -2882,7 +2890,7 @@ end
 ---@return boolean
 function BANK:ColletionBoxOpen()
     print("[BANK] Opening collection box from nearest bank:")
-    local NearestBank = BANK:GetNearestBank()
+    local NearestBank = GetNearestBank()
     
     if not NearestBank then
         print("[BANK] No bank found nearby or no matching bank in configuration.")
