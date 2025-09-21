@@ -102,7 +102,7 @@ v1.1.0 - 06-08-2025
     - Added function:
         GetNearestBank()
     - Changed functions BANK:Open(), BANK:LoadLastPreset() and BANK:CollectionBoxOpen() to use the nearest bank.
-v1.2.0 - 99-99-2025
+v1.2.0 - 21-09-2025
     - Added banks:
         Emerald Benedict
         Gundai
