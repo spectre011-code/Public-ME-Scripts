@@ -1,6 +1,6 @@
 local ScriptName = "Bank Toolbox"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.11"
+local ScriptVersion = "1.2.0"
 local ReleaseDate = "02-05-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -97,16 +97,36 @@ v1.0.10 - 25-06-2025
 v1.0.11 - 26-06-2025
     - Added function:
         BANK:SoilBoxDepositSoil()
+v1.1.0 - 06-08-2025
+    - Added bank table BANK.Banks
+    - Added function:
+        GetNearestBank()
+    - Changed functions BANK:Open(), BANK:LoadLastPreset() and BANK:CollectionBoxOpen() to use the nearest bank.
+v1.2.0 - 99-99-2025
+    - Added banks:
+        Emerald Benedict
+        Gundai
+        Dead man's chest
 ]]
 
 local API = require("api")
 
 local BANK = {}
 
-BANK.Interfaces = {}
-BANK.Items = {}
+BANK.Banks = {
+    {Name = "Gundai", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
+    {Name = "Banker", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
+    {Name = "Head Guard", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
+    {Name = "Gnome Banker", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
+    {Name = "Emerald Benedict", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "NPC"},
 
-BANK.Interfaces.PresetSettings = {}
+    {Name = "Counter", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
+    {Name = "Bank chest", OpenAction = "Use", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},
+    {Name = "Bank booth", OpenAction = "Bank", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"},    
+    {Name = "Dead man's chest", OpenAction = "Use", LoadLastPresetAction = "Load Last Preset from", CollectionBoxAction = "Collect", InteractType = "Object"}
+}
+
+BANK.Interfaces = {}
 
 BANK.Interfaces.PIN = { 
     { 759,5,-1,0 } 
@@ -174,6 +194,8 @@ BANK.Interfaces.CollectionBoxSlots = { -- https://imgur.com/WN60RRo.
     { { 109,37,-1,0 }, { 109,39,-1,0 }, { 109,27,-1,0 }, { 109,67,-1,0 }, { 109,67,3,0 } } -- Slot 16
 }
 
+BANK.Interfaces.PresetSettings = {}
+
 BANK.Interfaces.PresetSettings.Inventory = { 
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,277,-1,0 }, { 517,280,-1,0 }, { 517,280,0,0 } },
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,277,-1,0 }, { 517,280,-1,0 }, { 517,280,1,0 } },
@@ -221,6 +243,8 @@ BANK.Interfaces.PresetSettings.Equipment = {
     { { 517,0,-1,0 }, { 517,2,-1,0 }, { 517,153,-1,0 }, { 517,261,-1,0 }, { 517,262,-1,0 }, { 517,281,-1,0 }, { 517,283,-1,0 }, { 517,284,-1,0 }, { 517,286,-1,0 }, { 517,290,-1,0 }, { 517,290,17,0 } }
 }
 
+BANK.Items = {}
+
 BANK.Items.OreBoxes = {
     44779, -- Bronze
     44781, -- Iron
@@ -255,6 +279,50 @@ BANK.Items.WoodBoxes = {
 -- #                                #
 -- ##################################
 
+-- Returns the nearest bank's name, open action, load preset action, collection box action, and interact type.
+---@return table | false -- {name, OpenAction, LoadLastPresetAction, CollectionBoxAction, InteractType} or false
+local function GetNearestBank()
+    local BankNames = {}
+    for _, bank in ipairs(BANK.Banks) do
+        table.insert(BankNames, bank.Name)
+    end
+    
+    local AllBanks = API.GetAllObjArrayInteract_str(BankNames, 50, {0, 1, 12})
+    
+    if not AllBanks or #AllBanks == 0 then
+        return false
+    end
+    
+    local NearestBank = nil
+    local ShortestDistance = math.huge
+    
+    for _, bank in ipairs(AllBanks) do
+        if bank.Distance and bank.Distance < ShortestDistance then
+            ShortestDistance = bank.Distance
+            NearestBank = bank
+        end
+    end
+    
+    if not NearestBank then
+        return false
+    end
+
+    for _, BankData in ipairs(BANK.Banks) do
+        if BankData.Name == NearestBank.Name then
+            print("[BANK] Nearest bank found:", BankData.Name)
+            return {
+                name = BankData.Name,
+                OpenAction = BankData.OpenAction,
+                LoadLastPresetAction = BankData.LoadLastPresetAction,
+                CollectionBoxAction = BankData.CollectionBoxAction,
+                InteractType = BankData.InteractType
+            }
+        end
+    end
+
+    return false
+end
+
 -- Check if Bank interface is open.
 ---@return boolean
 function BANK:IsOpen()
@@ -267,36 +335,31 @@ function BANK:IsOpen()
     end
 end
 
--- Attempts to open your bank using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
+-- Attempts to open your bank using the nearest bank. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:Open()
-    print("[BANK] Opening BANK:")
-    if Interact:NPC("Banker", "Bank", 50) then
-        print("[BANK] Banker succeded.")
-        return true
+    print("[BANK] Opening nearest bank:")
+    local NearestBank = GetNearestBank()
+    
+    if not NearestBank then
+        print("[BANK] No bank found nearby or no matching bank in configuration.")
+        return false
     end
 
-    if Interact:Object("Bank chest", "Use", 50) then
-        print("[BANK] Bank chest succeded.")
+    local success = false
+    
+    if NearestBank.InteractType == "NPC" then
+        success = Interact:NPC(NearestBank.name, NearestBank.OpenAction, 50)
+    elseif NearestBank.InteractType == "Object" then
+        success = Interact:Object(NearestBank.name, NearestBank.OpenAction, 50)
+    end
+    
+    if success then
+        print("[BANK] " .. NearestBank.name .. " succeeded.")
         return true
     end
-
-    if Interact:Object("Bank booth", "Bank", 50) then
-        print("[BANK] Bank booth succeded.")
-        return true
-    end
-
-    if Interact:Object("Counter", "Bank", 50) then
-        print("[BANK] Counter succeded.")
-        return true
-    end
-
-    if Interact:NPC("Head Guard", "Bank", 50) then
-        print("[BANK] Head Guard succeded.")
-        return true
-    end
-
-    print("[BANK] Could not interact with any of the following: Banker, Bank chest, Bank booth, Counter and Head Guard.")
+    
+    print("[BANK] Could not interact with " .. NearestBank.name)
     return false
 end
 
@@ -312,36 +375,31 @@ function BANK:Close()
     end    
 end
 
--- Attempts to load the last bank preset using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
+-- Attempts to load the last bank preset using the nearest bank. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:LoadLastPreset()
-    print("[BANK] Loading last preset.")
-    if Interact:NPC("Banker", "Load Last Preset from", 50) then
-        print("[BANK] Banker succeded.")
-        return true
+    print("[BANK] Loading last preset from nearest bank:")
+    local NearestBank = GetNearestBank()
+    
+    if not NearestBank then
+        print("[BANK] No bank found nearby or no matching bank in configuration.")
+        return false
     end
 
-    if Interact:Object("Bank chest", "Load Last Preset from", 50) then
-        print("[BANK] Bank chest succeded.")
+    local success = false
+    
+    if NearestBank.InteractType == "NPC" then
+        success = Interact:NPC(NearestBank.name, NearestBank.LoadLastPresetAction, 50)
+    elseif NearestBank.InteractType == "Object" then
+        success = Interact:Object(NearestBank.name, NearestBank.LoadLastPresetAction, 50)
+    end
+    
+    if success then
+        print("[BANK] " .. NearestBank.name .. " succeeded.")
         return true
     end
-
-    if Interact:Object("Bank booth", "Load Last Preset from", 50) then
-        print("[BANK] Bank booth succeded.")
-        return true
-    end
-
-    if Interact:Object("Counter", "Load Last Preset from", 50) then
-        print("[BANK] Counter succeded.")
-        return true
-    end
-
-    if Interact:NPC("Head Guard", "Load Last Preset from", 50) then
-        print("[BANK] Head Guard succeded.")
-        return true
-    end
-
-    print("[BANK] Could not interact with any of the following: Banker, Bank chest, Bank booth, Counter and Head Guard.")
+    
+    print("[BANK] Could not load preset from " .. NearestBank.name)
     return false
 end
 
@@ -2831,28 +2889,30 @@ end
 -- Attempts to open your collection box using the listed options. Requires cache enabled https://imgur.com/5I9a46V.
 ---@return boolean
 function BANK:ColletionBoxOpen()
-    print("[BANK] Opening colection box.")
-    if Interact:NPC("Banker", "Collect", 50) then
-        print("[BANK] Banker succeded.")
-        return true
+    print("[BANK] Opening collection box from nearest bank:")
+    local NearestBank = GetNearestBank()
+    
+    if not NearestBank then
+        print("[BANK] No bank found nearby or no matching bank in configuration.")
+        return false
     end
 
-    if Interact:Object("Bank chest", "Collect", 50) then
-        print("[BANK] Bank chest succeded.")
+
+
+    local success = false
+    
+    if NearestBank.InteractType == "NPC" then
+        success = Interact:NPC(NearestBank.name, NearestBank.CollectionBoxAction, 50)
+    elseif NearestBank.InteractType == "Object" then
+        success = Interact:Object(NearestBank.name, NearestBank.CollectionBoxAction, 50)
+    end
+    
+    if success then
+        print("[BANK] " .. NearestBank.name .. " succeeded.")
         return true
     end
-
-    if Interact:Object("Bank booth", "Collect", 50) then
-        print("[BANK] Bank booth succeded.")
-        return true
-    end
-
-    if Interact:Object("Counter", "Collect", 50) then
-        print("[BANK] Counter succeded.")
-        return true
-    end
-
-    print("[BANK] Could not interact with any of the following: Banker, Bank chest, Bank booth and Counter.")
+    
+    print("[BANK] Could not open collection box from " .. NearestBank.name)
     return false
 end
 

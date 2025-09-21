@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.2"
+local ScriptVersion = "1.0.5"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -27,21 +27,66 @@ This library was developed with AI assistance for:
 
 Changelog:
 v1.0.0 - 09-07-2025
-    - Initial release
+    - Initial release.
 v1.0.1 - 12-07-2025
-    - Added RandomNumber function
+    - Added RandomNumber function.
 v1.0.2 - 15-07-2025
     - Added write to file logging functionality.
-
+v1.0.3 - 01-08-2025
+    - Added lobby fuction.
+    - Modified logging system to write files per session instead of just one file per account.
+v1.0.4 - 22-08-2025
+    - Added GetSpellBook function.
+    - Added Note function.
+    - Added HighAlch function.
+v1.0.5 - 20-09-2025
+    - Added Slib:AbilityExists function.
 ]]
 
 local API = require("api")
 
 local Slib = {}
 
-Slib.ChatMessages = API.GatherEvents_chat_check()
-
+Slib.Items = {}
 Slib.Interfaces = {}
+Slib.ChatMessages = {}
+
+Slib.Items.Runes = {
+    Normal = { --Normal runes.
+        Fire    = {Id = 554, InventoryVB = 5888, Name = "Fire rune"},
+        Water   = {Id = 555, InventoryVB = 5887, Name = "Water rune"},
+        Air     = {Id = 556, InventoryVB = 5886, Name = "Air rune"},
+        Earth   = {Id = 557, InventoryVB = 5889, Name = "Earth rune"},
+        Mind    = {Id = 558, InventoryVB = 5902, Name = "Mind rune"},
+        Body    = {Id = 559, InventoryVB = 5896, Name = "Body rune"},
+        Death   = {Id = 560, InventoryVB = 5901, Name = "Death rune"},
+        Nature  = {Id = 561, InventoryVB = 5899, Name = "Nature rune"},
+        Chaos   = {Id = 562, InventoryVB = 5898, Name = "Chaos rune"},
+        Law     = {Id = 563, InventoryVB = 5900, Name = "Law rune"},
+        Cosmic  = {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"},
+        Blood   = {Id = 565, InventoryVB = 5904, Name = "Blood rune"},
+        Soul    = {Id = 566, InventoryVB = 5905, Name = "Soul rune"},
+        Astral  = {Id = 9075, InventoryVB = 5903, Name = "Astral rune"},
+        Armadyl = {Id = 21773, InventoryVB = 5906, Name = "Armadyl rune"},
+        Time    = {Id = 58450, InventoryVB = 8291, Name = "Time rune"},
+    },
+
+    Combination = { --They dont have an InventoryVB as they change the InventoryVB of the runes that were combined.
+        Steam   = {Id = 4694, Name = "Steam rune"}, -- Water + Fire
+        Mist    = {Id = 4695, Name = "Mist rune"}, -- Air + Water
+        Dust    = {Id = 4696, Name = "Dust rune"}, -- Air + Earth
+        Smoke   = {Id = 4697, Name = "Smoke rune"}, -- Air + Fire
+        Mud     = {Id = 4698, Name = "Mud rune"}, -- Water + Earth
+        Lava    = {Id = 4699, Name = "Lava rune"}, -- Earth + Fire
+    },
+
+    Necromancy = { --They dont have an InventoryVB but can be read from container 953 if inside nexus.
+        Spirit  = {Id = 55337, Name = "Spirit rune"},
+        Bone    = {Id = 55338, Name = "Bone rune"},
+        Flesh   = {Id = 55339, Name = "Flesh rune"},
+        Miasma  = {Id = 55340, Name = "Miasma rune"}
+    }
+}
 
 Slib.Interfaces.TextInput = { 
     { { 1469,0,-1,0 }, { 1469,1,-1,0 } }
@@ -83,6 +128,8 @@ Slib.Interfaces.AreaLoot = {
     { {1622,4,-1,0}, {1622,6,-1,0}, {1622,1,-1,0}, {1622,11,-1,0} }
 }
 
+Slib.ChatMessages = API.GatherEvents_chat_check()
+
 -- ##################################
 -- #                                #
 -- #       LOGGING FUNCTIONS        #
@@ -94,6 +141,9 @@ Slib._logsDirectoryCreated = false
 
 -- Static cache for player name to avoid issues when character goes to lobby/dc
 Slib._cachedPlayerName = nil
+
+-- Static cache for session-specific log filename
+Slib._sessionLogFileName = nil
 
 -- Static flag to control file writing behavior
 -- Set this to true at the start of your script to enable file logging
@@ -147,28 +197,36 @@ end
 ---@param Message string The message to write to file
 ---@return boolean success True if file write was successful, false otherwise
 function Slib:WriteToLogFile(Level, Message)
-    -- Get player name for filename (use cached name if available)
-    local PlayerName = self._cachedPlayerName
-    
-    -- If no cached name, try to get current player name
-    if not PlayerName then
-        local CurrentPlayerName = API.GetLocalPlayerName()
-        if CurrentPlayerName and CurrentPlayerName ~= "" then
-            -- Cache the valid player name for future use
-            self._cachedPlayerName = CurrentPlayerName
-            PlayerName = CurrentPlayerName
-        else
-            PlayerName = "Unknown_Player"
+    -- Generate session-specific filename if not already cached
+    if not self._sessionLogFileName then
+        -- Get player name for filename (use cached name if available)
+        local PlayerName = self._cachedPlayerName
+        
+        -- If no cached name, try to get current player name
+        if not PlayerName then
+            local CurrentPlayerName = API.GetLocalPlayerName()
+            if CurrentPlayerName and CurrentPlayerName ~= "" then
+                -- Cache the valid player name for future use
+                self._cachedPlayerName = CurrentPlayerName
+                PlayerName = CurrentPlayerName
+            else
+                PlayerName = "Unknown_Player"
+            end
         end
+        
+        -- Clean player name for filename (remove invalid characters)
+        PlayerName = string.gsub(PlayerName, "[<>:\"/\\|?*]", "_")
+        
+        -- Generate session timestamp for unique filename
+        local SessionTimestamp = os.date("%Y-%m-%d_%H-%M-%S")
+        
+        -- Create session-specific filename and cache it
+        self._sessionLogFileName = PlayerName .. "_" .. SessionTimestamp .. ".txt"
     end
-    
-    -- Clean player name for filename (remove invalid characters)
-    PlayerName = string.gsub(PlayerName, "[<>:\"/\\|?*]", "_")
     
     -- Create logs directory path
     local LogsDir = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\logs\\"
-    local LogFileName = PlayerName .. ".txt"
-    local LogFilePath = LogsDir .. LogFileName
+    local LogFilePath = LogsDir .. self._sessionLogFileName
     
     -- Ensure logs directory exists (only once per script run)
     if not self:EnsureLogsDirectory() then
@@ -593,8 +651,8 @@ function Slib:Sleep(Duration, Unit)
     end
     
     -- Convert duration to seconds and implement sleep logic for time-based units
-    local TargetDuration
-    local YieldInterval
+    local TargetDuration = 0
+    local YieldInterval = 0
     
     if Unit == "ms" or Unit == "milli" or Unit == "millisecond" or Unit == "milliseconds" then
         TargetDuration = Duration / 1000
@@ -939,114 +997,6 @@ function Slib:PrintDebuffs()
     
     self:Info("Debuff scan completed successfully")
     return true
-end
-
--- Checks if a specific buff is currently active
----@param BuffId number The buff ID to check for
----@return boolean found True if the buff is currently active, false otherwise
-function Slib:HasBuff(BuffId)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {BuffId, "id", "BuffId"}
-    }) then
-        return false
-    end
-    
-    -- Protected API call with validation
-    local Buffs = API.Buffbar_GetAllIDs()
-    
-    -- Check if API returned valid data
-    if not Buffs then
-        self:Error("[HasBuff] API returned nil for buffs")
-        return false
-    end
-    
-    if type(Buffs) ~= "table" and type(Buffs) ~= "userdata" then
-        self:Error("[HasBuff] API returned invalid buff data type: " .. type(Buffs))
-        return false
-    end
-    
-    if #Buffs == 0 then
-        return false
-    end
-    
-    -- Safe iteration with bounds checking
-    for I = 1, #Buffs do
-        local Buff = Buffs[I]
-        
-        -- Check if buff exists and is valid
-        if not Buff then
-            goto continue
-        end
-        
-        if type(Buff) ~= "table" and type(Buff) ~= "userdata" then
-            goto continue
-        end
-        
-        -- Check if this is the buff we're looking for
-        if Buff.id == BuffId then
-            self:Info("[HasBuff] Found active buff with ID: " .. BuffId)
-            return true
-        end
-        
-        ::continue::
-    end
-    
-    return false
-end
-
--- Checks if a specific debuff is currently active
----@param DebuffId number The debuff ID to check for
----@return boolean found True if the debuff is currently active, false otherwise
-function Slib:HasDebuff(DebuffId)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {DebuffId, "id", "DebuffId"}
-    }) then
-        return false
-    end
-    
-    -- Protected API call with validation
-    local Debuffs = API.DeBuffbar_GetAllIDs()
-    
-    -- Check if API returned valid data
-    if not Debuffs then
-        self:Error("[HasDebuff] API returned nil for debuffs")
-        return false
-    end
-    
-    if type(Debuffs) ~= "table" and type(Debuffs) ~= "userdata" then
-        self:Error("[HasDebuff] API returned invalid debuff data type: " .. type(Debuffs))
-        return false
-    end
-    
-    if #Debuffs == 0 then
-        return false
-    end
-    
-    -- Safe iteration with bounds checking
-    for I = 1, #Debuffs do
-        local Debuff = Debuffs[I]
-        
-        -- Check if debuff exists and is valid
-        if not Debuff then
-            goto continue
-        end
-        
-        if type(Debuff) ~= "table" and type(Debuff) ~= "userdata" then
-            goto continue
-        end
-        
-        -- Check if this is the debuff we're looking for
-        if Debuff.id == DebuffId then
-            self:Info("[HasDebuff] Found active debuff with ID: " .. DebuffId)
-            return true
-        end
-        
-        ::continue::
-    end
-    
-    return false
 end
 
 -- Prints container contents with detailed information for each item (93 = inventory, 94 = equipment, 95 = bank)
@@ -2163,6 +2113,96 @@ function Slib:PrintCurrencyPouch()
     return true
 end
 
+-- Prints all rune types with their current quantities in an organized format
+---@return boolean success True if all rune information was printed successfully, false if error occurred
+function Slib:PrintRunes()
+    self:Info("=== Rune Inventory Report ===")
+    
+    -- Print Normal Runes (from pouches + inventory)
+    print("Normal Runes (Pouches + Inventory):")
+    print("+================================+")
+    
+    for _, Rune in pairs(self.Items.Runes.Normal) do
+        local Success, Result = pcall(function()
+            return API.VB_FindPSettinOrder(Rune.InventoryVB, 1)
+        end)
+        
+        local RuneAmount = 0
+        if Success and Result and Result.state then
+            RuneAmount = tonumber(Result.state) or 0
+        end
+        
+        print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), RuneAmount))
+    end
+    
+    print("+================================+")
+    print("")
+    
+    -- Print Combination Runes (inventory only)
+    print("Combination Runes (Inventory Only):")
+    print("+================================+")
+    
+    for _, Rune in pairs(self.Items.Runes.Combination) do
+        local Success, RuneAmount = pcall(function()
+            return tonumber(Inventory:GetItemAmount(Rune.Id)) or 0
+        end)
+        
+        if not Success then
+            RuneAmount = 0
+        end
+        
+        print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), RuneAmount))
+    end
+    
+    print("+================================+")
+    print("")
+    
+    -- Print Necromancy Runes (inventory + nexus)
+    print("Necromancy Runes (Inventory + Nexus):")
+    print("+================================+")
+    
+    local NexusRunes = API.Container_Get_all(953)
+    
+    for _, Rune in pairs(self.Items.Runes.Necromancy) do
+        -- Get inventory amount
+        local InventoryAmount = 0
+        local Success, Result = pcall(function()
+            return Inventory:GetItemAmount(Rune.Id)
+        end)
+        
+        if Success and Result then
+            InventoryAmount = Result
+        end
+        
+        -- Get nexus amount
+        local NexusAmount = 0
+        if NexusRunes then
+            for _, ContainerItem in pairs(NexusRunes) do
+                if ContainerItem and ContainerItem.item_id == Rune.Id then
+                    NexusAmount = NexusAmount + (ContainerItem.item_stack or 0)
+                end
+            end
+        end
+        
+        local TotalAmount = InventoryAmount + NexusAmount
+        
+        -- Show breakdown if there are runes in both locations
+        if InventoryAmount > 0 and NexusAmount > 0 then
+            print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), TotalAmount))
+            print(string.format("|     Inventory  : %8d   |", InventoryAmount))
+            print(string.format("|     Nexus      : %8d   |", NexusAmount))
+        else
+            print(string.format("|   %-15s: %8d   |", Rune.Name:gsub(" rune", ""), TotalAmount))
+        end
+    end
+    
+    print("+================================+")
+    print("")
+    
+    self:Info("Rune inventory report completed successfully")
+    return true
+end
+
 -- Prints a table's contents in a formatted, readable way
 ---@param Tbl table The table to print (supports nested tables)
 ---@return boolean success True if table was printed successfully, false if invalid table
@@ -2457,17 +2497,6 @@ function Slib:GetGWD1KillCounts()
 
     -- Print formatted results
     if SuccessCount > 0 then
-        self:Info("=== GWD1 Kill Counts ===")
-        print("+========================+")
-        print("|      GWD1 KILLS        |")
-        print("+========================+")
-        print("|   Armadyl   : " .. string.format("%-8s", tostring(Results.Armadyl or 0)) .. " |")
-        print("|   Bandos    : " .. string.format("%-8s", tostring(Results.Bandos or 0)) .. " |")
-        print("|   Saradomin : " .. string.format("%-8s", tostring(Results.Saradomin or 0)) .. " |")
-        print("|   Zamorak   : " .. string.format("%-8s", tostring(Results.Zamorak or 0)) .. " |")
-        print("|   Zaros     : " .. string.format("%-8s", tostring(Results.Zaros or 0)) .. " |")
-        print("+========================+")
-
         return Results
     else
         self:Error("[GetGWD1KillCounts] Failed to retrieve any kill counts")
@@ -2540,16 +2569,6 @@ function Slib:GetGWD2KillCounts()
 
     -- Print formatted results
     if SuccessCount > 0 then
-        self:Info("=== GWD2 Kill Counts ===")
-        print("+========================+")
-        print("|      GWD2 KILLS        |")
-        print("+========================+")
-        print("|   Seren    : " .. string.format("%-8s", tostring(Results.Seren or 0)) .. " |")
-        print("|   Sliske   : " .. string.format("%-8s", tostring(Results.Sliske or 0)) .. " |")
-        print("|   Zamorak  : " .. string.format("%-8s", tostring(Results.Zamorak or 0)) .. " |")
-        print("|   Zaros    : " .. string.format("%-8s", tostring(Results.Zaros or 0)) .. " |")
-        print("+========================+")
-
         return Results
     else
         self:Error("[GetGWD2KillCounts] Failed to retrieve any kill counts")
@@ -2919,6 +2938,114 @@ function Slib:FindObj2(ObjId, Distance, ObjType, x, y, z)
     return NearestObj
 end
 
+-- Checks if a specific buff is currently active
+---@param BuffId number The buff ID to check for
+---@return boolean found True if the buff is currently active, false otherwise
+function Slib:HasBuff(BuffId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {BuffId, "id", "BuffId"}
+    }) then
+        return false
+    end
+    
+    -- Protected API call with validation
+    local Buffs = API.Buffbar_GetAllIDs()
+    
+    -- Check if API returned valid data
+    if not Buffs then
+        self:Error("[HasBuff] API returned nil for buffs")
+        return false
+    end
+    
+    if type(Buffs) ~= "table" and type(Buffs) ~= "userdata" then
+        self:Error("[HasBuff] API returned invalid buff data type: " .. type(Buffs))
+        return false
+    end
+    
+    if #Buffs == 0 then
+        return false
+    end
+    
+    -- Safe iteration with bounds checking
+    for I = 1, #Buffs do
+        local Buff = Buffs[I]
+        
+        -- Check if buff exists and is valid
+        if not Buff then
+            goto continue
+        end
+        
+        if type(Buff) ~= "table" and type(Buff) ~= "userdata" then
+            goto continue
+        end
+        
+        -- Check if this is the buff we're looking for
+        if Buff.id == BuffId then
+            self:Info("[HasBuff] Found active buff with ID: " .. BuffId)
+            return true
+        end
+        
+        ::continue::
+    end
+    
+    return false
+end
+
+-- Checks if a specific debuff is currently active
+---@param DebuffId number The debuff ID to check for
+---@return boolean found True if the debuff is currently active, false otherwise
+function Slib:HasDebuff(DebuffId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {DebuffId, "id", "DebuffId"}
+    }) then
+        return false
+    end
+    
+    -- Protected API call with validation
+    local Debuffs = API.DeBuffbar_GetAllIDs()
+    
+    -- Check if API returned valid data
+    if not Debuffs then
+        self:Error("[HasDebuff] API returned nil for debuffs")
+        return false
+    end
+    
+    if type(Debuffs) ~= "table" and type(Debuffs) ~= "userdata" then
+        self:Error("[HasDebuff] API returned invalid debuff data type: " .. type(Debuffs))
+        return false
+    end
+    
+    if #Debuffs == 0 then
+        return false
+    end
+    
+    -- Safe iteration with bounds checking
+    for I = 1, #Debuffs do
+        local Debuff = Debuffs[I]
+        
+        -- Check if debuff exists and is valid
+        if not Debuff then
+            goto continue
+        end
+        
+        if type(Debuff) ~= "table" and type(Debuff) ~= "userdata" then
+            goto continue
+        end
+        
+        -- Check if this is the debuff we're looking for
+        if Debuff.id == DebuffId then
+            self:Info("[HasDebuff] Found active debuff with ID: " .. DebuffId)
+            return true
+        end
+        
+        ::continue::
+    end
+    
+    return false
+end
+
 -- Checks if the currency pouch contains an item with the given ID or any ID in a list
 ---@param Ids number|table The item ID or list of item IDs to check for
 ---@return boolean found True if at least one of the IDs is found in the currency pouch, false otherwise
@@ -3266,6 +3393,90 @@ function Slib:CheckObjectBool1(ObjId, Range, ObjType)
     return false
 end
 
+-- Returns a simple table containing rune quantities organized by type
+---@return table runes Table containing rune amounts organized by type
+---@return table runes.Normal Normal runes amounts (from pouches and inventory)
+---@return table runes.Combination Combination runes amounts (from inventory only)
+---@return table runes.Necromancy Necromancy runes amounts (inventory + nexus total)
+function Slib:GetRuneAmounts()
+    local RuneAmounts = {
+        Normal = {},
+        Combination = {},
+        Necromancy = {}
+    }
+    
+    -- Get Normal Runes (from pouches + inventory)
+    for RuneName, Rune in pairs(self.Items.Runes.Normal) do
+        local Success, Result = pcall(function()
+            return API.VB_FindPSettinOrder(Rune.InventoryVB, 1)
+        end)
+        
+        local RuneAmount = 0
+        if Success and Result and Result.state then
+            RuneAmount = tonumber(Result.state) or 0
+        end
+        
+        RuneAmounts.Normal[RuneName] = RuneAmount
+    end
+    
+    -- Get Combination Runes (inventory only)
+    for RuneName, Rune in pairs(self.Items.Runes.Combination) do
+        local Success, RuneAmount = pcall(function()
+            return tonumber(Inventory:GetItemAmount(Rune.Id)) or 0
+        end)
+        
+        if not Success then
+            RuneAmount = 0
+        end
+        
+        RuneAmounts.Combination[RuneName] = RuneAmount
+    end
+    
+    -- Get Necromancy Runes (inventory + nexus)
+    local NexusRunes = API.Container_Get_all(953)
+    
+    for RuneName, Rune in pairs(self.Items.Runes.Necromancy) do
+        -- Get inventory amount
+        local InventoryAmount = 0
+        local Success, Result = pcall(function()
+            return Inventory:GetItemAmount(Rune.Id)
+        end)
+        
+        if Success and Result then
+            InventoryAmount = Result
+        end
+        
+        -- Get nexus amount
+        local NexusAmount = 0
+        if NexusRunes then
+            for _, ContainerItem in pairs(NexusRunes) do
+                if ContainerItem and ContainerItem.item_id == Rune.Id then
+                    NexusAmount = NexusAmount + (ContainerItem.item_stack or 0)
+                end
+            end
+        end
+        
+        local TotalAmount = InventoryAmount + NexusAmount
+        RuneAmounts.Necromancy[RuneName] = TotalAmount
+    end
+    
+    return RuneAmounts
+end
+
+--- Get the currently active spellbook
+---@return string|nil spellbook_name The name of the active spellbook ("Normal", "Ancient", "Lunar") or nil if unknown
+function Slib:GetSpellBook()
+    local spellbook = API.GetVarbitValue(39733)
+    if spellbook == 0 then
+        return "Normal"
+    elseif spellbook == 1 then
+        return "Ancient"
+    elseif spellbook == 2 then
+        return "Lunar"
+    end
+    return "Unknown"
+end
+
 -- ##################################
 -- #                                #
 -- #           PROCEDURES           #
@@ -3372,6 +3583,41 @@ function Slib:Dive(X, Y, Z)
     return false
 end
 
+-- Checks if an ability exists by its ID or name
+---@param AbilityIdOrName number|string The ID (number) or name (string) of the ability to check
+---@return boolean exists True if the ability exists, false otherwise
+function Slib:AbilityExists(AbilityIdOrName)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityIdOrName, {"number", "string"}, "AbilityIdOrName"}
+    }) then
+        return false
+    end
+    
+    self:Info(string.format("[AbilityExists] Checking if ability exists: %s (type: %s)", tostring(AbilityIdOrName), type(AbilityIdOrName)))
+    
+    local AbilityData = nil
+    
+    -- Get ability data based on parameter type
+    if type(AbilityIdOrName) == "number" then
+        AbilityData = API.GetABs_id(AbilityIdOrName)
+        if not AbilityData or AbilityData.id == 0 then
+            self:Warn(string.format("[AbilityExists] Ability with ID %d not found", AbilityIdOrName))
+            return false
+        end
+    elseif type(AbilityIdOrName) == "string" then
+        -- Use exact match for consistency with other ability functions
+        AbilityData = API.GetABs_name(AbilityIdOrName, false)
+        if not AbilityData or AbilityData.id == 0 then
+            self:Warn(string.format("[AbilityExists] Ability with name '%s' not found", AbilityIdOrName))
+            return false
+        end
+    end
+    
+    self:Info(string.format("[AbilityExists] Ability found: %s", tostring(AbilityIdOrName)))
+    return true
+end
+
 -- Uses an ability by its ID
 ---@param AbilityId number The ID of the ability to use
 ---@return boolean success True if ability was used successfully, false if ability not found, on cooldown, or disabled
@@ -3381,16 +3627,17 @@ function Slib:UseAbilityById(AbilityId)
         {AbilityId, "id", "AbilityId"}
     }) then
         return false
-    end
+    end    
 
     self:Info(string.format("[UseAbilityById] Attempting to use ability with ID: %d", AbilityId))
-    
-    -- Get ability information
-    local Ability = API.GetABs_id(AbilityId)
-    if not Ability or Ability.id == 0 then
+
+    if not Slib:AbilityExists(AbilityId) then
         self:Error(string.format("[UseAbilityById] Ability with ID %d not found", AbilityId))
         return false
     end
+    
+    -- Get ability information
+    local Ability = API.GetABs_id(AbilityId)
     
     -- Check if ability is available
     if not Ability.enabled then
@@ -3413,8 +3660,7 @@ end
 ---@param AbilityName string
 ---@param ExactMatch boolean
 ---@return boolean
-function Slib:UseAbilityByName(AbilityName, ExactMatch)
-    self:Info("[UseAbilityByName] Attempting to use ability: " .. AbilityName .. " (ExactMatch: " .. tostring(ExactMatch) .. ")")
+function Slib:UseAbilityByName(AbilityName, ExactMatch)    
     -- Parameter validation
     if not self:ValidateParams({
         {AbilityName, "non_empty_string", "AbilityName"},
@@ -3423,13 +3669,16 @@ function Slib:UseAbilityByName(AbilityName, ExactMatch)
         self:Error("[UseAbilityByName] Parameter validation failed")
         return false
     end
+
+    self:Info("[UseAbilityByName] Attempting to use ability: " .. AbilityName .. " (ExactMatch: " .. tostring(ExactMatch) .. ")")
+
+    if not Slib:AbilityExists(AbilityName) then
+        self:Error(string.format("[UseAbilityById] Ability with ID %d not found", AbilityId))
+        return false
+    end
     
     -- Get ability information using GetABs_name
     local Ability = API.GetABs_name(AbilityName, ExactMatch)
-    if not Ability then
-        self:Warn("[UseAbilityByName] Ability not found: " .. AbilityName)
-        return false
-    end
     
     if type(Ability) ~= "table" and type(Ability) ~= "userdata" then
         self:Error("[UseAbilityByName] Invalid ability data type: " .. type(Ability))
@@ -4107,7 +4356,7 @@ function Slib:TypeText(Text)
             return false
         end
         
-        -- Press the key with timing delays (40ms press, 60ms release)
+        -- Press the key with timing delays
         local KeyResult = API.KeyboardPress2(VirtualKeyCode, 40, 60)
         if not KeyResult then
             self:Error("[TypeText] Failed to send key press for character: '" .. CurrentCharacter .. "' (VK: " .. VirtualKeyCode .. ") at position " .. CharacterIndex)
@@ -4118,7 +4367,7 @@ function Slib:TypeText(Text)
         
         -- Small delay between characters to prevent input buffer overflow
         if CharacterIndex < TotalChars then
-            self:Sleep(50, "ms")
+            self:RandomSleep(30, 70, "ms")
         end
     end
     
@@ -4398,6 +4647,103 @@ function Slib:InstanceRejoin()
     self:Info("[InstanceRejoin] Rejoined instance")
         
     return true
+end
+
+-- Leaves the game to lobby
+---@return boolean
+function Slib:Lobby()
+    if API.GetGameState2() == 3 then --In game
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,1431,0,7,API.OFF_ACT_GeneralInterface_route) --Config
+        self:RandomSleep(1000, 3000, "ms")
+        API.DoAction_Interface(0x24,0xffffffff,1,1433,68,-1,API.OFF_ACT_GeneralInterface_route) --Lobby
+        self:RandomSleep(1000, 3000, "ms")
+
+        return true
+    end
+
+    self:Error("[Lobby] Needs to be in game to leave to lobby.")
+    return false
+    
+end
+
+--- High Alch an item or items
+---@param ItemIds number|number[] The ID or IDs of the items to High Alch
+---@return boolean success True if High Alch was successful, false if it failed
+function Slib:HighAlch(ItemIds)
+    -- Parameter validation
+    if not self:Sanitize(ItemIds, {"number", "table_of_ids"}, "ItemIds") then
+        return false
+    end
+    
+    if self:GetSpellBook() ~= "Normal" then
+        self:Error("[HighAlch] Must be on Normal spellbook to use High Alch")
+        return false
+    end
+
+    local Runes = self:GetRuneAmounts()
+    if Runes.Normal.Nature < 1 then
+        self:Error("[HighAlch] Not enough Nature runes")
+        return false
+    end
+    if Runes.Normal.Fire < 5 then
+        self:Error("[HighAlch] Not enough Fire runes")
+        return false
+    end
+
+    -- Convert to table for consistent processing
+    local idTable = type(ItemIds) == "table" and ItemIds or {ItemIds}
+
+    for _, itemId in ipairs(idTable) do
+        if not Inventory:Contains(itemId) then
+            goto skip
+        end
+
+        API.DoAction_DontResetSelection()
+        API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,47,API.OFF_ACT_Bladed_interface_route) -- Select High Alch
+        self:RandomSleep(50, 100, "ms")
+        API.DoAction_DontResetSelection()
+        API.DoAction_Inventory1(itemId,0,0,API.OFF_ACT_GeneralInterface_route1)
+        self:RandomSleep(50, 100, "ms")
+        ::skip::
+    end
+    
+    return true
+end
+
+--- Note an item or items
+---@param ItemIds number|number[] The ID or IDs of the items to Note
+---@return boolean success True if Note was successful, false if it failed
+function Slib:Note(ItemIds)
+    -- Parameter validation
+    if not self:Sanitize(ItemIds, {"number", "table_of_ids"}, "ItemIds") then
+        return false
+    end
+
+    -- Convert to table for consistent processing
+    local idTable = type(ItemIds) == "table" and ItemIds or {ItemIds}
+
+    for _, itemId in ipairs(idTable) do
+        if not Inventory:Contains(30372) and not Inventory:Contains(43045) then
+            self:Error("[Note] No notepaper.")
+            return false
+        end
+
+        if not Inventory:Contains(itemId) then
+            goto skip
+        else
+            API.DoAction_DontResetSelection()
+            if Inventory:Contains(30372) then
+                Inventory:UseItemOnItem(itemId, 30372)
+            elseif Inventory:Contains(43045) then
+                Inventory:UseItemOnItem(itemId, 43045)
+            else --Redundant check, but just in case
+                self:Error("[Note] No notepaper.")
+                return false
+            end
+        end
+
+        ::skip::
+    end
 end
 
 return Slib

@@ -67,12 +67,12 @@ DATA.NESTS = {
     {id = 54876, name = "Bird's nest (wood spirits)"}    
 }
 
-DATA.TREES = {}
-
 DATA.LOGPILE = {
     id = 125466,
     name = "Log pile"
 }
+
+DATA.TREES = {}
 
 DATA.TREES.REGULAR = {
     NAME = "Tree",
@@ -203,6 +203,5 @@ DATA.TREES.ETERNAL_MAGIC = {
 DATA.INTERFACES = {}
 
 DATA.INTERFACES.GOTE1 = { { 847,0,-1,0 }, { 847,30,-1,0 } }
- 
 
 return DATA
