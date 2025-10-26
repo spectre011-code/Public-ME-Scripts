@@ -52,32 +52,30 @@ Include the following spells and items (ensure proper order if required by your 
 
 ## 🎒 Inventory Setup
 
-Make sure your inventory includes these items before starting:
+Your inventory should contain the following items:
 
-| Item | Notes |
-|------|-------|
-| Charos Clue Carrier | Must contain a Hard Clue |
-| Hard Clue | Required for solving |
-| Weapon | For combat steps |
-| Spade | For digging clues |
-| Ectophial | For Ectofuntus teleport |
-| Arch Journal | For Archaeology teleports |
-| Attuned Crystal Seed | For teleporting to Prifddinas |
-| Luck of the Dwarves | Required for certain clues |
-| Wicked Hood | For Runecrafting-related teleports |
-| Drakan’s Medallion | For Morytania teleports |
-| Puzzle Box Skipping Ticket | Optional (required if not using Higgins API solver) |
-| Super Restore | For restoring Prayer and stats |
-| Meerkat Pouches | For scan clue assistance |
-| **Runes:** |  |
-| • Cosmic |  |
-| • Astral |  |
-| • Blood |  |
-| • Law |  |
-| • Time |  |
-| • Fire |  |
+- Charos Clue Carrier  
+- Hard Clue  
+- Weapon  
+- Spade  
+- Ectophial  
+- Arch Journal  
+- Attuned Crystal Seed  
+- Luck of the Dwarves  
+- Wicked Hood  
+- Drakan’s Medallion  
+- Puzzle Box Skipping Ticket *(only needed if not using Higgins API solver)*  
+- Super Restore  
+- Meerkat Pouches  
 
----
+### 🔮 Required Runes
+- Cosmic  
+- Astral  
+- Blood  
+- Law  
+- Time  
+- Fire  
+
 
 ## 🧩 Notes
 
