@@ -79,10 +79,12 @@ Your inventory should contain the following items:
 
 ## 🧩 Notes
 
-- If you are not using the **Higgins API Puzzle Solver**, ensure you have enough **Puzzle Skipping Tickets**.  
+- If you are not using the **Higgins API Puzzle Solver**, ensure you have enough **Puzzle Skipping Tickets**.
+- If you are using the **Higgins API Puzzle Solver**, change the flag **UsePuzzleSolverAPI** to **true** and fill the **APIKey** with your token inside the **Spectre's Hard Clue Solver.lua** file.
 - If you dont want or are unable to complete a specific step, there is a DestroyClue() function that you can place instead of the solving code.
 - This script assumes you can reach the steps location, there are no checks for that.
 - I encourage you to write different pathing for the steps and share them with the community. Tag if you need help with that.
+- This script writes logs to file inside the Lua_Scripts/Logs folder, if you want to disable it, change the flag **Slib._writeToFile** to **fals**e inside the **Spectre's Hard Clue Solver.lua** file.
 ---
 
 ## 💬 Credits
