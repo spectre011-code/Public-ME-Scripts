@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.4"
+local ScriptVersion = "1.0.5"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -39,6 +39,9 @@ v1.0.4 - 22-08-2025
     - Added GetSpellBook function.
     - Added Note function.
     - Added HighAlch function.
+v1.0.5 - 20-09-2025
+    - Added AbilityExists function.
+    - Added CanCastAbility function.
 ]]
 
 local API = require("api")
@@ -363,7 +366,6 @@ end
 ---   - "table_of_integers" - array of whole numbers
 ---   - "non_empty_table" - table that has at least one element
 ---
----
 ---@param Value any The value to validate
 ---@param ExpectedType string|table The expected type(s) - can be single type or array of types
 ---@param ParamName string|nil Optional parameter name for error messages (default: "Parameter")
@@ -534,7 +536,6 @@ end
 -- Validates function parameters using the sanitization system
 ---
 --- **Usage Examples:**
---- ```lua
 --- -- Basic validation
 --- if not self:ValidateParams({
 ---     {PlayerName, "non_empty_string", "PlayerName"},
@@ -560,7 +561,6 @@ end
 --- }) then
 ---     return false
 --- end
---- ```
 ---
 ---@param Params table Array of parameter specs: {Value, ExpectedType, ParamName, AllowNil}
 ---   - **Value**: The parameter value to validate
@@ -619,7 +619,7 @@ end
 -- #                                #
 -- ##################################
 
--- Generic sleep function that automatically determines the best precision based on duration
+-- Generic sleep function
 ---@param Duration number The sleep duration (must be positive)
 ---@param Unit string The time unit: "ms", "s", "m", "h", "tick" (milliseconds, seconds, minutes, hours, ticks)
 ---@return boolean success True if sleep completed successfully, false if interrupted or invalid parameters
@@ -649,8 +649,8 @@ function Slib:Sleep(Duration, Unit)
     end
     
     -- Convert duration to seconds and implement sleep logic for time-based units
-    local TargetDuration
-    local YieldInterval
+    local TargetDuration = 0
+    local YieldInterval = 0
     
     if Unit == "ms" or Unit == "milli" or Unit == "millisecond" or Unit == "milliseconds" then
         TargetDuration = Duration / 1000
@@ -995,114 +995,6 @@ function Slib:PrintDebuffs()
     
     self:Info("Debuff scan completed successfully")
     return true
-end
-
--- Checks if a specific buff is currently active
----@param BuffId number The buff ID to check for
----@return boolean found True if the buff is currently active, false otherwise
-function Slib:HasBuff(BuffId)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {BuffId, "id", "BuffId"}
-    }) then
-        return false
-    end
-    
-    -- Protected API call with validation
-    local Buffs = API.Buffbar_GetAllIDs()
-    
-    -- Check if API returned valid data
-    if not Buffs then
-        self:Error("[HasBuff] API returned nil for buffs")
-        return false
-    end
-    
-    if type(Buffs) ~= "table" and type(Buffs) ~= "userdata" then
-        self:Error("[HasBuff] API returned invalid buff data type: " .. type(Buffs))
-        return false
-    end
-    
-    if #Buffs == 0 then
-        return false
-    end
-    
-    -- Safe iteration with bounds checking
-    for I = 1, #Buffs do
-        local Buff = Buffs[I]
-        
-        -- Check if buff exists and is valid
-        if not Buff then
-            goto continue
-        end
-        
-        if type(Buff) ~= "table" and type(Buff) ~= "userdata" then
-            goto continue
-        end
-        
-        -- Check if this is the buff we're looking for
-        if Buff.id == BuffId then
-            self:Info("[HasBuff] Found active buff with ID: " .. BuffId)
-            return true
-        end
-        
-        ::continue::
-    end
-    
-    return false
-end
-
--- Checks if a specific debuff is currently active
----@param DebuffId number The debuff ID to check for
----@return boolean found True if the debuff is currently active, false otherwise
-function Slib:HasDebuff(DebuffId)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {DebuffId, "id", "DebuffId"}
-    }) then
-        return false
-    end
-    
-    -- Protected API call with validation
-    local Debuffs = API.DeBuffbar_GetAllIDs()
-    
-    -- Check if API returned valid data
-    if not Debuffs then
-        self:Error("[HasDebuff] API returned nil for debuffs")
-        return false
-    end
-    
-    if type(Debuffs) ~= "table" and type(Debuffs) ~= "userdata" then
-        self:Error("[HasDebuff] API returned invalid debuff data type: " .. type(Debuffs))
-        return false
-    end
-    
-    if #Debuffs == 0 then
-        return false
-    end
-    
-    -- Safe iteration with bounds checking
-    for I = 1, #Debuffs do
-        local Debuff = Debuffs[I]
-        
-        -- Check if debuff exists and is valid
-        if not Debuff then
-            goto continue
-        end
-        
-        if type(Debuff) ~= "table" and type(Debuff) ~= "userdata" then
-            goto continue
-        end
-        
-        -- Check if this is the debuff we're looking for
-        if Debuff.id == DebuffId then
-            self:Info("[HasDebuff] Found active debuff with ID: " .. DebuffId)
-            return true
-        end
-        
-        ::continue::
-    end
-    
-    return false
 end
 
 -- Prints container contents with detailed information for each item (93 = inventory, 94 = equipment, 95 = bank)
@@ -3044,6 +2936,114 @@ function Slib:FindObj2(ObjId, Distance, ObjType, x, y, z)
     return NearestObj
 end
 
+-- Checks if a specific buff is currently active
+---@param BuffId number The buff ID to check for
+---@return boolean found True if the buff is currently active, false otherwise
+function Slib:HasBuff(BuffId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {BuffId, "id", "BuffId"}
+    }) then
+        return false
+    end
+    
+    -- Protected API call with validation
+    local Buffs = API.Buffbar_GetAllIDs()
+    
+    -- Check if API returned valid data
+    if not Buffs then
+        self:Error("[HasBuff] API returned nil for buffs")
+        return false
+    end
+    
+    if type(Buffs) ~= "table" and type(Buffs) ~= "userdata" then
+        self:Error("[HasBuff] API returned invalid buff data type: " .. type(Buffs))
+        return false
+    end
+    
+    if #Buffs == 0 then
+        return false
+    end
+    
+    -- Safe iteration with bounds checking
+    for I = 1, #Buffs do
+        local Buff = Buffs[I]
+        
+        -- Check if buff exists and is valid
+        if not Buff then
+            goto continue
+        end
+        
+        if type(Buff) ~= "table" and type(Buff) ~= "userdata" then
+            goto continue
+        end
+        
+        -- Check if this is the buff we're looking for
+        if Buff.id == BuffId then
+            self:Info("[HasBuff] Found active buff with ID: " .. BuffId)
+            return true
+        end
+        
+        ::continue::
+    end
+    
+    return false
+end
+
+-- Checks if a specific debuff is currently active
+---@param DebuffId number The debuff ID to check for
+---@return boolean found True if the debuff is currently active, false otherwise
+function Slib:HasDebuff(DebuffId)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {DebuffId, "id", "DebuffId"}
+    }) then
+        return false
+    end
+    
+    -- Protected API call with validation
+    local Debuffs = API.DeBuffbar_GetAllIDs()
+    
+    -- Check if API returned valid data
+    if not Debuffs then
+        self:Error("[HasDebuff] API returned nil for debuffs")
+        return false
+    end
+    
+    if type(Debuffs) ~= "table" and type(Debuffs) ~= "userdata" then
+        self:Error("[HasDebuff] API returned invalid debuff data type: " .. type(Debuffs))
+        return false
+    end
+    
+    if #Debuffs == 0 then
+        return false
+    end
+    
+    -- Safe iteration with bounds checking
+    for I = 1, #Debuffs do
+        local Debuff = Debuffs[I]
+        
+        -- Check if debuff exists and is valid
+        if not Debuff then
+            goto continue
+        end
+        
+        if type(Debuff) ~= "table" and type(Debuff) ~= "userdata" then
+            goto continue
+        end
+        
+        -- Check if this is the debuff we're looking for
+        if Debuff.id == DebuffId then
+            self:Info("[HasDebuff] Found active debuff with ID: " .. DebuffId)
+            return true
+        end
+        
+        ::continue::
+    end
+    
+    return false
+end
+
 -- Checks if the currency pouch contains an item with the given ID or any ID in a list
 ---@param Ids number|table The item ID or list of item IDs to check for
 ---@return boolean found True if at least one of the IDs is found in the currency pouch, false otherwise
@@ -3462,17 +3462,82 @@ function Slib:GetRuneAmounts()
 end
 
 --- Get the currently active spellbook
----@return string|nil spellbook_name The name of the active spellbook ("Normal", "Ancient", "Lunar") or nil if unknown
+---@return string The name of the active spellbook ("Standard", "Ancient", "Lunar") or unknown
 function Slib:GetSpellBook()
     local spellbook = API.GetVarbitValue(39733)
     if spellbook == 0 then
-        return "Normal"
+        return "Standard"
     elseif spellbook == 1 then
         return "Ancient"
     elseif spellbook == 2 then
         return "Lunar"
     end
     return "Unknown"
+end
+
+-- Checks if an ability exists by its ID or name
+---@param AbilityIdOrName number|string The ID (number) or name (string) of the ability to check
+---@return boolean exists True if the ability exists, false otherwise
+function Slib:AbilityExists(AbilityIdOrName)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityIdOrName, {"number", "string"}, "AbilityIdOrName"}
+    }) then
+        return false
+    end
+    
+    self:Info(string.format("[AbilityExists] Checking if ability exists: %s (type: %s)", tostring(AbilityIdOrName), type(AbilityIdOrName)))
+    
+    local AbilityData = nil
+    
+    -- Get ability data based on parameter type
+    if type(AbilityIdOrName) == "number" then
+        AbilityData = API.GetABs_id(AbilityIdOrName)
+        if not AbilityData or AbilityData.id == 0 then
+            self:Warn(string.format("[AbilityExists] Ability with ID %d not found", AbilityIdOrName))
+            return false
+        end
+    elseif type(AbilityIdOrName) == "string" then
+        AbilityData = API.GetABs_name(AbilityIdOrName, true)
+        if not AbilityData or AbilityData.id == 0 then
+            self:Warn(string.format("[AbilityExists] Ability with name '%s' not found", AbilityIdOrName))
+            return false
+        end
+    end
+    
+    self:Info(string.format("[AbilityExists] Ability found: %s", tostring(AbilityIdOrName)))
+    return true
+end
+
+function Slib:CanCastAbility(AbilityIdOrName)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityIdOrName, {"number", "string"}, "AbilityIdOrName"}
+    }) then
+        return false
+    end
+    
+    self:Info(string.format("[CanCastAbility] Checking if ability can be cast: %s (type: %s)", tostring(AbilityIdOrName), type(AbilityIdOrName)))
+    
+    local AbilityData = nil
+    
+    -- Get ability data based on parameter type
+    if type(AbilityIdOrName) == "number" then
+        AbilityData = API.GetABs_id(AbilityIdOrName)
+        if not AbilityData or not AbilityData.enabled or AbilityData.id == 0 or AbilityData.cooldown_timer > 0 then
+            self:Warn(string.format("[CanCastAbility] Ability with ID %d cannot be cast", AbilityIdOrName))
+            return false
+        end
+    elseif type(AbilityIdOrName) == "string" then
+        AbilityData = API.GetABs_name(AbilityIdOrName, true)
+        if not AbilityData or not AbilityData.enabled or AbilityData.id == 0 or AbilityData.cooldown_timer > 0 then
+            self:Warn(string.format("[CanCastAbility] Ability with name '%s' cannot be cast", AbilityIdOrName))
+            return false
+        end
+    end
+    
+    self:Info(string.format("[CanCastAbility] Ability can be cast: %s", tostring(AbilityIdOrName)))
+    return true
 end
 
 -- ##################################
@@ -3590,16 +3655,17 @@ function Slib:UseAbilityById(AbilityId)
         {AbilityId, "id", "AbilityId"}
     }) then
         return false
-    end
+    end    
 
     self:Info(string.format("[UseAbilityById] Attempting to use ability with ID: %d", AbilityId))
-    
-    -- Get ability information
-    local Ability = API.GetABs_id(AbilityId)
-    if not Ability or Ability.id == 0 then
+
+    if not Slib:AbilityExists(AbilityId) then
         self:Error(string.format("[UseAbilityById] Ability with ID %d not found", AbilityId))
         return false
     end
+    
+    -- Get ability information
+    local Ability = API.GetABs_id(AbilityId)
     
     -- Check if ability is available
     if not Ability.enabled then
@@ -3622,8 +3688,7 @@ end
 ---@param AbilityName string
 ---@param ExactMatch boolean
 ---@return boolean
-function Slib:UseAbilityByName(AbilityName, ExactMatch)
-    self:Info("[UseAbilityByName] Attempting to use ability: " .. AbilityName .. " (ExactMatch: " .. tostring(ExactMatch) .. ")")
+function Slib:UseAbilityByName(AbilityName, ExactMatch)    
     -- Parameter validation
     if not self:ValidateParams({
         {AbilityName, "non_empty_string", "AbilityName"},
@@ -3632,13 +3697,16 @@ function Slib:UseAbilityByName(AbilityName, ExactMatch)
         self:Error("[UseAbilityByName] Parameter validation failed")
         return false
     end
+
+    self:Info("[UseAbilityByName] Attempting to use ability: " .. AbilityName .. " (ExactMatch: " .. tostring(ExactMatch) .. ")")
+
+    if not Slib:AbilityExists(AbilityName) then
+        self:Error(string.format("[UseAbilityById] Ability with ID %d not found", AbilityId))
+        return false
+    end
     
     -- Get ability information using GetABs_name
     local Ability = API.GetABs_name(AbilityName, ExactMatch)
-    if not Ability then
-        self:Warn("[UseAbilityByName] Ability not found: " .. AbilityName)
-        return false
-    end
     
     if type(Ability) ~= "table" and type(Ability) ~= "userdata" then
         self:Error("[UseAbilityByName] Invalid ability data type: " .. type(Ability))
@@ -4316,7 +4384,7 @@ function Slib:TypeText(Text)
             return false
         end
         
-        -- Press the key with timing delays (40ms press, 60ms release)
+        -- Press the key with timing delays
         local KeyResult = API.KeyboardPress2(VirtualKeyCode, 40, 60)
         if not KeyResult then
             self:Error("[TypeText] Failed to send key press for character: '" .. CurrentCharacter .. "' (VK: " .. VirtualKeyCode .. ") at position " .. CharacterIndex)
@@ -4327,7 +4395,7 @@ function Slib:TypeText(Text)
         
         -- Small delay between characters to prevent input buffer overflow
         if CharacterIndex < TotalChars then
-            self:Sleep(50, "ms")
+            self:RandomSleep(30, 70, "ms")
         end
     end
     
@@ -4661,6 +4729,7 @@ function Slib:HighAlch(ItemIds)
         API.DoAction_DontResetSelection()
         API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,47,API.OFF_ACT_Bladed_interface_route) -- Select High Alch
         self:RandomSleep(50, 100, "ms")
+        API.DoAction_DontResetSelection()
         API.DoAction_Inventory1(itemId,0,0,API.OFF_ACT_GeneralInterface_route1)
         self:RandomSleep(50, 100, "ms")
         ::skip::
@@ -4703,6 +4772,8 @@ function Slib:Note(ItemIds)
 
         ::skip::
     end
+
+    return true
 end
 
 return Slib
