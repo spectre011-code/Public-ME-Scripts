@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.5"
+local ScriptVersion = "1.0.6"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -42,6 +42,9 @@ v1.0.4 - 22-08-2025
 v1.0.5 - 20-09-2025
     - Added AbilityExists function.
     - Added CanCastAbility function.
+v1.0.6 - 28-10-2025
+    - MoveTo() function will only use surge if the distance from the final coordinate is less than 10 tiles
+    - PrintQuestData() function now prints isComplete method correcly
 ]]
 
 local API = require("api")
@@ -1924,25 +1927,29 @@ function Slib:PrintQuestData(QuestIdsOrNames)
         print("|     --- Methods ---            ")
         
         -- Call methods safely
-        if QuestData.getProgress then
-            local Success, Progress = pcall(QuestData.getProgress, QuestData)
-            print("|   getProgress()      : " .. tostring(Success and Progress or "Error"))
+        if QuestData.isComplete then
+            local Success, Result = pcall(function() return QuestData:isComplete() end)
+            if Success then
+                print("|   isComplete()       : " .. tostring(Result))
+            else
+                print("|   isComplete()       : ERROR - " .. tostring(Result))
+            end
         else
-            print("|   getProgress()      : N/A")
+            print("|   isComplete()       : N/A")
         end
         
         if QuestData.isStarted then
-            local Success, Started = pcall(QuestData.isStarted, QuestData)
+            local Success, Started = pcall(function() return QuestData:isStarted() end)
             print("|   isStarted()        : " .. tostring(Success and Started or "Error"))
         else
             print("|   isStarted()        : N/A")
         end
         
-        if QuestData.isComplete then
-            local Success, Complete = pcall(QuestData.isComplete, QuestData)
-            print("|   isComplete()       : " .. tostring(Success and Complete or "Error"))
+        if QuestData.getProgress then
+            local Success, Progress = pcall(function() return QuestData:getProgress() end)
+            print("|   getProgress()      : " .. tostring(Success and Progress or "Error"))
         else
-            print("|   isComplete()       : N/A")
+            print("|   getProgress()       : N/A")
         end
         
         print("|                                ")
@@ -3759,6 +3766,7 @@ function Slib:MoveTo(X, Y, Z)
     local StuckCheckCount = 0
     local LastPosition = nil
     local MaxStuckChecks = 10  -- Fail after 10 consecutive checks of no movement/position change
+    local LoopCount = 0  -- Made local to avoid global pollution
     
     if not PlayerName then
         self:Error("[MoveTo] Failed to get player name")
@@ -3782,7 +3790,7 @@ function Slib:MoveTo(X, Y, Z)
         -- Calculate distance to target
         local DistanceToTarget = math.sqrt((X - CurrentPos.x)^2 + (Y - CurrentPos.y)^2)
         -- Only show position info every 10 iterations to reduce spam
-        LoopCount = (LoopCount or 0) + 1
+        LoopCount = LoopCount + 1
         if LoopCount % 10 == 1 then
             self:Info(string.format("[MoveTo] Position: (%d, %d, %d), Distance: %.1f", 
                 CurrentPos.x, CurrentPos.y, CurrentPos.z, DistanceToTarget))
@@ -3886,98 +3894,100 @@ function Slib:MoveTo(X, Y, Z)
                     end
                 end
                 
-                -- Try surge if available and facing a compatible direction
-                local Surge = API.GetABs_id(14233)
-                local CanSurge = Surge and Surge.id ~= 0 and Surge.enabled and Surge.cooldown_timer < 1
-                
-                if CanSurge then
-                    -- Get player facing direction using PlayerFacing helper function
-                    local PlayerDirection = self:PlayerFacing()
+                -- Try surge if available, facing compatible direction, AND more than 10 tiles from destination
+                if DistanceToTarget > 10 then
+                    local Surge = API.GetABs_id(14233)
+                    local CanSurge = Surge and Surge.id ~= 0 and Surge.enabled and Surge.cooldown_timer < 1
                     
-                    -- Determine target direction (walk target if available, otherwise destination)
-                    local TargetX, TargetY
-                    if LastWalkTarget then
-                        TargetX = LastWalkTarget.x
-                        TargetY = LastWalkTarget.y
-                    else
-                        TargetX = X
-                        TargetY = Y
-                    end
-                    
-                    local DeltaX = TargetX - CurrentPos.x
-                    local DeltaY = TargetY - CurrentPos.y
-                    
-                    -- Calculate required movement direction based on position deltas
-                    local MovementDirection
-                    if math.abs(DeltaX) > math.abs(DeltaY) then
-                        -- More horizontal movement
-                        if DeltaX > 0 then
-                            MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NE" or "SE") or "E"
-                        else
-                            MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NW" or "SW") or "W"
-                        end
-                    else
-                        -- More vertical movement
-                        if DeltaY > 0 then
-                            MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "NE" or "NW") or "N"
-                        else
-                            MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "SE" or "SW") or "S"
-                        end
-                    end
-                    
-                    -- Check if player is facing movement direction or compatible adjacent direction
-                    local CanSurgeInDirection = false
-                    if PlayerDirection == MovementDirection then
-                        CanSurgeInDirection = true
-                    else
-                        -- Allow surge for adjacent compass directions (e.g., N and NE are compatible)
-                        local CompatibleDirections = {
-                            N = {"NE", "NW"},
-                            NE = {"N", "E"},
-                            E = {"NE", "SE"},
-                            SE = {"E", "S"},
-                            S = {"SE", "SW"},
-                            SW = {"S", "W"},
-                            W = {"SW", "NW"},
-                            NW = {"W", "N"}
-                        }
+                    if CanSurge then
+                        -- Get player facing direction using PlayerFacing helper function
+                        local PlayerDirection = self:PlayerFacing()
                         
-                        if CompatibleDirections[PlayerDirection] then
-                            for _, compatDir in ipairs(CompatibleDirections[PlayerDirection]) do
-                                if compatDir == MovementDirection then
-                                    CanSurgeInDirection = true
-                                    break
+                        -- Determine target direction (walk target if available, otherwise destination)
+                        local TargetX, TargetY
+                        if LastWalkTarget then
+                            TargetX = LastWalkTarget.x
+                            TargetY = LastWalkTarget.y
+                        else
+                            TargetX = X
+                            TargetY = Y
+                        end
+                        
+                        local DeltaX = TargetX - CurrentPos.x
+                        local DeltaY = TargetY - CurrentPos.y
+                        
+                        -- Calculate required movement direction based on position deltas
+                        local MovementDirection
+                        if math.abs(DeltaX) > math.abs(DeltaY) then
+                            -- More horizontal movement
+                            if DeltaX > 0 then
+                                MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NE" or "SE") or "E"
+                            else
+                                MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NW" or "SW") or "W"
+                            end
+                        else
+                            -- More vertical movement
+                            if DeltaY > 0 then
+                                MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "NE" or "NW") or "N"
+                            else
+                                MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "SE" or "SW") or "S"
+                            end
+                        end
+                        
+                        -- Check if player is facing movement direction or compatible adjacent direction
+                        local CanSurgeInDirection = false
+                        if PlayerDirection == MovementDirection then
+                            CanSurgeInDirection = true
+                        else
+                            -- Allow surge for adjacent compass directions (e.g., N and NE are compatible)
+                            local CompatibleDirections = {
+                                N = {"NE", "NW"},
+                                NE = {"N", "E"},
+                                E = {"NE", "SE"},
+                                SE = {"E", "S"},
+                                S = {"SE", "SW"},
+                                SW = {"S", "W"},
+                                W = {"SW", "NW"},
+                                NW = {"W", "N"}
+                            }
+                            
+                            if CompatibleDirections[PlayerDirection] then
+                                for _, compatDir in ipairs(CompatibleDirections[PlayerDirection]) do
+                                    if compatDir == MovementDirection then
+                                        CanSurgeInDirection = true
+                                        break
+                                    end
                                 end
                             end
                         end
-                    end
-                    
-                    if CanSurgeInDirection then
-                        if self:UseAbilityById(14233) then  -- Surge ability ID
-                            self:Info("[MoveTo] Surge successful")
-                            self:RandomSleep(200, 400, "ms")  -- Short delay after surge
-                            -- Continue walking from new position toward destination
-                            local WalkDistance = math.random(15, 30)
-                            local NewPos = API.PlayerCoord()
-                            if NewPos then
-                                local NewDistanceToTarget = math.sqrt((X - NewPos.x)^2 + (Y - NewPos.y)^2)
-                                if NewDistanceToTarget > WalkDistance then
-                                    -- Calculate new intermediate walk point from post-surge position
-                                    local DirectionX = X - NewPos.x
-                                    local DirectionY = Y - NewPos.y
-                                    local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
-                                    local NormalizedX = DirectionX / DirectionLength
-                                    local NormalizedY = DirectionY / DirectionLength
-                                    local WalkX = math.floor(NewPos.x + (NormalizedX * WalkDistance))
-                                    local WalkY = math.floor(NewPos.y + (NormalizedY * WalkDistance))
-                                    self:WalkToCoordinates(WalkX, WalkY, Z)
-                                    LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
-                                else
-                                    self:WalkToCoordinates(X, Y, Z)
-                                    LastWalkTarget = {x = X, y = Y, z = Z}
+                        
+                        if CanSurgeInDirection then
+                            if self:UseAbilityById(14233) then  -- Surge ability ID
+                                self:Info("[MoveTo] Surge successful")
+                                self:RandomSleep(200, 400, "ms")  -- Short delay after surge
+                                -- Continue walking from new position toward destination
+                                local WalkDistance = math.random(15, 30)
+                                local NewPos = API.PlayerCoord()
+                                if NewPos then
+                                    local NewDistanceToTarget = math.sqrt((X - NewPos.x)^2 + (Y - NewPos.y)^2)
+                                    if NewDistanceToTarget > WalkDistance then
+                                        -- Calculate new intermediate walk point from post-surge position
+                                        local DirectionX = X - NewPos.x
+                                        local DirectionY = Y - NewPos.y
+                                        local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
+                                        local NormalizedX = DirectionX / DirectionLength
+                                        local NormalizedY = DirectionY / DirectionLength
+                                        local WalkX = math.floor(NewPos.x + (NormalizedX * WalkDistance))
+                                        local WalkY = math.floor(NewPos.y + (NormalizedY * WalkDistance))
+                                        self:WalkToCoordinates(WalkX, WalkY, Z)
+                                        LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                                    else
+                                        self:WalkToCoordinates(X, Y, Z)
+                                        LastWalkTarget = {x = X, y = Y, z = Z}
+                                    end
                                 end
+                                goto continue_loop
                             end
-                            goto continue_loop
                         end
                     end
                 end
