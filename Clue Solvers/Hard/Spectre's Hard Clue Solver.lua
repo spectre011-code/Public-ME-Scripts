@@ -1,12 +1,12 @@
 ScriptName = "Hard Clue Solver"
 Author = "Spectre011"
-ScriptVersion = "0.0.0"
-ReleaseDate = "99-99-9999"
+ScriptVersion = "1.0.0"
+ReleaseDate = "01-11-2025"
 DiscordHandle = "not_spectre011"
 
 --[[
 Changelog:
-v9.9.9 - 99-99-9999
+v1.0.0 - 01-11-2025
     - Initial release.
 ]]
 
