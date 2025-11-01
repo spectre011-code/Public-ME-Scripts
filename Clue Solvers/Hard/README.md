@@ -86,6 +86,7 @@ Your inventory should contain the following items:
 
 - If you are not using the **Higgins API Puzzle Solver**, ensure you have enough **Puzzle Skipping Tickets**.
 - If you are using the **Higgins API Puzzle Solver**, change the flag **UsePuzzleSolverAPI** to **true** and fill the **APIKey** with your token inside the **Spectre's Hard Clue Solver.lua** file.
+- You can get your API Key in here: https://api.rs3bot.com/
 - If you don’t want or are unable to complete a specific step, there is a `DestroyClue()` function that you can place instead of the solving code.
 - This script assumes you can reach the step’s location — there are no checks for that.
 - I encourage you to write different pathing for the steps and share them with the community. Tag if you need help with that.
