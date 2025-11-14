@@ -1,13 +1,15 @@
-ScriptName = "Unf Potion Crafter"
+ScriptName = "Unf Potion Maker"
 Author = "Spectre011"
-ScriptVersion = "1.0.0"
+ScriptVersion = "1.0.1"
 ReleaseDate = "24-02-2025"
-Discord = "not_spectre011"
+DiscordHandle = "not_spectre011"
 
 --[[
 Changelog:
 v1.0.0 - 24-02-2025
     - Initial release.
+v1.0.0 - 14-11-2025
+    - Renamed Discord variable to DiscordHandle
 ]]
 
 local API = require("api")
@@ -122,7 +124,7 @@ EndTable[3] = {"Script Name: ".. ScriptName}
 EndTable[4] = {"Author: ".. Author}
 EndTable[5] = {"Version: ".. ScriptVersion}
 EndTable[6] = {"Release Date: ".. ReleaseDate}
-EndTable[7] = {"Discord: ".. Discord}
+EndTable[7] = {"Discord: ".. DiscordHandle}
 --------------------END END TABLE STUFF--------------------
 
 local PossibleCleanHerbs = {
@@ -348,5 +350,5 @@ print("Script Name: " .. ScriptName)
 print("Author: " .. Author)
 print("Version: " .. ScriptVersion)
 print("Release Date: " .. ReleaseDate)
-print("Discord: " .. Discord)
+print("Discord: " .. DiscordHandle)
 print("----------//----------")
