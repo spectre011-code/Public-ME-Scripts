@@ -1,6 +1,6 @@
 ScriptName = "Hard Clue Solver"
 Author = "Spectre011"
-ScriptVersion = "1.0.0"
+ScriptVersion = "1.0.1"
 ReleaseDate = "01-11-2025"
 DiscordHandle = "not_spectre011"
 
@@ -8,6 +8,8 @@ DiscordHandle = "not_spectre011"
 Changelog:
 v1.0.0 - 01-11-2025
     - Initial release.
+v1.0.1 - 01-12-2025
+    - Fixed step 2723 to not use the isAtLocation() function as the lodestones library contains the wrong coordinates for the wilderness lodestone.
 ]]
 
 local API = require("api")
@@ -1000,7 +1002,7 @@ ClueSteps = {
         if Slib:IsPlayerAtCoords(3058, 3883, 0) then
             Familiars:CastSpecialAttack()
 
-        elseif LODESTONES.WILDERNESS.IsAtLocation() then
+        elseif Slib:IsPlayerInArea(3143, 3635, 0, 20) then
             Slib:MoveTo(Slib:RandomNumber(3002, 3, 3), Slib:RandomNumber(3852, 3, 3), 0)
             Slib:MoveTo(3058, 3883, 0)
 
