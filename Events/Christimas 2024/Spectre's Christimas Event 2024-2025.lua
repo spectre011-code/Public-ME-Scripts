@@ -1,6 +1,6 @@
 ScriptName = "Christmas Event 2024-2025"
 Author = "Spectre011"
-ScriptVersion = "1.1"
+ScriptVersion = "1.2"
 ReleaseDate = "16-12-2024"
 DiscordHandle = "not_spectre011"
 
@@ -11,6 +11,8 @@ v1.0 - 16-12-2024
 v1.1 - 01-12-2025
     - Changed Discord variable name to DiscordHandle
     - Changes for 2025 event
+v1.2 - 04-12-2025
+    - Changed sleep to check if player is animating for fir woodcutting
 ]]
 
 local API = require("api")
@@ -321,8 +323,7 @@ local stageFunctions = {
             end
         else
             freeInvSpaces = Inventory:FreeSpaces()
-            UTILS.randomSleep(5000)
-            if Inventory:FreeSpaces() == freeInvSpaces then
+            if not API.IsPlayerAnimating_(API.GetLocalPlayerName(), 30) then
                 Interact:Object("Fir", "Chop down", 50)
                 --API.DoAction_Object1(0x3b,API.OFF_ACT_GeneralObject_route0,{importantObjects.fir},50)
             end
