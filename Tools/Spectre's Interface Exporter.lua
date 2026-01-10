@@ -1,16 +1,16 @@
 local ScriptName = "Interface Exporter"
 local Author = "Spectre011"
-local ScriptVersion = "1.3.0"
-local ReleaseDate = "15-06-2025"
+local ScriptVersion = "2.0.0"
+local ReleaseDate = "10-01-2026"
 local DiscordHandle = "not_spectre011"
 
 --[[
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                          INTERFACE EXPORTER SCRIPT                           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  Description: Recursively scans game interfaces and exports data to CSV      ║
+║  Description: Recursively scans game interfaces and exports IInfo fields    ║
 ║  Usage:       Configure parameters in the Config table below and execute     ║
-║  Output:      CSV file with detailed interface information                   ║
+║  Output:      CSV file with IInfo interface data                             ║
 ║                                                                              ║
 ║  Credits:     Based on the excellent work of Ernie                           ║
 ║               GitHub: https://github.com/Ernestohh/                          ║
@@ -37,6 +37,12 @@ v1.2.0 - 21-06-2025
 v1.3.0 - 28-08-2025
     - Added parentInterfaceID column to CSV export
     - Added proper interfaceID column to CSV export
+
+v2.0.0 - 10-01-2026
+    - Refactored the script to be more efficient and readable
+    - Now correctly explores all child combinations recursively
+    - Includes memloc + API constant combinations
+    - Increased max depth to 100000
 ]]
 
 local API = require("api")
@@ -51,11 +57,7 @@ local Config = {
 -- Opens the specified directory in Windows Explorer
 ---@param Path string The directory path to open (backslashes will be normalized)
 local function OpenDirectory(Path)
-    -- Normalize path by removing trailing backslashes
     Path = Path:gsub("\\+$", "")
-    
-    -- Use Windows 'start' command for optimal window management
-    -- This will bring existing Explorer windows to front instead of opening duplicates
     os.execute('start "" "' .. Path .. '"')
 end
 
@@ -63,10 +65,8 @@ end
 ---@param DirPath string The directory path to create and validate
 ---@return boolean Success True if directory exists and is writable, false otherwise
 local function EnsureDirectoryExists(DirPath)
-    -- Attempt to create directory (silently fails if already exists)
     local Success = os.execute('mkdir "' .. DirPath .. '" 2>nul')
     
-    -- Validate write access by creating and removing a temporary test file
     local TestFile = io.open(DirPath .. "test_write.tmp", "w")
     if TestFile then
         TestFile:close()
@@ -90,21 +90,18 @@ end
 local function GetUniqueFilename(BaseFilename)
     local FullPath = Config.OutputDirectory .. BaseFilename
     
-    -- Return base filename if it doesn't exist
     local File = io.open(FullPath, "r")
     if not File then
         return FullPath
     end
     File:close()
     
-    -- Parse filename into name and extension components
     local Name, Ext = BaseFilename:match("^(.+)%.([^%.]+)$")
     if not Name then
         Name = BaseFilename
         Ext = ""
     end
     
-    -- Find next available numbered filename
     local Counter = 1
     local NewFilename
     repeat
@@ -136,9 +133,8 @@ local function EscapeCSV(Value)
     end
     
     local Str = tostring(Value)
-    -- Quote and escape if contains CSV special characters (comma, quote, newline, carriage return)
     if string.find(Str, '[,"\n\r]') then
-        Str = string.gsub(Str, '"', '""') -- Escape internal quotes by doubling them
+        Str = string.gsub(Str, '"', '""')
         Str = '"' .. Str .. '"'
     end
     return Str
@@ -153,8 +149,7 @@ local function EscapeColumnName(Name)
     end
     
     local Str = tostring(Name)
-    -- Always wrap column names in quotes for maximum compatibility
-    Str = string.gsub(Str, '"', '""') -- Escape internal quotes
+    Str = string.gsub(Str, '"', '""')
     Str = '"' .. Str .. '"'
     return Str
 end
@@ -175,18 +170,19 @@ end
 local function PathToKey(Path)
     local Parts = {}
     for I, Segment in ipairs(Path) do
-        table.insert(Parts, Segment[1] .. "," .. Segment[2])
+        table.insert(Parts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
     end
     return table.concat(Parts, ";")
 end
 
 -- Creates child interface path by appending new segment to existing path
 ---@param CurrentPath table The current interface path hierarchy
----@param Id2 number The id2 value to append as new path segment
+---@param Id1 number The id1 value to append
+---@param Id2 number The id2 value to append
+---@param Id3 number The id3 value to append
 ---@return table ChildPath The extended path hierarchy for child interfaces
-local function CreateChildPath(CurrentPath, Id2)
+local function CreateChildPath(CurrentPath, Id1, Id2, Id3)
     local ChildPath = {}
-    -- Deep copy existing path segments to avoid reference issues
     for I = 1, #CurrentPath do
         local PathSegment = {}
         for K, V in ipairs(CurrentPath[I]) do
@@ -195,15 +191,149 @@ local function CreateChildPath(CurrentPath, Id2)
         table.insert(ChildPath, PathSegment)
     end
     
-    -- Append new segment using same path identifier as root for consistency
-    local PathIdentifier = CurrentPath[1][1]
-    table.insert(ChildPath, { PathIdentifier, Id2, -1, 0 })
+    table.insert(ChildPath, { Id1, Id2, Id3, 0 })
     
     return ChildPath
 end
 
--- Recursively scans interface hierarchies and extracts comprehensive data
--- Performs memory reads, duplicate detection, and hierarchical traversal
+-- Performs memory reads with all API functions and constants
+---@param Memloc number The base memory location
+---@return table MemoryReads Table of all memory read results
+local function PerformMemoryReads(Memloc)
+    local MemoryReads = {}
+    
+    if not Memloc then
+        return MemoryReads
+    end
+    
+    -- Define API constants
+    local ApiConstants = {
+        {name = "I_00textP", value = API.I_00textP},
+        {name = "I_itemids3", value = API.I_itemids3},
+        {name = "I_itemids", value = API.I_itemids},
+        {name = "I_itemstack", value = API.I_itemstack},
+        {name = "I_slides", value = API.I_slides},
+        {name = "I_buffb", value = API.I_buffb}
+    }
+    
+    -- Define memory read functions
+    local MemReadFunctions = {
+        {name = "Mem_Read_char", func = API.Mem_Read_char, format = function(v) 
+            if type(v) ~= "number" then return tostring(v) end
+            if v ~= v or v == math.huge or v == -math.huge then return "Invalid" end
+            local safe = math.floor(v + 0.5) % 256
+            return string.format("0x%02X (%d)", safe, v) 
+        end},
+        {name = "Mem_Read_short", func = API.Mem_Read_short, format = function(v) 
+            if type(v) ~= "number" then return tostring(v) end
+            if v ~= v or v == math.huge or v == -math.huge then return "Invalid" end
+            local safe = math.floor(v + 0.5) % 65536
+            return string.format("0x%04X (%d)", safe, v) 
+        end},
+        {name = "Mem_Read_int", func = API.Mem_Read_int, format = function(v) 
+            if type(v) ~= "number" then return tostring(v) end
+            if v ~= v or v == math.huge or v == -math.huge then return "Invalid" end
+            local safe = math.floor(v + 0.5)
+            return string.format("0x%08X (%d)", safe, v) 
+        end},
+        {name = "Mem_Read_uint64", func = API.Mem_Read_uint64, format = function(v) 
+            if type(v) ~= "number" then return tostring(v) end
+            if v ~= v or v == math.huge or v == -math.huge then return "Invalid" end
+            if v > 9223372036854775807 then return "Overflow" end
+            local safe = math.floor(v + 0.5)
+            return string.format("0x%016X (%d)", safe, v) 
+        end}
+    }
+    
+    local StringReadFunctions = {
+        {name = "ReadChars", func = function(addr) return API.ReadChars(addr, 250) end},
+        {name = "ReadCharsLimitPointer", func = function(addr) return API.ReadCharsLimitPointer(addr, 250) end},
+        {name = "ReadCharsLimit", func = function(addr) return API.ReadCharsLimit(addr, 250) end},
+        {name = "ReadCharsPointer", func = API.ReadCharsPointer}
+    }
+    
+    -- Perform reads with base memloc
+    for _, ReadFunc in ipairs(MemReadFunctions) do
+        local FuncName = ReadFunc.name .. "(memloc)"
+        local Success, Result = pcall(ReadFunc.func, Memloc)
+        if Success and Result ~= nil then
+            MemoryReads[FuncName] = ReadFunc.format(Result)
+        else
+            MemoryReads[FuncName] = "Error"
+        end
+    end
+    
+    for _, ReadFunc in ipairs(StringReadFunctions) do
+        local FuncName = ReadFunc.name .. "(memloc, 250)"
+        local Success, Result = pcall(ReadFunc.func, Memloc)
+        if Success and Result ~= nil then
+            if type(Result) == "string" then
+                if Result == "" then
+                    MemoryReads[FuncName] = '""'
+                else
+                    local Escaped = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                        return string.format("\\x%02X", string.byte(c))
+                    end)
+                    if #Escaped > 50 then
+                        Escaped = string.sub(Escaped, 1, 47) .. "..."
+                    end
+                    MemoryReads[FuncName] = '"' .. Escaped .. '"'
+                end
+            else
+                MemoryReads[FuncName] = tostring(Result)
+            end
+        else
+            MemoryReads[FuncName] = "Error"
+        end
+    end
+    
+    -- Perform reads with memloc + API constants
+    for _, Constant in ipairs(ApiConstants) do
+        if Constant.value and type(Constant.value) == "number" then
+            local Addr = Memloc + Constant.value
+            
+            -- Numeric reads
+            for _, ReadFunc in ipairs(MemReadFunctions) do
+                local FuncName = ReadFunc.name .. "(memloc+" .. Constant.name .. ")"
+                local Success, Result = pcall(ReadFunc.func, Addr)
+                if Success and Result ~= nil then
+                    MemoryReads[FuncName] = ReadFunc.format(Result)
+                else
+                    MemoryReads[FuncName] = "Error"
+                end
+            end
+            
+            -- String reads
+            for _, ReadFunc in ipairs(StringReadFunctions) do
+                local FuncName = ReadFunc.name .. "(memloc+" .. Constant.name .. ", 250)"
+                local Success, Result = pcall(ReadFunc.func, Addr)
+                if Success and Result ~= nil then
+                    if type(Result) == "string" then
+                        if Result == "" then
+                            MemoryReads[FuncName] = '""'
+                        else
+                            local Escaped = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                return string.format("\\x%02X", string.byte(c))
+                            end)
+                            if #Escaped > 50 then
+                                Escaped = string.sub(Escaped, 1, 47) .. "..."
+                            end
+                            MemoryReads[FuncName] = '"' .. Escaped .. '"'
+                        end
+                    else
+                        MemoryReads[FuncName] = tostring(Result)
+                    end
+                else
+                    MemoryReads[FuncName] = "Error"
+                end
+            end
+        end
+    end
+    
+    return MemoryReads
+end
+
+-- Recursively scans interface hierarchies and extracts IInfo data
 ---@param CurrentPath table Current interface path being scanned
 ---@param VisitedPaths table Tracking table to prevent infinite recursion
 ---@param AllInterfaces table Accumulator for all discovered interfaces
@@ -213,32 +343,27 @@ end
 ---@return table AllInterfaces Complete collection of interface data
 local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth, MaxDepth, SeenMemlocs)
     Depth = Depth or 0
-    MaxDepth = MaxDepth or 50
+    MaxDepth = MaxDepth or 100000
     VisitedPaths = VisitedPaths or {}
     AllInterfaces = AllInterfaces or {}
     SeenMemlocs = SeenMemlocs or {}
     
-    -- Prevent infinite recursion by enforcing depth limits
     if Depth > MaxDepth then
-        print("[" .. ScriptName .. "] Warning: Max depth reached (" .. Depth .. ")")
         return AllInterfaces
     end
     
-    -- Skip paths already visited to prevent circular scanning
     local PathKey = PathToKey(CurrentPath)
     if VisitedPaths[PathKey] then
         return AllInterfaces
     end
     VisitedPaths[PathKey] = true
     
-    -- Generate human-readable path string for debugging and logging
     local PathString = ""
     for I, Segment in ipairs(CurrentPath) do
         if I > 1 then PathString = PathString .. " -> " end
         PathString = PathString .. table.concat(Segment, ",")
     end
     
-    -- Create formatted interface ID string for CSV export
     local InterfaceIDString = "{ "
     for I, Segment in ipairs(CurrentPath) do
         if I > 1 then InterfaceIDString = InterfaceIDString .. ", " end
@@ -246,235 +371,31 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
     end
     InterfaceIDString = InterfaceIDString .. " }"
     
-    -- Safely attempt to scan current interface level with error handling
-    local Success, Interfaces = pcall(function() 
-        return API.ScanForInterfaceTest2Get(true, CurrentPath) 
+    -- First, try to get the exact interface at this path
+    local ExactSuccess, ExactInterface = pcall(function() 
+        return API.ScanForInterfaceTest2Get(false, CurrentPath) 
     end)
     
-    if not Success then
-        print("[" .. ScriptName .. "] Error at depth " .. Depth .. ": " .. tostring(Interfaces))
-        return AllInterfaces
-    end
-    
-    if not Interfaces or #Interfaces == 0 then
-        return AllInterfaces
-    end
-    
-    print("[" .. ScriptName .. "] Level " .. Depth .. ": Found " .. #Interfaces .. " interfaces")
-    
-    -- Track unique id2 values for recursive sub-interface scanning
-    local UniqueId2Values = {}
-    local Id2Count = 0
-    
-    -- Process each discovered interface and extract comprehensive data
-    for I, Interface in ipairs(Interfaces) do
-        -- Skip duplicate interfaces based on memory location to avoid redundant data
-        if Interface.memloc and SeenMemlocs[Interface.memloc] then
-            -- Skip silently to avoid spam in console output
-        else
-            -- Mark this memory location as seen for future duplicate detection
+    if ExactSuccess and ExactInterface and #ExactInterface > 0 then
+        local Interface = ExactInterface[1]
+        
+        -- Check if we've already seen this interface
+        if not (Interface.memloc and SeenMemlocs[Interface.memloc]) then
             if Interface.memloc then 
                 SeenMemlocs[Interface.memloc] = true 
             end
 
-            -- Legacy specific memory reads (maintained for backward compatibility)
-            local Memloc_I_itemids3_Char = ""
-            local Memloc_I_slides_Int = ""
+            local ProperInterfaceID = InterfaceIDString
             
-            -- Comprehensive memory read analysis using multiple API functions
-            local MemoryReads = {}
-            
-            if Interface.memloc then
-                -- Define all available API constants for memory offset calculations
-                local ApiConstants = {
-                    {name = "I_00textP", value = API.I_00textP},
-                    {name = "I_itemids3", value = API.I_itemids3},
-                    {name = "I_itemids", value = API.I_itemids},
-                    {name = "I_itemstack", value = API.I_itemstack},
-                    {name = "I_slides", value = API.I_slides},
-                    {name = "I_buffb", value = API.I_buffb}
-                }
-                
-                -- Group memory read functions by data type for systematic analysis
-                local MemReadGroups = {
-                    {
-                        name = "Mem_Read_char",
-                        func = API.Mem_Read_char,
-                        reads = {
-                            {name = "memloc", offset = 0}  -- Base memory location
-                        }
-                    },
-                    {
-                        name = "Mem_Read_short", 
-                        func = API.Mem_Read_short,
-                        reads = {
-                            {name = "memloc", offset = 0}
-                        }
-                    },
-                    {
-                        name = "Mem_Read_int",
-                        func = API.Mem_Read_int,
-                        reads = {
-                            {name = "memloc", offset = 0}
-                        }
-                    },
-                    {
-                        name = "Mem_Read_uint64",
-                        func = API.Mem_Read_uint64,
-                        reads = {
-                            {name = "memloc", offset = 0}
-                        }
-                    },
-                    {
-                        name = "ReadCharsLimit",
-                        func = API.ReadCharsLimit,
-                        reads = {}  -- Will be populated with constant combinations
-                    }
-                }
-                
-                -- Generate all combinations of memory functions with API constants
-                for _, Constant in ipairs(ApiConstants) do
-                    if Constant.value and type(Constant.value) == "number" then
-                        -- Add constant offset combinations to numeric read functions
-                        for _, Group in ipairs(MemReadGroups) do
-                            if Group.name ~= "ReadCharsLimit" then
-                                table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
-                            end
-                        end
-                        
-                        -- Add constant offset combinations to string read function
-                        table.insert(MemReadGroups[5].reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
-                    end
-                end
-                
-                -- Execute memory reads and format results for CSV export
-                for _, Group in ipairs(MemReadGroups) do
-                    for _, Read in ipairs(Group.reads) do
-                        -- Generate descriptive function name for CSV column
-                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                        if Group.func == API.ReadCharsLimit then
-                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                        end
-                        
-                        -- Safely execute memory read with error handling
-                        local Success, Result = pcall(function()
-                            if Group.func == API.ReadCharsLimit then
-                                return Group.func(Interface.memloc + Read.offset, Read.limit)
-                            else
-                                return Group.func(Interface.memloc + Read.offset)
-                            end
-                        end)
-                        
-                        -- Format results based on data type for optimal CSV presentation
-                        if Success and Result then
-                            local FormattedResult
-                            local ResultType = type(Result)
-                            
-                            if ResultType == "number" then
-                                -- Validate number is finite and can be formatted
-                                if Result == Result and Result ~= math.huge and Result ~= -math.huge then
-                                    -- Ensure Result is within valid integer range for formatting
-                                    local SafeResult = math.floor(Result + 0.5) -- Round to nearest integer
-                                    
-                                    -- Additional range validation for format safety
-                                    if SafeResult < 0 then
-                                        SafeResult = 0  -- Clamp negative values for hex formatting
-                                    end
-                                    
-                                    -- Safely format numbers with error handling
-                                    local formatSuccess, formattedValue = pcall(function()
-                                        if Group.func == API.Mem_Read_char then
-                                            return string.format("0x%02X (%d)", SafeResult % 256, SafeResult)
-                                        elseif Group.func == API.Mem_Read_short then
-                                            return string.format("0x%04X (%d)", SafeResult % 65536, SafeResult)
-                                        elseif Group.func == API.Mem_Read_int then
-                                            return string.format("0x%08X (%d)", SafeResult % 4294967296, SafeResult)
-                                        elseif Group.func == API.Mem_Read_uint64 then
-                                            -- For very large numbers, limit to safe range
-                                            if SafeResult > 9223372036854775807 then  -- Max safe integer
-                                                return "0xFFFFFFFFFFFFFFFF (overflow)"
-                                            else
-                                                return string.format("0x%016X (%d)", SafeResult, SafeResult)
-                                            end
-                                        else
-                                            return tostring(SafeResult)
-                                        end
-                                    end)
-                                    
-                                    if formatSuccess then
-                                        FormattedResult = formattedValue
-                                    else
-                                        FormattedResult = "Format Error (" .. tostring(SafeResult) .. ")"
-                                    end
-                                else
-                                    -- Handle invalid numbers (NaN, infinity)
-                                    FormattedResult = "Invalid (" .. tostring(Result) .. ")"
-                                end
-                            elseif ResultType == "string" then
-                                if Result == "" then
-                                    FormattedResult = '"" (empty string)'
-                                else
-                                    -- Escape control characters and limit length for readability
-                                    local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
-                                        local byteValue = string.byte(c)
-                                        if byteValue and byteValue >= 0 and byteValue <= 255 then
-                                            return string.format("\\x%02X", byteValue)
-                                        else
-                                            return "\\x??"  -- Fallback for invalid byte values
-                                        end
-                                    end)
-                                    
-                                    if string.len(EscapedResult) > 50 then
-                                        EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
-                                    end
-                                    
-                                    FormattedResult = '"' .. EscapedResult .. '"'
-                                end
-                            else
-                                -- Handle other data types (boolean, table, etc.)
-                                FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
-                            end
-                            
-                            MemoryReads[FunctionName] = FormattedResult
-                        else
-                            -- Mark failed reads for debugging purposes
-                            MemoryReads[FunctionName] = "Error"
-                        end
-                    end
-                end
-                
-                -- Maintain legacy memory reads for backward compatibility with older exports
-                local Success1, Result1 = pcall(function()
-                    return API.ReadCharsLimit(Interface.memloc + API.I_itemids3, 255)
-                end)
-                if Success1 and Result1 then
-                    Memloc_I_itemids3_Char = tostring(Result1)
-                end
-                
-                local Success2, Result2 = pcall(function()
-                    return API.Mem_Read_int(Interface.memloc + API.I_slides)
-                end)
-                if Success2 and Result2 then
-                    Memloc_I_slides_Int = tostring(Result2)
-                end
-            end
+            -- Perform memory reads
+            local MemoryReads = PerformMemoryReads(Interface.memloc)
 
-            -- Create proper InterfaceID by appending current interface's id1, id2, id3
-            local ProperInterfaceID = "{ "
-            for I, Segment in ipairs(CurrentPath) do
-                if I > 1 then ProperInterfaceID = ProperInterfaceID .. ", " end
-                ProperInterfaceID = ProperInterfaceID .. "{" .. table.concat(Segment, ",") .. "}"
-            end
-            -- Append current interface's id values
-            ProperInterfaceID = ProperInterfaceID .. ", {" .. (Interface.id1 or 0) .. "," .. (Interface.id2 or 0) .. "," .. (Interface.id3 or 0) .. ",0} }"
-
-            -- Create comprehensive interface data structure for CSV export
+            -- Create interface data with only IInfo base fields
             local InterfaceCopy = {
-                -- Metadata fields
                 _parentInterfaceID = InterfaceIDString,
                 _interfaceID = ProperInterfaceID,
                 _depth = Depth,
-                -- Standard interface properties from API
+                _memoryReads = MemoryReads,
                 index = Interface.index,
                 x = Interface.x,
                 xs = Interface.xs,
@@ -498,71 +419,80 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
                 fullIDpath = Interface.fullIDpath,
                 notvisible = Interface.notvisible,
                 OP = Interface.OP,
-                xy = Interface.xy,
-                -- Comprehensive memory analysis results
-                _memoryReads = MemoryReads
+                xy = Interface.xy
             }
             
             table.insert(AllInterfaces, InterfaceCopy)
-            
-            -- Collect valid id2 values for recursive sub-interface scanning
-            if Interface.id2 ~= nil and Interface.id2 ~= -1 and Interface.id2 ~= 0 then
-                if not UniqueId2Values[Interface.id2] then
-                    UniqueId2Values[Interface.id2] = true
-                    Id2Count = Id2Count + 1
-                end
-            end
         end
     end
     
-    -- Recursively scan discovered sub-interfaces
-    if Id2Count > 0 then
-        print("[" .. ScriptName .. "] Level " .. Depth .. ": Scanning " .. Id2Count .. " sub-interfaces")
-        for Id2, _ in pairs(UniqueId2Values) do
-            local ChildPath = CreateChildPath(CurrentPath, Id2)
-            local ChildKey = PathToKey(ChildPath)
-            
-            -- Prevent re-scanning already visited paths
-            if not VisitedPaths[ChildKey] then
-                ScanAllInterfaces(ChildPath, VisitedPaths, AllInterfaces, Depth + 1, MaxDepth, SeenMemlocs)
-            end
+    -- Now get all children of this path
+    local ChildrenSuccess, Children = pcall(function() 
+        return API.ScanForInterfaceTest2Get(true, CurrentPath) 
+    end)
+    
+    if not ChildrenSuccess then
+        return AllInterfaces
+    end
+    
+    if not Children or #Children == 0 then
+        return AllInterfaces
+    end
+    
+    -- Track unique child combinations to explore
+    local UniqueChildren = {}
+    
+    for _, Child in ipairs(Children) do
+        -- Create a key for this child combination
+        local ChildKey = (Child.id1 or 0) .. "," .. (Child.id2 or 0) .. "," .. (Child.id3 or 0)
+        
+        if not UniqueChildren[ChildKey] then
+            UniqueChildren[ChildKey] = {
+                id1 = Child.id1 or 0,
+                id2 = Child.id2 or 0,
+                id3 = Child.id3 or 0
+            }
         end
     end
     
-    -- Periodic memory cleanup to prevent excessive memory usage during deep scans
+    -- Recursively explore each unique child path
+    for _, ChildIds in pairs(UniqueChildren) do
+        local ChildPath = CreateChildPath(CurrentPath, ChildIds.id1, ChildIds.id2, ChildIds.id3)
+        local ChildPathKey = PathToKey(ChildPath)
+        
+        if not VisitedPaths[ChildPathKey] then
+            ScanAllInterfaces(ChildPath, VisitedPaths, AllInterfaces, Depth + 1, MaxDepth, SeenMemlocs)
+        end
+    end
+    
     collectgarbage("collect")
     
     return AllInterfaces
 end
 
 -- Main export function that orchestrates scanning and CSV generation
----Handles file creation, header generation, data formatting, and error recovery
 ---@return boolean Success True if export completed successfully, false on error
 local function ExportInterfacesToCSV()
-    print("[" .. ScriptName .. "] Starting interface scan...")
+    print("[" .. ScriptName .. "] Scanning interfaces...")
     
-    -- Execute comprehensive recursive interface scanning
-    local AllInterfaces = ScanAllInterfaces(Config.StartingInterface, {}, {}, 0, 50, {})
+    local AllInterfaces = ScanAllInterfaces(Config.StartingInterface, {}, {}, 0, 100000, {})
     
-    -- Validate scan results before proceeding with export
     if not AllInterfaces or #AllInterfaces == 0 then
-        print("[" .. ScriptName .. "] No interfaces found!")
+        print("[" .. ScriptName .. "] No interfaces found")
         return false
     end
     
-    print("[" .. ScriptName .. "] Total interfaces found: " .. #AllInterfaces)
+    print("[" .. ScriptName .. "] Found " .. #AllInterfaces .. " interfaces")
     
-    -- Generate unique filename to prevent accidental overwrites
     local FinalFilename = GetUniqueFilename(Config.OutputFileName)
     
-    -- Create and open CSV file for writing with error handling
     local File = io.open(FinalFilename, "w")
     if not File then
-        print("[" .. ScriptName .. "] Error: Could not create file: " .. FinalFilename)
+        print("[" .. ScriptName .. "] Error: Cannot create file")
         return false
     end
     
-    -- Define standard CSV column headers for interface properties
+    -- CSV headers matching IInfo fields only
     local Headers = {
         "parentInterfaceID", "interfaceID", "depth", "index", "x", "xs", "y", "ys", "box_x", "box_y", "scroll_y",
         "id1", "id2", "id3", "itemid1", "itemid1_size", "itemid2",
@@ -570,17 +500,15 @@ local function ExportInterfacesToCSV()
         "fullpath", "fullIDpath", "notvisible", "OP", "xy"
     }
     
-    -- Dynamically generate column headers for memory read functions
+    -- Collect memory read headers from first interface
     local MemoryReadHeaders = {}
     if AllInterfaces and #AllInterfaces > 0 and AllInterfaces[1]._memoryReads then
         for FunctionName, _ in pairs(AllInterfaces[1]._memoryReads) do
             table.insert(MemoryReadHeaders, FunctionName)
         end
-        -- Sort headers alphabetically for consistent column ordering
         table.sort(MemoryReadHeaders)
     end
     
-    -- Combine and escape all headers for CSV compatibility
     local EscapedHeaders = {}
     for _, Header in ipairs(Headers) do
         table.insert(EscapedHeaders, EscapeColumnName(Header))
@@ -589,13 +517,10 @@ local function ExportInterfacesToCSV()
         table.insert(EscapedHeaders, EscapeColumnName(Header))
     end
     
-    -- Write CSV header row
     File:write(table.concat(EscapedHeaders, ",") .. "\n")
     
-    -- Export each interface as a properly formatted CSV row
     local ExportedCount = 0
     for I, Interface in ipairs(AllInterfaces) do
-        -- Build standard data columns with proper CSV escaping
         local RowData = {
             EscapeCSV(Interface._parentInterfaceID),
             EscapeCSV(Interface._interfaceID),
@@ -626,40 +551,33 @@ local function ExportInterfacesToCSV()
             EscapeCSV(Interface.xy)
         }
         
-        -- Append memory read data columns in consistent order
+        -- Append memory read data
         if Interface._memoryReads then
             for _, Header in ipairs(MemoryReadHeaders) do
-                local MemoryData = Interface._memoryReads[Header]
-                if MemoryData then
-                    table.insert(RowData, EscapeCSV(MemoryData))
-                else
-                    table.insert(RowData, EscapeCSV(""))  -- Empty cell for missing data
-                end
+                local MemData = Interface._memoryReads[Header]
+                table.insert(RowData, EscapeCSV(MemData or ""))
             end
         else
-            -- Add empty columns if no memory reads available for this interface
             for _ = 1, #MemoryReadHeaders do
                 table.insert(RowData, EscapeCSV(""))
             end
         end
         
-        -- Write complete row to CSV file
         File:write(table.concat(RowData, ",") .. "\n")
         ExportedCount = ExportedCount + 1
     end
     
     File:close()
     
-    print("[" .. ScriptName .. "] Export completed!")
-    print("[" .. ScriptName .. "] Exported " .. ExportedCount .. " interfaces to: " .. FinalFilename)
+    print("[" .. ScriptName .. "] Exported to: " .. FinalFilename)
     
     return true
 end
 
--- Execute the main export process and capture results
+-- Execute the main export process
 local Success = ExportInterfacesToCSV()
 
--- Display comprehensive script information and execution results
+-- Display script information
 print("=" .. string.rep("=", 50) .. "=")
 print("  " .. ScriptName .. " v" .. ScriptVersion)
 print("  Author: " .. Author .. " (" .. DiscordHandle .. ")")
@@ -667,13 +585,7 @@ print("  Released: " .. ReleaseDate)
 print("=" .. string.rep("=", 50) .. "=")
 
 if Success then
-    print("")
-    print("[" .. ScriptName .. "] Export successful!")
-    -- Automatically open the output directory for user convenience
     OpenDirectory(Config.OutputDirectory)
-else
-    print("")
-    print("[" .. ScriptName .. "] Export failed!")
 end
 
 -- The line below is needed to run the script from the ScriptManager, do not uncomment it

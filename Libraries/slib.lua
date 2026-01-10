@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.6"
+local ScriptVersion = "1.0.7"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -45,6 +45,8 @@ v1.0.5 - 20-09-2025
 v1.0.6 - 28-10-2025
     - MoveTo() function will only use surge if the distance from the final coordinate is less than 10 tiles
     - PrintQuestData() function now prints isComplete method correcly
+v1.0.7 - 10-01-2026
+    - Updated PrintInterfaceInfo() function to print all(I hope) the mem reads of the interface elements.
 ]]
 
 local API = require("api")
@@ -895,25 +897,7 @@ function Slib:PrintBuffs()
         print("|   ID             : " .. tostring(Buff.id or "N/A"))
         print("|   Found          : " .. tostring(Buff.found or "N/A"))
         print("|   Text           : " .. tostring(Buff.text or "N/A"))
-        print("|   Conv Text      : " .. tostring(Buff.conv_text or "N/A"))
-        
-        -- Add additional fields if they exist
-        if Buff.duration then
-            print("|   Duration       : " .. tostring(Buff.duration))
-        end
-        
-        if Buff.remaining then
-            print("|   Remaining      : " .. tostring(Buff.remaining))
-        end
-        
-        if Buff.stacks then
-            print("|   Stacks         : " .. tostring(Buff.stacks))
-        end
-        
-        if Buff.icon then
-            print("|   Icon           : " .. tostring(Buff.icon))
-        end
-        
+        print("|   Conv Text      : " .. tostring(Buff.conv_text or "N/A"))      
         print("+=========================+")
         print("")
         
@@ -1589,9 +1573,9 @@ function Slib:PrintVb(Vb)
     return true
 end
 
--- Prints detailed information about interface elements
----@param TargetUnder boolean
----@param InterfaceToScan table|userdata
+-- Prints detailed information about interface elements recursively
+---@param TargetUnder boolean True to recursively scan all children, false to get exact interface only
+---@param InterfaceToScan table|userdata The interface path to scan
 ---@return boolean Success
 function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
     -- Parameter validation
@@ -1602,276 +1586,634 @@ function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
         return false
     end
     
-    -- API call to get interface elements
-    local Interface = API.ScanForInterfaceTest2Get(TargetUnder, InterfaceToScan)
-    
-    if not Interface then
-        self:Error("Failed to scan interface")
-        return false
-    end
-    
-    if type(Interface) ~= "table" and type(Interface) ~= "userdata" then
-        self:Error("Invalid data type returned from API: " .. type(Interface))
-        return false
-    end
-    
-    if #Interface == 0 then
-        self:Info("No interface elements found")
-        return false
-    end
-    
-    self:Info("Found " .. #Interface .. " interface elements:")
-    print("")
-    
-    -- Safe iteration through interface elements
-    for I = 1, #Interface do
-        local Element = Interface[I]
-        
-        -- Check if element exists and is valid
-        if not Element then
-            self:Warn("Skipping nil element at index " .. I)
-            goto continue_element
-        end
-        
-        if type(Element) ~= "table" and type(Element) ~= "userdata" then
-            self:Warn("Skipping invalid element at index " .. I .. " (type: " .. type(Element) .. ")")
-            goto continue_element
-        end
-        
-        -- Format interface element information with nice borders
-        print("+=============================================+")
-        print("|       ELEMENT #" .. string.format("%-2s", I) .. "                    |")
-        print("+=============================================+")
-        print("|   x              : " .. tostring(Element.x or "N/A"))
-        print("|   xs             : " .. tostring(Element.xs or "N/A"))
-        print("|   y              : " .. tostring(Element.y or "N/A"))
-        print("|   ys             : " .. tostring(Element.ys or "N/A"))
-        print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
-        print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
-        print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
-        print("|   id1            : " .. tostring(Element.id1 or "N/A"))
-        print("|   id2            : " .. tostring(Element.id2 or "N/A"))
-        print("|   id3            : " .. tostring(Element.id3 or "N/A"))
-        print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
-        print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
-        print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
-        print("|   hov            : " .. tostring(Element.hov or "N/A"))
-        print("|   textids        : " .. tostring(Element.textids or "N/A"))
-        print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
-        print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
-        print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
-        print("|   index          : " .. tostring(Element.index or "N/A"))
-        print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
-        print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
-        print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
-        print("|   OP             : " .. tostring(Element.OP or "N/A"))
-        print("|   xy             : " .. tostring(Element.xy or "N/A"))
-        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
-        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
-        
-        -- Add memory read information if memloc is available
-        if Element.memloc and type(Element.memloc) == "number" then
-            print("|                                ")
-            print("|     --- MEMORY READS ---       ")
-            print("|                                ")
-            
-            -- Define API constants
-            local ApiConstants = {
-                {name = "I_00textP", value = API.I_00textP},
-                {name = "I_itemids3", value = API.I_itemids3},
-                {name = "I_itemids", value = API.I_itemids},
-                {name = "I_itemstack", value = API.I_itemstack},
-                {name = "I_slides", value = API.I_slides},
-                {name = "I_buffb", value = API.I_buffb}
-            }
-            
-            -- Group memory reads by function type
-            local MemReadGroups = {
-                {
-                    name = "Mem_Read_char",
-                    func = API.Mem_Read_char,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "Mem_Read_short", 
-                    func = API.Mem_Read_short,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "Mem_Read_int",
-                    func = API.Mem_Read_int,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "Mem_Read_uint64",
-                    func = API.Mem_Read_uint64,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "ReadCharsLimit",
-                    func = API.ReadCharsLimit,
-                    reads = {}
-                }
-            }
-            
-            -- Add constant combinations to each group
-            for _, Constant in ipairs(ApiConstants) do
-                if Constant.value and type(Constant.value) == "number" then
-                    -- Add to Mem_Read functions
-                    for _, Group in ipairs(MemReadGroups) do
-                        if Group.name ~= "ReadCharsLimit" then
-                            table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
-                        end
-                    end
-                    
-                    -- Add to ReadCharsLimit group
-                    table.insert(MemReadGroups[5].reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
-                end
-            end
-            
-            -- Build all function names first to determine max width
-            local allFunctionNames = {}
-            for _, Group in ipairs(MemReadGroups) do
-                for _, Read in ipairs(Group.reads) do
-                    local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                    if Group.func == API.ReadCharsLimit then
-                        FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                    end
-                    table.insert(allFunctionNames, FunctionName)
-                end
-            end
-            local maxFuncNameLen = 0
-            for _, name in ipairs(allFunctionNames) do
-                if #name > maxFuncNameLen then maxFuncNameLen = #name end
-            end
-            maxFuncNameLen = math.max(maxFuncNameLen, 20)  -- minimum width for aesthetics
-            local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
-
-            -- Process each group
-            local funcIdx = 1
-            for _, Group in ipairs(MemReadGroups) do
-                for _, Read in ipairs(Group.reads) do
-                    local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                    if Group.func == API.ReadCharsLimit then
-                        FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                    end
-                    local Success, Result = pcall(function()
-                        if Group.func == API.ReadCharsLimit then
-                            return Group.func(Element.memloc + Read.offset, Read.limit)
-                        else
-                            return Group.func(Element.memloc + Read.offset)
-                        end
-                    end)
-                    if Success and Result then
-                        local FormattedResult
-                        local ResultType = type(Result)
-                        if ResultType == "number" then
-                            -- Helper function to safely format numbers
-                            local function SafeFormat(result, hexFormat, hexWidth)
-                                -- Check if number is finite and within safe integer range
-                                if result ~= result then -- NaN check
-                                    return "NaN"
-                                elseif result == math.huge then
-                                    return "Infinity"
-                                elseif result == -math.huge then
-                                    return "-Infinity"
-                                elseif math.abs(result) > 9007199254740991 then -- 2^53 - 1 (safe integer limit)
-                                    return string.format("%.0f (too large for hex)", result)
-                                elseif result < 0 then
-                                    return string.format("%.0f (negative)", result)
-                                elseif math.floor(result) ~= result then
-                                    return string.format("%.6f (fractional)", result)
-                                else
-                                    -- Safe to format as integer and hex
-                                    local success, formattedHex = pcall(string.format, hexFormat, result)
-                                    local success2, formattedDec = pcall(string.format, "%.0f", result)
-                                    if success and success2 then
-                                        return formattedHex .. " (" .. formattedDec .. ")"
-                                    else
-                                        return tostring(result) .. " (format error)"
-                                    end
-                                end
-                            end
-                            
-                            if Group.func == API.Mem_Read_char then
-                                FormattedResult = SafeFormat(Result, "0x%02X", 2)
-                            elseif Group.func == API.Mem_Read_short then
-                                FormattedResult = SafeFormat(Result, "0x%04X", 4)
-                            elseif Group.func == API.Mem_Read_int then
-                                FormattedResult = SafeFormat(Result, "0x%08X", 8)
-                            elseif Group.func == API.Mem_Read_uint64 then
-                                FormattedResult = SafeFormat(Result, "0x%016X", 16)
-                            else
-                                FormattedResult = tostring(Result)
-                            end
-                        elseif ResultType == "string" then
-                            if Result == "" then
-                                FormattedResult = '"" (empty string)'
-                            else
-                                local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
-                                    local byteVal = string.byte(c)
-                                    if byteVal and byteVal >= 0 and byteVal <= 255 then
-                                        return string.format("\\x%02X", byteVal)
-                                    else
-                                        return "\\x??"
-                                    end
-                                end)
-                                if string.len(EscapedResult) > 50 then
-                                    EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
-                                end
-                                FormattedResult = '"' .. EscapedResult .. '"'
-                            end
-                        else
-                            -- Handle other types (boolean, table, etc.)
-                            FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
-                        end
-                        
-                        -- Create function name with proper alignment
-                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                        if Group.func == API.ReadCharsLimit then
-                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                        end
-                        
-                        print(string.format(formatString, FunctionName, FormattedResult))
-                    else
-                        -- Create function name with proper alignment
-                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                        if Group.func == API.ReadCharsLimit then
-                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                        end
-                        
-                        local ErrorMsg = "Error"
-                        if not Success then
-                            ErrorMsg = "Failed"
-                        elseif not Result then
-                            ErrorMsg = "No Result"
-                        end
-                        
-                        print(string.format(formatString, FunctionName, ErrorMsg))
-                    end
-                end
-            end
-        else
-            print("|                                ")
-            print("|     --- MEMORY READS ---       ")
-            print("|   No memloc available          ")
-        end
-        
-        print("+=============================================+")
+    if TargetUnder then
+        -- Recursive scanning of all children
+        self:Info("Starting recursive interface scan...")
         print("")
         
-        ::continue_element::
+        local ElementCounter = {count = 0}
+        local VisitedPaths = {}
+        local SeenMemlocs = {}
+        local MaxDepth = 100000
+        
+        -- Internal recursive function
+        local function ScanRecursive(CurrentPath, Depth)
+            if Depth > MaxDepth then
+                print("Warning: Max depth reached (" .. Depth .. ")")
+                return
+            end
+            
+            -- Create path key for duplicate detection
+            local PathParts = {}
+            for I, Segment in ipairs(CurrentPath) do
+                table.insert(PathParts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
+            end
+            local PathKey = table.concat(PathParts, ";")
+            
+            if VisitedPaths[PathKey] then
+                return
+            end
+            VisitedPaths[PathKey] = true
+            
+            -- Try to get the exact interface at this path
+            local ExactSuccess, ExactInterface = pcall(function() 
+                return API.ScanForInterfaceTest2Get(false, CurrentPath) 
+            end)
+            
+            if ExactSuccess and ExactInterface and #ExactInterface > 0 then
+                local Element = ExactInterface[1]
+                
+                -- Check if we've already seen this interface
+                if not (Element.memloc and SeenMemlocs[Element.memloc]) then
+                    if Element.memloc then 
+                        SeenMemlocs[Element.memloc] = true 
+                    end
+                    
+                    ElementCounter.count = ElementCounter.count + 1
+                    
+                    -- Format interface element information with nice borders
+                    print("+=============================================+")
+                    print("|       ELEMENT #" .. string.format("%-2s", ElementCounter.count) .. " (Depth: " .. Depth .. ")              |")
+                    print("+=============================================+")
+                    print("|   x              : " .. tostring(Element.x or "N/A"))
+                    print("|   xs             : " .. tostring(Element.xs or "N/A"))
+                    print("|   y              : " .. tostring(Element.y or "N/A"))
+                    print("|   ys             : " .. tostring(Element.ys or "N/A"))
+                    print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
+                    print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
+                    print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
+                    print("|   id1            : " .. tostring(Element.id1 or "N/A"))
+                    print("|   id2            : " .. tostring(Element.id2 or "N/A"))
+                    print("|   id3            : " .. tostring(Element.id3 or "N/A"))
+                    print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
+                    print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
+                    print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
+                    print("|   hov            : " .. tostring(Element.hov or "N/A"))
+                    print("|   textids        : " .. tostring(Element.textids or "N/A"))
+                    print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
+                    print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
+                    print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
+                    print("|   index          : " .. tostring(Element.index or "N/A"))
+                    print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
+                    print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
+                    print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
+                    print("|   OP             : " .. tostring(Element.OP or "N/A"))
+                    print("|   xy             : " .. tostring(Element.xy or "N/A"))
+                    if Element.xy then
+                        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
+                        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
+                    end
+                    
+                    -- Add memory read information if memloc is available
+                    if Element.memloc and type(Element.memloc) == "number" then
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|                                             |")
+                        
+                        -- Define API constants
+                        local ApiConstants = {
+                            {name = "I_00textP", value = API.I_00textP},
+                            {name = "I_itemids3", value = API.I_itemids3},
+                            {name = "I_itemids", value = API.I_itemids},
+                            {name = "I_itemstack", value = API.I_itemstack},
+                            {name = "I_slides", value = API.I_slides},
+                            {name = "I_buffb", value = API.I_buffb}
+                        }
+                        
+                        -- Group memory reads by function type
+                        local MemReadGroups = {
+                            {
+                                name = "Mem_Read_char",
+                                func = API.Mem_Read_char,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_short", 
+                                func = API.Mem_Read_short,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_int",
+                                func = API.Mem_Read_int,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_uint64",
+                                func = API.Mem_Read_uint64,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "ReadCharsLimit",
+                                func = API.ReadCharsLimit,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadChars",
+                                func = API.ReadChars,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsLimitPointer",
+                                func = API.ReadCharsLimitPointer,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsPointer",
+                                func = API.ReadCharsPointer,
+                                reads = {},
+                                no_limit = true
+                            }
+                        }
+                        
+                        -- Add constant combinations
+                        for _, Constant in ipairs(ApiConstants) do
+                            if Constant.value and type(Constant.value) == "number" then
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name ~= "ReadCharsLimit" and Group.name ~= "ReadChars" and 
+                                       Group.name ~= "ReadCharsLimitPointer" and Group.name ~= "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
+                                    end
+                                end
+                                
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" or Group.name == "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Build function names for formatting
+                        local allFunctionNames = {}
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                table.insert(allFunctionNames, FunctionName)
+                            end
+                        end
+                        
+                        local maxFuncNameLen = 0
+                        for _, name in ipairs(allFunctionNames) do
+                            if #name > maxFuncNameLen then maxFuncNameLen = #name end
+                        end
+                        maxFuncNameLen = math.max(maxFuncNameLen, 20)
+                        local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
+
+                        -- Process each group
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                
+                                local Success, Result = pcall(function()
+                                    if Group.no_limit then
+                                        return Group.func(Element.memloc + Read.offset)
+                                    elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                           Group.name == "ReadCharsLimitPointer" then
+                                        return Group.func(Element.memloc + Read.offset, Read.limit)
+                                    else
+                                        return Group.func(Element.memloc + Read.offset)
+                                    end
+                                end)
+                                
+                                if Success and Result ~= nil then
+                                    local FormattedResult
+                                    local ResultType = type(Result)
+                                    
+                                    if ResultType == "number" then
+                                        -- Safe format helper inline
+                                        if Result ~= Result then
+                                            FormattedResult = "NaN"
+                                        elseif Result == math.huge then
+                                            FormattedResult = "Infinity"
+                                        elseif Result == -math.huge then
+                                            FormattedResult = "-Infinity"
+                                        elseif math.abs(Result) > 9007199254740991 then
+                                            FormattedResult = string.format("%.0f (too large)", Result)
+                                        elseif Result < 0 then
+                                            FormattedResult = string.format("%.0f (negative)", Result)
+                                        elseif math.floor(Result) ~= Result then
+                                            FormattedResult = string.format("%.6f (fractional)", Result)
+                                        else
+                                            local hexFormat
+                                            if Group.func == API.Mem_Read_char then
+                                                hexFormat = "0x%02X"
+                                            elseif Group.func == API.Mem_Read_short then
+                                                hexFormat = "0x%04X"
+                                            elseif Group.func == API.Mem_Read_int then
+                                                hexFormat = "0x%08X"
+                                            elseif Group.func == API.Mem_Read_uint64 then
+                                                hexFormat = "0x%016X"
+                                            end
+                                            
+                                            if hexFormat then
+                                                local success, formattedHex = pcall(string.format, hexFormat, Result)
+                                                local success2, formattedDec = pcall(string.format, "%.0f", Result)
+                                                if success and success2 then
+                                                    FormattedResult = formattedHex .. " (" .. formattedDec .. ")"
+                                                else
+                                                    FormattedResult = tostring(Result)
+                                                end
+                                            else
+                                                FormattedResult = tostring(Result)
+                                            end
+                                        end
+                                    elseif ResultType == "string" then
+                                        if Result == "" then
+                                            FormattedResult = '"" (empty)'
+                                        else
+                                            local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                                return string.format("\\x%02X", string.byte(c))
+                                            end)
+                                            if #EscapedResult > 50 then
+                                                EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
+                                            end
+                                            FormattedResult = '"' .. EscapedResult .. '"'
+                                        end
+                                    else
+                                        FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
+                                    end
+                                    
+                                    print(string.format(formatString, FunctionName, FormattedResult))
+                                else
+                                    print(string.format(formatString, FunctionName, "Error"))
+                                end
+                            end
+                        end
+                    else
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|   No memloc available                       |")
+                    end
+                    
+                    print("+=============================================+")
+                    print("")
+                end
+            end
+            
+            -- Now get all children of this path
+            local ChildrenSuccess, Children = pcall(function() 
+                return API.ScanForInterfaceTest2Get(true, CurrentPath) 
+            end)
+            
+            if not ChildrenSuccess or not Children or #Children == 0 then
+                return
+            end
+            
+            -- Track unique child combinations to explore
+            local UniqueChildren = {}
+            for _, Child in ipairs(Children) do
+                local ChildKey = (Child.id1 or 0) .. "," .. (Child.id2 or 0) .. "," .. (Child.id3 or 0)
+                if not UniqueChildren[ChildKey] then
+                    UniqueChildren[ChildKey] = {
+                        id1 = Child.id1 or 0,
+                        id2 = Child.id2 or 0,
+                        id3 = Child.id3 or 0
+                    }
+                end
+            end
+            
+            -- Recursively explore each unique child path
+            for _, ChildIds in pairs(UniqueChildren) do
+                -- Create child path
+                local ChildPath = {}
+                for I = 1, #CurrentPath do
+                    local PathSegment = {}
+                    for K, V in ipairs(CurrentPath[I]) do
+                        PathSegment[K] = V
+                    end
+                    table.insert(ChildPath, PathSegment)
+                end
+                table.insert(ChildPath, { ChildIds.id1, ChildIds.id2, ChildIds.id3, 0 })
+                
+                -- Create child path key
+                local ChildPathParts = {}
+                for I, Segment in ipairs(ChildPath) do
+                    table.insert(ChildPathParts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
+                end
+                local ChildPathKey = table.concat(ChildPathParts, ";")
+                
+                if not VisitedPaths[ChildPathKey] then
+                    ScanRecursive(ChildPath, Depth + 1)
+                end
+            end
+        end
+        
+        -- Start recursive scan
+        ScanRecursive(InterfaceToScan, 0)
+        
+        print("")
+        self:Info("Found " .. ElementCounter.count .. " total interface elements")
+        self:Info("Interface scan completed successfully")
+    else
+        -- Single interface scan (exact path)
+        local Success, Interface = pcall(function() 
+            return API.ScanForInterfaceTest2Get(false, InterfaceToScan) 
+        end)
+        
+        if not Success then
+            self:Error("Failed to scan interface - " .. tostring(Interface))
+            return false
+        end
+        
+        if not Interface or #Interface == 0 then
+            self:Info("No interface found at specified path")
+            return false
+        end
+        
+        self:Info("Found 1 interface element:")
+        print("")
+        
+        -- Print single interface (reuse recursive function with depth 0 and max depth 0)
+        local ElementCounter = {count = 0}
+        local VisitedPaths = {}
+        local SeenMemlocs = {}
+        
+        local function ScanSingle(CurrentPath)
+            -- Create path key
+            local PathParts = {}
+            for I, Segment in ipairs(CurrentPath) do
+                table.insert(PathParts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
+            end
+            local PathKey = table.concat(PathParts, ";")
+            
+            if VisitedPaths[PathKey] then
+                return
+            end
+            VisitedPaths[PathKey] = true
+            
+            local ExactSuccess, ExactInterface = pcall(function() 
+                return API.ScanForInterfaceTest2Get(false, CurrentPath) 
+            end)
+            
+            if ExactSuccess and ExactInterface and #ExactInterface > 0 then
+                local Element = ExactInterface[1]
+                
+                if not (Element.memloc and SeenMemlocs[Element.memloc]) then
+                    if Element.memloc then 
+                        SeenMemlocs[Element.memloc] = true 
+                    end
+                    
+                    ElementCounter.count = ElementCounter.count + 1
+                    
+                    print("+=============================================+")
+                    print("|       ELEMENT #1                            |")
+                    print("+=============================================+")
+                    print("|   x              : " .. tostring(Element.x or "N/A"))
+                    print("|   xs             : " .. tostring(Element.xs or "N/A"))
+                    print("|   y              : " .. tostring(Element.y or "N/A"))
+                    print("|   ys             : " .. tostring(Element.ys or "N/A"))
+                    print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
+                    print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
+                    print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
+                    print("|   id1            : " .. tostring(Element.id1 or "N/A"))
+                    print("|   id2            : " .. tostring(Element.id2 or "N/A"))
+                    print("|   id3            : " .. tostring(Element.id3 or "N/A"))
+                    print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
+                    print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
+                    print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
+                    print("|   hov            : " .. tostring(Element.hov or "N/A"))
+                    print("|   textids        : " .. tostring(Element.textids or "N/A"))
+                    print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
+                    print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
+                    print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
+                    print("|   index          : " .. tostring(Element.index or "N/A"))
+                    print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
+                    print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
+                    print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
+                    print("|   OP             : " .. tostring(Element.OP or "N/A"))
+                    print("|   xy             : " .. tostring(Element.xy or "N/A"))
+                    if Element.xy then
+                        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
+                        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
+                    end
+                    
+                    -- Add memory read information if memloc is available
+                    if Element.memloc and type(Element.memloc) == "number" then
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|                                             |")
+                        
+                        -- Define API constants
+                        local ApiConstants = {
+                            {name = "I_00textP", value = API.I_00textP},
+                            {name = "I_itemids3", value = API.I_itemids3},
+                            {name = "I_itemids", value = API.I_itemids},
+                            {name = "I_itemstack", value = API.I_itemstack},
+                            {name = "I_slides", value = API.I_slides},
+                            {name = "I_buffb", value = API.I_buffb}
+                        }
+                        
+                        -- Group memory reads by function type
+                        local MemReadGroups = {
+                            {
+                                name = "Mem_Read_char",
+                                func = API.Mem_Read_char,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_short", 
+                                func = API.Mem_Read_short,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_int",
+                                func = API.Mem_Read_int,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_uint64",
+                                func = API.Mem_Read_uint64,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "ReadCharsLimit",
+                                func = API.ReadCharsLimit,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadChars",
+                                func = API.ReadChars,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsLimitPointer",
+                                func = API.ReadCharsLimitPointer,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsPointer",
+                                func = API.ReadCharsPointer,
+                                reads = {},
+                                no_limit = true
+                            }
+                        }
+                        
+                        -- Add constant combinations
+                        for _, Constant in ipairs(ApiConstants) do
+                            if Constant.value and type(Constant.value) == "number" then
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name ~= "ReadCharsLimit" and Group.name ~= "ReadChars" and 
+                                       Group.name ~= "ReadCharsLimitPointer" and Group.name ~= "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
+                                    end
+                                end
+                                
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" or Group.name == "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Build function names for formatting
+                        local allFunctionNames = {}
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                table.insert(allFunctionNames, FunctionName)
+                            end
+                        end
+                        
+                        local maxFuncNameLen = 0
+                        for _, name in ipairs(allFunctionNames) do
+                            if #name > maxFuncNameLen then maxFuncNameLen = #name end
+                        end
+                        maxFuncNameLen = math.max(maxFuncNameLen, 20)
+                        local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
+
+                        -- Process each group
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                
+                                local Success, Result = pcall(function()
+                                    if Group.no_limit then
+                                        return Group.func(Element.memloc + Read.offset)
+                                    elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                           Group.name == "ReadCharsLimitPointer" then
+                                        return Group.func(Element.memloc + Read.offset, Read.limit)
+                                    else
+                                        return Group.func(Element.memloc + Read.offset)
+                                    end
+                                end)
+                                
+                                if Success and Result ~= nil then
+                                    local FormattedResult
+                                    local ResultType = type(Result)
+                                    
+                                    if ResultType == "number" then
+                                        -- Safe format helper inline
+                                        if Result ~= Result then
+                                            FormattedResult = "NaN"
+                                        elseif Result == math.huge then
+                                            FormattedResult = "Infinity"
+                                        elseif Result == -math.huge then
+                                            FormattedResult = "-Infinity"
+                                        elseif math.abs(Result) > 9007199254740991 then
+                                            FormattedResult = string.format("%.0f (too large)", Result)
+                                        elseif Result < 0 then
+                                            FormattedResult = string.format("%.0f (negative)", Result)
+                                        elseif math.floor(Result) ~= Result then
+                                            FormattedResult = string.format("%.6f (fractional)", Result)
+                                        else
+                                            local hexFormat
+                                            if Group.func == API.Mem_Read_char then
+                                                hexFormat = "0x%02X"
+                                            elseif Group.func == API.Mem_Read_short then
+                                                hexFormat = "0x%04X"
+                                            elseif Group.func == API.Mem_Read_int then
+                                                hexFormat = "0x%08X"
+                                            elseif Group.func == API.Mem_Read_uint64 then
+                                                hexFormat = "0x%016X"
+                                            end
+                                            
+                                            if hexFormat then
+                                                local success, formattedHex = pcall(string.format, hexFormat, Result)
+                                                local success2, formattedDec = pcall(string.format, "%.0f", Result)
+                                                if success and success2 then
+                                                    FormattedResult = formattedHex .. " (" .. formattedDec .. ")"
+                                                else
+                                                    FormattedResult = tostring(Result)
+                                                end
+                                            else
+                                                FormattedResult = tostring(Result)
+                                            end
+                                        end
+                                    elseif ResultType == "string" then
+                                        if Result == "" then
+                                            FormattedResult = '"" (empty)'
+                                        else
+                                            local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                                return string.format("\\x%02X", string.byte(c))
+                                            end)
+                                            if #EscapedResult > 50 then
+                                                EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
+                                            end
+                                            FormattedResult = '"' .. EscapedResult .. '"'
+                                        end
+                                    else
+                                        FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
+                                    end
+                                    
+                                    print(string.format(formatString, FunctionName, FormattedResult))
+                                else
+                                    print(string.format(formatString, FunctionName, "Error"))
+                                end
+                            end
+                        end
+                    else
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|   No memloc available                       |")
+                    end
+                    
+                    print("+=============================================+")
+                    print("")
+                end
+            end
+        end
+        
+        ScanSingle(InterfaceToScan)
+        
+        print("")
+        self:Info("Interface scan completed successfully")
     end
     
-    self:Info("Interface scan completed successfully")
     return true
 end
 
