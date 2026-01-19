@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.8"
+local ScriptVersion = "1.0.9"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -51,6 +51,8 @@ v1.0.8 - 19-01-2026
     - Fixed the Slib.Interfaces.CurrencyPouch ID after interface changes
     - Fixed MemoryStrandTeleport function after interface changes
     - Fixed SetInstanceInterfaceOptions where it would disable practice mode if hardmode was passed as false and practice mode as true
+v1.0.9 - 19-01-2026
+    - Fixed OpenAreaLoot function after interface changes
 ]]
 
 local API = require("api")
@@ -4597,7 +4599,7 @@ function Slib:AreaLootOpen()
     self:Info("[AreaLootOpen] Attempting to open area loot interface...")
     
     -- Attempt to open the interface
-    API.DoAction_Interface(0xffffffff,0xffffffff,1,1678,8,-1,API.OFF_ACT_GeneralInterface_route)
+    API.DoAction_Interface(0xffffffff,0xffffffff,1,1678,7,-1,API.OFF_ACT_GeneralInterface_route)
     
     -- Wait for the interface to actually open
     local Success = self:SleepUntil(function()
