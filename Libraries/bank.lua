@@ -107,6 +107,8 @@ v1.2.0 - 21-09-2025
         Emerald Benedict
         Gundai
         Dead man's chest
+v1.2.1 - 19-01-2026
+    - Fixed API.DoAction_Interface interface ID
 ]]
 
 local API = require("api")
@@ -1497,7 +1499,7 @@ function BANK:Withdraw(ItemID)
 
         if slot then
             print("[BANK] Withdrawing item: "..tostring(ItemID)..".")
-            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,202,slot,API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,201,slot,API.OFF_ACT_GeneralInterface_route)
             return true
         else
             print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
@@ -1568,7 +1570,7 @@ function BANK:Withdraw1(ItemID)
         end
         
         print("[BANK] Withdrawing 1x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,201,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1635,7 +1637,7 @@ function BANK:Withdraw5(ItemID)
         end
         
         print("[BANK] Withdrawing 5x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,201,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1702,7 +1704,7 @@ function BANK:Withdraw10(ItemID)
         end
         
         print("[BANK] Withdrawing 10x item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,201,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1769,7 +1771,7 @@ function BANK:WithdrawX(ItemID)
         end
         
         print("[BANK] Withdrawing X amount of item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,201,slot,API.OFF_ACT_GeneralInterface_route)
         return true
         
     -- Handle table of items case
@@ -1842,7 +1844,7 @@ function BANK:WithdrawAll(ItemID)
         end
         
         print("[BANK] Withdrawing all of item: "..tostring(ItemID))
-        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,202,slot,route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,option,517,201,slot,route)
         return true
         
     -- Handle table of items case
@@ -2561,7 +2563,7 @@ function BANK:Equip(ItemID)
 
     if slot then
         print("[BANK] Equipping item: "..tostring(ItemID)..".")
-        API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,202,slot, API.OFF_ACT_GeneralInterface_route)
+        API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,201,slot, API.OFF_ACT_GeneralInterface_route)
         return true
     else
         print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
@@ -2595,7 +2597,7 @@ function BANK:WithdrawToBoB(ItemID)
 
         if slot then
             print("[BANK] Withdrawing item: "..tostring(ItemID).." to beast of burden.")
-            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,202,slot,API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0xffffffff,ItemIDHex,1,517,201,slot,API.OFF_ACT_GeneralInterface_route)
             return true
         else
             print("[BANK] Could not find slot for item: "..tostring(ItemID)..".")
