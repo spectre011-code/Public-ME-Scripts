@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.7"
+local ScriptVersion = "1.0.8"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -47,6 +47,10 @@ v1.0.6 - 28-10-2025
     - PrintQuestData() function now prints isComplete method correcly
 v1.0.7 - 10-01-2026
     - Updated PrintInterfaceInfo() function to print all(I hope) the mem reads of the interface elements.
+v1.0.8 - 19-01-2026
+    - Fixed the Slib.Interfaces.CurrencyPouch ID after interface changes
+    - Fixed MemoryStrandTeleport function after interface changes
+    - Fixed SetInstanceInterfaceOptions where it would disable practice mode if hardmode was passed as false and practice mode as true
 ]]
 
 local API = require("api")
@@ -127,7 +131,7 @@ Slib.Interfaces.GWD2KillCounts = {
 }
 
 Slib.Interfaces.CurrencyPouch = {
-    { {1473,0,-1,0}, {1473,13,-1,0}, {1473,17,-1,0}, {1473,18,-1,0}, {1473,21,-1,0} }
+    { {1473,0,-1,0}, {1473,12,-1,0}, {1473,16,-1,0}, {1473,17,-1,0}, {1473,20,-1,0} }
 }
 
 Slib.Interfaces.AreaLoot = {
@@ -4431,12 +4435,12 @@ function Slib:MemoryStrandTeleport()
 
     while API.Read_LoopyLoop() and not (self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 5)) do
         self:Info("[MemoryStrandTeleport] Attempting to use Memory Strand teleport...")
-        API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 10, 4097, API.OFF_ACT_GeneralInterface_route) -- Open currency pouch
-        API.DoAction_Interface(0x24,0x9A3E,1,1473,21,MemStrandSlot,API.OFF_ACT_GeneralInterface_route) -- Memory Strand teleport
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,1473,9,4097,API.OFF_ACT_GeneralInterface_route) -- Open currency pouch
+        API.DoAction_Interface(0x24,0x9a3e,1,1473,20,MemStrandSlot,API.OFF_ACT_GeneralInterface_route)
         self:SleepUntil(function()
             return self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 20)
         end, 6, 100)
-        API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 15, -1, API.OFF_ACT_GeneralInterface_route) -- Close currency pouch
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,1473,9,4097,API.OFF_ACT_GeneralInterface_route) -- Close currency pouch
     end
 
     return true
@@ -4824,20 +4828,31 @@ function Slib:SetInstanceInterfaceOptions(MaxPlayers, MinCombat, SpawnSpeed, Pro
         return false
     end
 
-    for i = 1, 2 do --Needed to run 2 times in case HM is checked and practice mode is passed as true
-        -- Set PracticeMode
-        if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
-            API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
-            self:RandomSleep(600, 1000, "ms")
-        end
-
-        -- Set HardMode
-        if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
-            API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
-            self:RandomSleep(600, 1000, "ms")
-        end
-        self:RandomSleep(1000, 3000, "ms")
+    -- Disable HardMode first if we're enabling PracticeMode
+    if PracticeMode == true and CurrentOptions.HardMode == true then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
     end
+
+    -- Disable PracticeMode first if we're enabling HardMode
+    if HardMode == true and CurrentOptions.PracticeMode == true then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    -- Now set PracticeMode
+    if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    -- Now set HardMode
+    if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    self:RandomSleep(1000, 2000, "ms")
 
     CurrentOptions = self:GetInstanceInterfaceOptions() --Update options in case HM checkbox was checked, which makes MaxPlayers always 1 on the first read
 
