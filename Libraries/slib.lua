@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.9"
+local ScriptVersion = "1.0.10"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -43,16 +43,19 @@ v1.0.5 - 20-09-2025
     - Added AbilityExists function.
     - Added CanCastAbility function.
 v1.0.6 - 28-10-2025
-    - MoveTo() function will only use surge if the distance from the final coordinate is less than 10 tiles
-    - PrintQuestData() function now prints isComplete method correcly
+    - MoveTo() function will only use surge if the distance from the final coordinate is less than 10 tiles.
+    - PrintQuestData() function now prints isComplete method correcly.
 v1.0.7 - 10-01-2026
     - Updated PrintInterfaceInfo() function to print all(I hope) the mem reads of the interface elements.
 v1.0.8 - 19-01-2026
-    - Fixed the Slib.Interfaces.CurrencyPouch ID after interface changes
-    - Fixed MemoryStrandTeleport function after interface changes
-    - Fixed SetInstanceInterfaceOptions where it would disable practice mode if hardmode was passed as false and practice mode as true
+    - Fixed the Slib.Interfaces.CurrencyPouch ID after interface changes.
+    - Fixed MemoryStrandTeleport function after interface changes.
+    - Fixed SetInstanceInterfaceOptions where it would disable practice mode if hardmode was passed as false and practice mode as true.
 v1.0.9 - 19-01-2026
-    - Fixed OpenAreaLoot function after interface changes
+    - Fixed AreaLootOpen function after interface changes.
+v1.0.10 22-01-2026
+    - Added PrintVarpVb function.
+    - Added IsBitActive function.
 ]]
 
 local API = require("api")
@@ -1577,6 +1580,191 @@ function Slib:PrintVb(Vb)
     
     self:Info("VarBit scan completed - processed " .. ProcessedVbs .. " VarBit(s), found " .. TotalFound .. " valid")
     return true
+end
+
+-- Prints detailed information about VarBits associated with a specified Varp
+---@param VarpId number|table The Varp ID(s) to query for associated VarBits
+---@return boolean Success True if VarBits were found and processed, false otherwise
+function Slib:PrintVarpVb(VarpId)
+    -- Parameter validation
+    if not self:Sanitize(VarpId, {"number", "table_of_numbers"}, "VarpId") then
+        return false
+    end
+    
+    -- Ensure VarpId is a table for consistent processing
+    local VarpTable = type(VarpId) == "table" and VarpId or {VarpId}
+    
+    local TotalVarBits = 0
+    local ProcessedVarps = 0
+    
+    -- Process each Varp
+    for _, VarpIdValue in ipairs(VarpTable) do
+        ProcessedVarps = ProcessedVarps + 1
+        
+        local VB = API.GetVarbitsFromVarp(VarpIdValue)
+        
+        if not VB then
+            self:Warn("No VarBits found for Varp " .. VarpIdValue)
+            goto continue
+        end
+        
+        -- Accept both table and userdata types (userdata is common for API returns)
+        if type(VB) ~= "table" and type(VB) ~= "userdata" then
+            self:Warn("Invalid data type returned for Varp " .. VarpIdValue .. ": " .. type(VB))
+            goto continue
+        end
+        
+        -- Convert to table if needed, or get length
+        local VarBitCount = 0
+        local VarBitList = {}
+        
+        -- Try to determine count and build iterable list
+        if type(VB) == "table" then
+            VarBitCount = #VB
+            VarBitList = VB
+        elseif type(VB) == "userdata" then
+            -- Try to get size if it's an array-like userdata
+            local success, size = pcall(function() return #VB end)
+            if success and size then
+                VarBitCount = size
+                -- Build list by indexing
+                for i = 1, size do
+                    local item_success, item = pcall(function() return VB[i] end)
+                    if item_success and item then
+                        table.insert(VarBitList, item)
+                    end
+                end
+            else
+                -- Try iterating with pairs if it's dictionary-like
+                local pair_success = pcall(function()
+                    for _, varbit in pairs(VB) do
+                        VarBitCount = VarBitCount + 1
+                        table.insert(VarBitList, varbit)
+                    end
+                end)
+                
+                if not pair_success then
+                    self:Warn("Unable to iterate userdata for Varp " .. VarpIdValue)
+                    goto continue
+                end
+            end
+        end
+        
+        if VarBitCount == 0 then
+            self:Warn("Varp " .. VarpIdValue .. " has no associated VarBits")
+            goto continue
+        end
+        
+        -- Print header for this Varp
+        print("+=============================+")
+        print("|    VARP #" .. string.format("%-4s", VarpIdValue) .. " VARBITS    |")
+        print("+=============================+")
+        print("")
+        
+        -- Process each VarBit in the collection
+        for _, varbit in ipairs(VarBitList) do
+            if varbit then
+                print("+-----------------------------+")
+                
+                -- Safely access fields with pcall for userdata
+                local function safeGet(obj, field)
+                    local success, value = pcall(function() return obj[field] end)
+                    return success and value or "N/A"
+                end
+                
+                print("|   id       : " .. tostring(safeGet(varbit, "id")))
+                print("|   varp     : " .. tostring(safeGet(varbit, "varp")))
+                print("|   startBit : " .. tostring(safeGet(varbit, "startBit")))
+                print("|   endBit   : " .. tostring(safeGet(varbit, "endBit")))
+                print("|   domain   : " .. tostring(safeGet(varbit, "domain")))
+                print("+-----------------------------+")
+                print("")
+                
+                TotalVarBits = TotalVarBits + 1
+            end
+        end
+        
+        ::continue::
+    end
+    
+    if TotalVarBits == 0 then
+        self:Error("No VarBits could be processed from any Varp")
+        return false
+    end
+    
+    self:Info("Varp scan completed - processed " .. ProcessedVarps .. " Varp(s), found " .. TotalVarBits .. " VarBit(s)")
+    return true
+end
+
+-- Checks if a specific bit position is active (set to 1) in a VarBit's state
+---@param VbId number The VarBit ID to check
+---@param BitPosition number|table The bit position(s) to check (0-indexed)
+---@return boolean|table|nil Success Returns boolean for single bit, table of results for multiple bits, or nil on error
+function Slib:IsBitActive(VbId, BitPosition)
+    -- Parameter validation
+    if not self:Sanitize(VbId, {"number"}, "VbId") then
+        return nil
+    end
+    
+    if not self:Sanitize(BitPosition, {"number", "table_of_numbers"}, "BitPosition") then
+        return nil
+    end
+    
+    -- Retrieve the VarBit
+    local Var = API.VB_FindPSettinOrder(VbId)
+    
+    if not Var then
+        self:Warn("VarBit " .. VbId .. " not found")
+        return nil
+    end
+    
+    if type(Var) ~= "table" and type(Var) ~= "userdata" then
+        self:Warn("Invalid data type for VarBit " .. VbId .. ": " .. type(Var))
+        return nil
+    end
+    
+    -- Safely get the state value
+    local BigVB
+    if type(Var) == "table" then
+        BigVB = Var.state
+    else
+        -- Handle userdata with pcall
+        local success, state = pcall(function() return Var.state end)
+        if not success or not state then
+            self:Warn("Unable to retrieve state for VarBit " .. VbId)
+            return nil
+        end
+        BigVB = state
+    end
+    
+    if not BigVB or type(BigVB) ~= "number" then
+        self:Warn("Invalid state value for VarBit " .. VbId .. ": " .. tostring(BigVB))
+        return nil
+    end
+    
+    -- Process single bit position
+    if type(BitPosition) == "number" then
+        if BitPosition < 0 then
+            self:Warn("Bit position must be non-negative, got: " .. BitPosition)
+            return nil
+        end
+        
+        local isActive = ((BigVB >> BitPosition) & 1) == 1
+        return isActive
+    end
+    
+    -- Process multiple bit positions
+    local results = {}
+    for _, pos in ipairs(BitPosition) do
+        if pos < 0 then
+            self:Warn("Skipping invalid bit position: " .. pos .. " (must be non-negative)")
+            results[pos] = nil
+        else
+            results[pos] = ((BigVB >> pos) & 1) == 1
+        end
+    end
+    
+    return results
 end
 
 -- Prints detailed information about interface elements recursively
