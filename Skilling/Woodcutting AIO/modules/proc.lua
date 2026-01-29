@@ -512,11 +512,11 @@ function PROC:HandleMovingToBankState(config)
 
     elseif config.Bank == "Burthorpe" then
         Slib:Info("Bank: Burthorpe")
-        if not Slib:FindObj2(19086, 50, 1, 2886, 3535, 1) then --gnome banker
+        if not Slib:FindObj2(134036, 50, 12, 2886, 3535, 1) then --bank chest
             LODESTONES.BURTHOPE.Teleport()
-            Slib:MoveTo(FUNC:GetRandomNumber(2888, 1), FUNC:GetRandomNumber(3536, 1), 0)           
+            Slib:MoveTo(FUNC:GetRandomNumber(2888, 1), FUNC:GetRandomNumber(3535, 1), 0)           
         else
-            if not Slib:IsPlayerInArea(2888, 3536, 0, 5) then
+            if not Slib:IsPlayerInArea(2888, 3535, 0, 5) then
                 Slib:MoveTo(FUNC:GetRandomNumber(2888, 1), FUNC:GetRandomNumber(3536, 1), 0)
             else
                 return "AT_BANK"
