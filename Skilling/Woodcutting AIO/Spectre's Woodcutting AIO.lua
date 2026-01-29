@@ -1,12 +1,12 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.2.0
+-- Version: 1.3.1
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.3.0"
+ScriptVersion = "1.3.1"
 ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
 
@@ -35,6 +35,8 @@ v1.2.1 - 25-07-2025
     - Fixed an Aura issue where the script would get stuck if the player had no aura resets.
 v1.3.0 - 21-09-2025
     - Updated BANK and Slib to latest versions.
+v1.3.1 - 29-01-2026
+    - Updated the burthorpe bank after jagex changed it to a bank chest instead of a gnome banker
 ]]
 
 local API = require("api")
