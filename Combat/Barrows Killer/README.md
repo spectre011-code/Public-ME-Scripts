@@ -12,7 +12,7 @@ It handles traversal, combat, and resource usage with minimal setup, assuming re
 The following libraries **must** be installed and properly configured:
 
 - [Slib](https://github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/slib.lua)
-- [BANK](github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/bank.lua)
+- [BANK](https://github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/bank.lua)
 - [QUEST](https://github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/quest.lua)
 
 -Wars Blessing 1
@@ -44,3 +44,4 @@ The script will handle navigation automatically from these locations.
 ## 📄 Disclaimer
 
 This script is provided as-is. Use at your own risk.
+
