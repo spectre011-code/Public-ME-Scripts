@@ -15,6 +15,8 @@ The following libraries **must** be installed and properly configured:
 - [BANK](github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/bank.lua)
 - [QUEST](https://github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/quest.lua)
 
+-Wars Blessing 1
+
 ---
 
 ## 🧰 Required Items
