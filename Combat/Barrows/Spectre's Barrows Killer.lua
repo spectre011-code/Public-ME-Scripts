@@ -1,12 +1,12 @@
 -- Title: Spectre's Barrows Killer
 -- Author: Spectre011
 -- Description: Kills the barrows brothers
--- Version: 1.0.0
+-- Version: 1.0.1
 -- Category: Combat
 
 ScriptName = "Spectre's Barrows Killer"
 Author = "Spectre011"
-ScriptVersion = "1.0.0"
+ScriptVersion = "1.0.1"
 ReleaseDate = "30-01-2026"
 DiscordHandle = "not_spectre011"
 
@@ -14,6 +14,8 @@ DiscordHandle = "not_spectre011"
 Changelog:
 v1.0.0 - 30-01-2026
     - Initial release.
+v1.0.1 - 01-02-2026
+    - Fixed Ahrim and Verac coordinates when Linza and Akrisae are not unlocked.
 
 ]]
 

@@ -46,7 +46,7 @@ function FUNC:WhereAmI()
             location = "OUTSIDE_BARROWS"
         elseif Slib:IsPlayerInRectangle(3547, 3582, 3269, 3311, 0) then
             location = "ABOVE_BARROWS"
-        elseif Slib:IsPlayerInRectangle(3537, 3549, 9581, 9590, 0) then
+        elseif Slib:IsPlayerInRectangle(3537, 3549, 9581, 9590, 0) or Slib:IsPlayerInRectangle(3550, 3559, 9626, 9634, 0) then
             location = "AHRIM"
         elseif Slib:IsPlayerInRectangle(3550, 3559, 9648, 9655, 0) then
             location = "DHAROK"
@@ -56,7 +56,7 @@ function FUNC:WhereAmI()
             location = "AKRISAE"
         elseif Slib:IsPlayerInRectangle(3563, 3572, 9610, 9618, 0) then
             location = "TORAG"
-        elseif Slib:IsPlayerInRectangle(4068, 4077, 5707, 5716, 0) then
+        elseif Slib:IsPlayerInRectangle(4068, 4077, 5707, 5716, 0) or Slib:IsPlayerInRectangle(3569, 3578, 9639, 9645, 0) then
             location = "VERAC"
         elseif Slib:IsPlayerInRectangle(3530, 3540, 9611, 9619, 0) then
             location = "KARIL"

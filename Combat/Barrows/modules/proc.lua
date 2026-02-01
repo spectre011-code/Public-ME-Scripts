@@ -108,10 +108,14 @@ function PROC:HandleOpenSarcophagus()
     end
 
     if NextBrother == "VERAC" then
-        Interact:Object("Sarcophagus", "Search", WPOINT.new(4073, 5710, 2))
+        if not Interact:Object("Sarcophagus", "Search", WPOINT.new(3574, 9642, 1), 10) then
+            Interact:Object("Sarcophagus", "Search", WPOINT.new(4073, 5710, 2))
+        end
 
     elseif NextBrother == "AHRIM" then
-        Interact:Object("Sarcophagus", "Search", WPOINT.new(3545, 9586, 1))
+        if not Interact:Object("Sarcophagus", "Search", WPOINT.new(3555, 9630, 1), 10) then
+            Interact:Object("Sarcophagus", "Search", WPOINT.new(3545, 9586, 1))
+        end
 
     elseif NextBrother == "DHAROK" then
         Interact:Object("Sarcophagus", "Search", WPOINT.new(3555, 9652, 1))
