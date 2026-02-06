@@ -8,7 +8,7 @@ local DiscordHandle = "not_spectre011"
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                          INTERFACE EXPORTER SCRIPT                           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  Description: Recursively scans game interfaces and exports IInfo fields    ║
+║  Description: Recursively scans game interfaces and exports IInfo fields     ║
 ║  Usage:       Configure parameters in the Config table below and execute     ║
 ║  Output:      CSV file with IInfo interface data                             ║
 ║                                                                              ║
