@@ -3,4 +3,3 @@
 SM:AddTab("Main")
 SM:NumberInput("Stop after time (min)", "MaxTime", 1440, 1, 1440)
 
-

@@ -6,7 +6,7 @@
 
 ScriptName = "Spectre's Barrows Killer"
 Author = "Spectre011"
-ScriptVersion = "1.0.1"
+ScriptVersion = "1.0.2"
 ReleaseDate = "30-01-2026"
 DiscordHandle = "not_spectre011"
 
@@ -16,7 +16,8 @@ v1.0.0 - 30-01-2026
     - Initial release.
 v1.0.1 - 01-02-2026
     - Fixed Ahrim and Verac coordinates when Linza and Akrisae are not unlocked.
-
+v1.0.2 - 01-03-2026
+    - Removed banking location check as it was never implemented.
 ]]
 
 local API = require("api")
@@ -187,14 +188,8 @@ while (API.Read_LoopyLoop()) do
             Slib:UseAbilityById(1601) --Eat Food
         else
             if Location ~= "CHEST_ROOM" and Location ~= "TUNNELS" then                
-                if CONFIG.Bank == "Wars retreat" then
-                    Slib:UseAbilityById(35042)
-                    Slib:RandomSleep(6000, 8000, "ms")
-                else
-                    Slib:Error("Unknown banking location. Halting script.")
-                    API.Write_LoopyLoop(false)
-                    goto continue
-                end
+                Slib:UseAbilityById(35042)
+                Slib:RandomSleep(6000, 8000, "ms")
             end
         end
     end
@@ -204,14 +199,8 @@ while (API.Read_LoopyLoop()) do
         if Ovl then
             API.DoAction_Inventory1(Ovl,0,1,API.OFF_ACT_GeneralInterface_route)
         else
-            if CONFIG.Bank == "Wars retreat" then
-                Slib:UseAbilityById(35042)
-                Slib:RandomSleep(6000, 8000, "ms")
-            else
-                Slib:Error("Unknown banking location. Halting script.")
-                API.Write_LoopyLoop(false)
-                goto continue
-            end
+            Slib:UseAbilityById(35042)
+            Slib:RandomSleep(6000, 8000, "ms")
         end
     end
 
