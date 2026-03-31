@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.10"
+local ScriptVersion = "1.0.11"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -53,9 +53,12 @@ v1.0.8 - 19-01-2026
     - Fixed SetInstanceInterfaceOptions where it would disable practice mode if hardmode was passed as false and practice mode as true.
 v1.0.9 - 19-01-2026
     - Fixed AreaLootOpen function after interface changes.
-v1.0.10 22-01-2026
+v1.0.10 - 22-01-2026
     - Added PrintVarpVb function.
     - Added IsBitActive function.
+v1.0.11 - 27-03-2026
+    - Added GetSpecialKeyVK function.
+    - Added PressKey function.
 ]]
 
 local API = require("api")
@@ -832,6 +835,26 @@ function Slib:CharToVirtualKey(char)
     self:Error("[CharToVirtualKey] Only letters (A-Z, a-z), numbers (0-9), and spaces are supported")
     
     return nil
+end
+
+--- Retrieves the virtual-key code (VK) for a supported special key.
+--- @param key string # The name of the special key (case-insensitive).
+--- @return number|nil # Returns the virtual-key code if the key is supported; Otherwise returns nil.                   
+function Slib:GetSpecialKeyVK(key)
+    local keys = {
+        F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73,
+        F5 = 0x74, F6 = 0x75, F7 = 0x76, F8 = 0x77,
+        F9 = 0x78, F10 = 0x79, F11 = 0x7A, F12 = 0x7B,
+        
+        ENTER = 0x0D,
+        TAB = 0x09,
+        ESC = 0x1B,
+        SHIFT = 0x10,
+        CTRL = 0x11,
+        ALT = 0x12
+    }
+
+    return keys[string.upper(key)]
 end
 
 -- Generates a random number between Min and Max and adds it to the Base
@@ -4052,6 +4075,9 @@ function Slib:AbilityExists(AbilityIdOrName)
     return true
 end
 
+-- Checks if an ability can be cast
+---@param AbilityIdOrName number|string The ID (number) or name (string) of the ability to check
+---@return boolean True if the ability can be cast, false otherwise
 function Slib:CanCastAbility(AbilityIdOrName)
     -- Parameter validation
     if not self:ValidateParams({
@@ -4687,14 +4713,12 @@ function Slib:CheckIncenseStick(BuffID)
             local interactions = 0
             if time < 50 then
                 if time < 10 then
-                    interactions = 5
-                elseif time < 20 then
                     interactions = 4
-                elseif time < 30 then
+                elseif time < 20 then
                     interactions = 3
-                elseif time < 40 then
+                elseif time < 30 then
                     interactions = 2
-                else -- time < 50
+                else
                     interactions = 1
                 end
                 
@@ -4717,7 +4741,7 @@ function Slib:CheckIncenseStick(BuffID)
         
         -- Extend multiple times
         self:Info("[CheckIncenseStick] Extending new buff...")
-        for i = 1, 5 do
+        for i = 1, 4 do
             API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
             self:RandomSleep(100, 300, "ms")
         end
@@ -4828,7 +4852,7 @@ function Slib:AreaLootTakeItems(ItemIds)
             return true
         elseif lowerItemIds == "all" then
             self:Info("[AreaLootTakeItems] Taking all loot...")
-            API.DoAction_Interface(0x24, 0xffffffff, 1, 1622, 22, -1, API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0x24, 0xffffffff, 1, 1622, 21, -1, API.OFF_ACT_GeneralInterface_route)
             return true
         else
             self:Error("[AreaLootTakeItems] Invalid string parameter: '" .. ItemIds .. "'. Valid options: 'custom', 'all'")
@@ -4952,6 +4976,26 @@ function Slib:TypeText(Text)
         self:Error("[TypeText] Only typed " .. SuccessfulChars .. "/" .. TotalChars .. " characters successfully")
         return false
     end
+end
+
+--- Presses a key using its virtual-key code, supporting both single-character input and named special keys.
+--- @param key string # The key to press.
+--- @return boolean # Returns true if the key press was successful; False otherwise.
+function Slib:PressKey(key)
+    local vk = nil
+
+    if #key == 1 then
+        vk = self:CharToVirtualKey(key)
+    else
+        vk = self:GetSpecialKeyVK(key)
+    end
+
+    if not vk then
+        self:Error("[PressKey] Invalid key: " .. tostring(key))
+        return false
+    end
+
+    return API.KeyboardPress2(vk, 40, 60)
 end
 
 -- Sets instance interface options to specified values
@@ -5240,7 +5284,7 @@ function Slib:Lobby()
     if API.GetGameState2() == 3 then --In game
         API.DoAction_Interface(0xffffffff,0xffffffff,1,1431,0,7,API.OFF_ACT_GeneralInterface_route) --Config
         self:RandomSleep(1000, 3000, "ms")
-        API.DoAction_Interface(0x24,0xffffffff,1,1433,68,-1,API.OFF_ACT_GeneralInterface_route) --Lobby
+        API.DoAction_Interface(0x24,0xffffffff,1,1433,69,-1,API.OFF_ACT_GeneralInterface_route) --Lobby
         self:RandomSleep(1000, 3000, "ms")
 
         return true
