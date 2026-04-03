@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.11"
+local ScriptVersion = "1.0.12"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -59,6 +59,8 @@ v1.0.10 - 22-01-2026
 v1.0.11 - 27-03-2026
     - Added GetSpecialKeyVK function.
     - Added PressKey function.
+v1.0.12 - 03-04-2026
+    - Added WorkSleepUntil function.
 ]]
 
 local API = require("api")
@@ -790,6 +792,76 @@ function Slib:SleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs)
         self:Sleep(CheckIntervalMs, "ms")
     end
     
+    self:Warn("Loop stopped while waiting for condition after " .. CheckCount .. " checks")
+    return false
+end
+
+-- Sleeps and performs action until a condition is met or timeout occurs
+---@param ConditionFunc function The function to check (should return boolean)
+---@param TimeoutSeconds number|nil Maximum wait time in seconds (optional, default: 30)
+---@param CheckIntervalMs number|nil How often to check condition in milliseconds (optional, default: 100)
+---@param ActionFunc function The function to perform until the condition is true
+---@param ActionInterval number|nil How often to call ActionFunc in milliseconds (optional, default: 600)
+---@return boolean success True if condition was met, false if timeout or error occurred
+function Slib:WorkSleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs, ActionFunc, ActionInterval)
+    -- Set defaults
+    TimeoutSeconds = TimeoutSeconds or 30
+    CheckIntervalMs = CheckIntervalMs or 100
+    ActionInterval = ActionInterval or 600
+
+    -- Parameter validation
+    if not self:ValidateParams({
+        {ConditionFunc, "function", "ConditionFunc"},
+        {TimeoutSeconds, "positive_number", "TimeoutSeconds"},
+        {CheckIntervalMs, "positive_number", "CheckIntervalMs"},
+        {ActionFunc, "function", "ActionFunc"},
+        {ActionInterval, "positive_number", "ActionInterval"}
+    }) then
+        return false
+    end
+
+    local StartTime = os.clock()
+    local MaxTime = TimeoutSeconds
+    local CheckCount = 0
+    local ActionClickInterval = math.max(1, math.floor(ActionInterval / CheckIntervalMs))
+
+    self:Info("Waiting for condition with " .. TimeoutSeconds .. "s timeout, checking every " .. CheckIntervalMs .. "ms, acting every " .. ActionInterval .. "ms...")
+
+    while API.Read_LoopyLoop() do
+        CheckCount = CheckCount + 1
+
+        -- Check timeout
+        if (os.clock() - StartTime) >= MaxTime then
+            self:Warn("Timeout reached (" .. TimeoutSeconds .. "s) after " .. CheckCount .. " condition checks")
+            return false
+        end
+
+        -- Test condition with error handling
+        local Success, Result = pcall(ConditionFunc)
+        if not Success then
+            self:Error("Condition function error: " .. tostring(Result))
+            return false
+        end
+
+        if Result then
+            local Elapsed = os.clock() - StartTime
+            self:Info("Condition met after " .. string.format("%.2f", Elapsed) .. " seconds (" .. CheckCount .. " checks)")
+            return true
+        end
+
+        -- Perform action on interval
+        if CheckCount % ActionClickInterval == 0 then
+            local ActionSuccess, ActionResult = pcall(ActionFunc)
+            if not ActionSuccess then
+                self:Error("Action function error: " .. tostring(ActionResult))
+                return false
+            end
+        end
+
+        -- Sleep between checks
+        self:Sleep(CheckIntervalMs, "ms")
+    end
+
     self:Warn("Loop stopped while waiting for condition after " .. CheckCount .. " checks")
     return false
 end
