@@ -1,7 +1,6 @@
 -- Helper functions for Spectre011's Woodcutter AIO
 local API = require("api")
 local Slib = require("Woodcutting AIO.modules.slib")
-local CONFIG = require("Woodcutting AIO.config")
 local DATA = require("Woodcutting AIO.modules.data")
 local BANK = require("Woodcutting AIO.modules.bank")
 
