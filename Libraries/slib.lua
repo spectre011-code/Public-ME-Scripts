@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.12"
+local ScriptVersion = "1.0.13"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -61,6 +61,11 @@ v1.0.11 - 27-03-2026
     - Added PressKey function.
 v1.0.12 - 03-04-2026
     - Added WorkSleepUntil function.
+v1.0.13 - 17-04-2026
+    - Added BuffUpKeep function.
+    - Added GetIDSFromTable function.
+    - Removed CheckIncenseStick function.
+
 ]]
 
 local API = require("api")
@@ -68,6 +73,7 @@ local API = require("api")
 local Slib = {}
 
 Slib.Items = {}
+Slib.Buffs = {}
 Slib.Interfaces = {}
 Slib.ChatMessages = {}
 
@@ -106,6 +112,194 @@ Slib.Items.Runes = {
         Flesh   = {Id = 55339, Name = "Flesh rune"},
         Miasma  = {Id = 55340, Name = "Miasma rune"}
     }
+}
+
+Slib.Items.Overloads = {
+    -- Pure Overloads
+    OverloadVial4               = { Id = 15332, Name = "Overload (4)"                   },
+    OverloadVial3               = { Id = 15333, Name = "Overload (3)"                   },
+    OverloadVial2               = { Id = 15334, Name = "Overload (2)"                   },
+    OverloadVial1               = { Id = 15335, Name = "Overload (1)"                   },
+    OverloadFlask6              = { Id = 23531, Name = "Overload flask (6)"             },
+    OverloadFlask5              = { Id = 23532, Name = "Overload flask (5)"             },
+    OverloadFlask4              = { Id = 23533, Name = "Overload flask (4)"             },
+    OverloadFlask3              = { Id = 23534, Name = "Overload flask (3)"             },
+    OverloadFlask2              = { Id = 23535, Name = "Overload flask (2)"             },
+    OverloadFlask1              = { Id = 23536, Name = "Overload flask (1)"             },
+
+    -- Combination Overloads
+    HolyOverloadsFlask6         = { Id = 33246, Name = "Holy overload potion (6)"      },
+    HolyOverloadsFlask5         = { Id = 33244, Name = "Holy overload potion (5)"      },
+    HolyOverloadsFlask4         = { Id = 33242, Name = "Holy overload potion (4)"      },
+    HolyOverloadsFlask3         = { Id = 33240, Name = "Holy overload potion (3)"      },
+    HolyOverloadsFlask2         = { Id = 33238, Name = "Holy overload potion (2)"      },
+    HolyOverloadsFlask1         = { Id = 33236, Name = "Holy overload potion (1)"      },
+    AggroverloadFlask6          = { Id = 48239, Name = "Aggroverload (6)"              },
+    AggroverloadFlask5          = { Id = 48237, Name = "Aggroverload (5)"              },
+    AggroverloadFlask4          = { Id = 48235, Name = "Aggroverload (4)"              },
+    AggroverloadFlask3          = { Id = 48233, Name = "Aggroverload (3)"              },
+    AggroverloadFlask2          = { Id = 48231, Name = "Aggroverload (2)"              },
+    AggroverloadFlask1          = { Id = 48229, Name = "Aggroverload (1)"              },
+    SearingOverloadFlask6       = { Id = 33258, Name = "Searing overload potion (6)"   },
+    SearingOverloadFlask5       = { Id = 33256, Name = "Searing overload potion (5)"   },
+    SearingOverloadFlask4       = { Id = 33254, Name = "Searing overload potion (4)"   },
+    SearingOverloadFlask3       = { Id = 33252, Name = "Searing overload potion (3)"   },
+    SearingOverloadFlask2       = { Id = 33250, Name = "Searing overload potion (2)"   },
+    SearingOverloadFlask1       = { Id = 33248, Name = "Searing overload potion (1)"   },
+    OverloadSalveFlask6         = { Id = 33198, Name = "Overload salve (6)"            },
+    OverloadSalveFlask5         = { Id = 33196, Name = "Overload salve (5)"            },
+    OverloadSalveFlask4         = { Id = 33194, Name = "Overload salve (4)"            },
+    OverloadSalveFlask3         = { Id = 33192, Name = "Overload salve (3)"            },
+    OverloadSalveFlask2         = { Id = 33190, Name = "Overload salve (2)"            },
+    OverloadSalveFlask1         = { Id = 33188, Name = "Overload salve (1)"            },
+    HolyAggroverloadFlask6      = { Id = 50877, Name = "Holy aggroverload (6)"         },
+    HolyAggroverloadFlask5      = { Id = 50875, Name = "Holy aggroverload (5)"         },
+    HolyAggroverloadFlask4      = { Id = 50873, Name = "Holy aggroverload (4)"         },
+    HolyAggroverloadFlask3      = { Id = 50871, Name = "Holy aggroverload (3)"         },
+    HolyAggroverloadFlask2      = { Id = 50869, Name = "Holy aggroverload (2)"         },
+    HolyAggroverloadFlask1      = { Id = 50867, Name = "Holy aggroverload (1)"         },
+}
+
+Slib.Items.SupremeOverloads = {
+    SupremeOverloadFlask6       = { Id = 33210, Name = "Supreme overload potion (6)"   },
+    SupremeOverloadFlask5       = { Id = 33208, Name = "Supreme overload potion (5)"   },
+    SupremeOverloadFlask4       = { Id = 33206, Name = "Supreme overload potion (4)"   },
+    SupremeOverloadFlask3       = { Id = 33204, Name = "Supreme overload potion (3)"   },
+    SupremeOverloadFlask2       = { Id = 33202, Name = "Supreme overload potion (2)"   },
+    SupremeOverloadFlask1       = { Id = 33200, Name = "Supreme overload potion (1)"   },
+    SupremeOverloadSalveFlask6  = { Id = 33222, Name = "Supreme overload salve (6)"    },
+    SupremeOverloadSalveFlask5  = { Id = 33220, Name = "Supreme overload salve (5)"    },
+    SupremeOverloadSalveFlask4  = { Id = 33218, Name = "Supreme overload salve (4)"    },
+    SupremeOverloadSalveFlask3  = { Id = 33216, Name = "Supreme overload salve (3)"    },
+    SupremeOverloadSalveFlask2  = { Id = 33214, Name = "Supreme overload salve (2)"    },
+    SupremeOverloadSalveFlask1  = { Id = 33212, Name = "Supreme overload salve (1)"    },
+}
+
+Slib.Items.ElderOverloads = {
+    ElderOverloadFlask6         = { Id = 49039, Name = "Elder overload potion (6)"     },
+    ElderOverloadFlask5         = { Id = 49037, Name = "Elder overload potion (5)"     },
+    ElderOverloadFlask4         = { Id = 49035, Name = "Elder overload potion (4)"     },
+    ElderOverloadFlask3         = { Id = 49033, Name = "Elder overload potion (3)"     },
+    ElderOverloadFlask2         = { Id = 49031, Name = "Elder overload potion (2)"     },
+    ElderOverloadFlask1         = { Id = 49029, Name = "Elder overload potion (1)"     },
+    ElderOverloadSalveFlask6    = { Id = 49052, Name = "Elder overload salve (6)"      },
+    ElderOverloadSalveFlask5    = { Id = 49050, Name = "Elder overload salve (5)"      },
+    ElderOverloadSalveFlask4    = { Id = 49048, Name = "Elder overload salve (4)"      },
+    ElderOverloadSalveFlask3    = { Id = 49046, Name = "Elder overload salve (3)"      },
+    ElderOverloadSalveFlask2    = { Id = 49044, Name = "Elder overload salve (2)"      },
+    ElderOverloadSalveFlask1    = { Id = 49042, Name = "Elder overload salve (1)"      },
+}
+
+Slib.Items.IncenseSticks = {
+    Guam        = { Id = 47699, Name = "Guam incense sticks" },
+    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks" },
+    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks" },
+    Harralander = { Id = 47702, Name = "Harralander incense sticks" },
+    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks" },
+    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks" },
+    Spiritweed  = { Id = 47705, Name = "Spirit weed incense sticks" },
+    Irit        = { Id = 47706, Name = "Irit incense sticks" },
+    Wergali     = { Id = 47707, Name = "Wergali incense sticks" },
+    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks" },
+    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks" },
+    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks" },
+    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks" },
+    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks" },
+    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks" },
+    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks" },
+    Torstol     = { Id = 47715, Name = "Torstol incense sticks" },
+    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks" },
+}
+
+Slib.Items.WeaponPoisons = {
+    --+++
+    PlusPlusPlusFlask6 = { Id = 48626, Name = "Weapon poison+++ flask (6)" },
+    PlusPlusPlusFlask5 = { Id = 48628, Name = "Weapon poison+++ flask (5)" },
+    PlusPlusPlusFlask4 = { Id = 48630, Name = "Weapon poison+++ flask (4)" },
+    PlusPlusPlusFlask3 = { Id = 48632, Name = "Weapon poison+++ flask (3)" },
+    PlusPlusPlusFlask2 = { Id = 48634, Name = "Weapon poison+++ flask (2)" },
+    PlusPlusPlusFlask1 = { Id = 48636, Name = "Weapon poison+++ flask (1)" },
+    PlusPlusPlusVial4  = { Id = 49115, Name = "Weapon poison+++ (4)" },
+    PlusPlusPlusVial3  = { Id = 49117, Name = "Weapon poison+++ (3)" },
+    PlusPlusPlusVial2  = { Id = 49119, Name = "Weapon poison+++ (2)" },
+    PlusPlusPlusVial1  = { Id = 49121, Name = "Weapon poison+++ (1)" },
+
+    --++
+    PlusPlusFlask6 = { Id = 25533, Name = "Weapon poison++ flask (6)"},
+    PlusPlusFlask5 = { Id = 25535, Name = "Weapon poison++ flask (5)"},
+    PlusPlusFlask4 = { Id = 25537, Name = "Weapon poison++ flask (4)"},
+    PlusPlusFlask3 = { Id = 25539, Name = "Weapon poison++ flask (3)"},
+    PlusPlusFlask2 = { Id = 25541, Name = "Weapon poison++ flask (2)"},
+    PlusPlusFlask1 = { Id = 25543, Name = "Weapon poison++ flask (1)"},
+    PlusPlusVial4  = { Id = 25501, Name = "Weapon poison++ (4)"},
+    PlusPlusVial3  = { Id = 25503, Name = "Weapon poison++ (3)"},
+    PlusPlusVial2  = { Id = 25505, Name = "Weapon poison++ (2)"},
+    PlusPlusVial1  = { Id = 25507, Name = "Weapon poison++ (1)"},
+
+    --+
+    PlusFlask6 = { Id = 25521, Name = "Weapon poison+ flask (6)"},
+    PlusFlask5 = { Id = 25523, Name = "Weapon poison+ flask (5)"},
+    PlusFlask4 = { Id = 25525, Name = "Weapon poison+ flask (4)"},
+    PlusFlask3 = { Id = 25527, Name = "Weapon poison+ flask (3)"},
+    PlusFlask2 = { Id = 25529, Name = "Weapon poison+ flask (2)"},
+    PlusFlask1 = { Id = 25531, Name = "Weapon poison+ flask (1)"},
+    PlusVial4  = { Id = 25493, Name = "Weapon poison+ (4)"},
+    PlusVial3  = { Id = 25495, Name = "Weapon poison+ (3)"},
+    PlusVial2  = { Id = 25497, Name = "Weapon poison+ (2)"},
+    PlusVial1  = { Id = 25499, Name = "Weapon poison+ (1)"},
+
+    --Normal
+    NormalFlask6 = { Id = 25509, Name = "Weapon poison flask (6)"},
+    NormalFlask5 = { Id = 25511, Name = "Weapon poison flask (5)"},
+    NormalFlask4 = { Id = 25513, Name = "Weapon poison flask (4)"},
+    NormalFlask3 = { Id = 25515, Name = "Weapon poison flask (3)"},
+    NormalFlask2 = { Id = 25517, Name = "Weapon poison flask (2)"},
+    NormalFlask1 = { Id = 25519, Name = "Weapon poison flask (1)"},
+    NormalVial4  = { Id = 25485, Name = "Weapon poison (4)"},
+    NormalVial3  = { Id = 25487, Name = "Weapon poison (3)"},
+    NormalVial2  = { Id = 25489, Name = "Weapon poison (2)"},
+    NormalVial1  = { Id = 25491, Name = "Weapon poison (1)"},
+}
+
+Slib.Items.LuckPotions = {
+    LuckPotion  = { Id = 37963, Name = "Luck potion"},
+    EnhancedLuckPotion  = { Id = 39820, Name = "Enhanced luck potion"}
+}
+
+Slib.Buffs.Overloads = {
+    Overload = {Id = 26093, Name = "Overload"},
+    Supreme = {Id = 33210, Name = "Supreme Overload"},
+    Elder = {Id = 49039, Name = "Elder Overload"},
+}
+
+Slib.Buffs.IncenseSticks = {
+    Guam        = { Id = 47699, Name = "Guam incense sticks" },
+    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks" },
+    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks" },
+    Harralander = { Id = 47702, Name = "Harralander incense sticks" },
+    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks" },
+    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks" },
+    Spiritweed  = { Id = 47705, Name = "Spirit weed incense sticks" },
+    Irit        = { Id = 47706, Name = "Irit incense sticks" },
+    Wergali     = { Id = 47707, Name = "Wergali incense sticks" },
+    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks" },
+    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks" },
+    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks" },
+    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks" },
+    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks" },
+    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks" },
+    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks" },
+    Torstol     = { Id = 47715, Name = "Torstol incense sticks" },
+    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks" },
+}
+
+Slib.Buffs.WeaponPoisons = {
+    Poisonous = { Id = 30095, Name = "Poisonous" },
+}
+
+Slib.Buffs.LuckPotions = {
+    LuckPotion = { Id = 37963, Name = "LUCK_POTION_ACTIVE" },
+    EnhancedLuckPotion = { Id = 39820, Name = "ENHANCED_LUCK_POTION_ACTIVE" }
 }
 
 Slib.Interfaces.TextInput = { 
@@ -946,6 +1140,18 @@ function Slib:RandomNumber(Base, Min, Max)
 
     local RandomNumber = math.random(Min, Max)
     return Base + RandomNumber
+end
+
+-- Returns a table of IDs from a table of items in the form of {Id = 12345, Name = "Item Name"}
+---@param TB table
+function Slib:GetIDSFromTable(TB)
+    local ids = {}
+    for _, item in pairs(TB) do
+        if type(item) == "table" and item.Id then
+            table.insert(ids, item.Id)
+        end
+    end
+    return ids
 end
 
 -- ##################################
@@ -4734,96 +4940,6 @@ function Slib:MemoryStrandTeleport()
     return true
 end
 
--- Uses incense sticks and keep them active
----@param BuffID number
----@return boolean
-function Slib:CheckIncenseStick(BuffID)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {BuffID, "id", "buffID"}
-    }) then
-        return false
-    end
-
-    self:Info("[CheckIncenseStick] Checking incense stick buff: " .. BuffID)
-    
-    -- Get all active buffs
-    local buffs = API.Buffbar_GetAllIDs()
-    if not buffs then
-        self:Error("[CheckIncenseStick] Failed to get buff information")
-        return false
-    end
-    
-    -- Check if the buff is active
-    local found = false
-    for _, object in ipairs(buffs) do
-        if object.id == BuffID then
-            found = true
-            self:Info("[CheckIncenseStick] Found active incense stick buff")
-            
-            -- Parse buff information
-            local time, level = string.match(object.text, "(%d+)%a* %((%d+)%)")
-            time = tonumber(time)
-            level = tonumber(level)
-            
-            if not time or not level then
-                self:Error("[CheckIncenseStick] Failed to parse buff time or level")
-                return false
-            end
-            
-            -- Check and maintain buff level
-            if level < 4 then
-                self:Info("[CheckIncenseStick] Buff level low (" .. level .. "), applying overload...")
-                API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
-                for i = 1, 5 do
-                    API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
-                    self:RandomSleep(50, 100, "ms")
-                end
-            end
-            
-            -- Check and extend duration if needed with granular approach
-            local interactions = 0
-            if time < 50 then
-                if time < 10 then
-                    interactions = 4
-                elseif time < 20 then
-                    interactions = 3
-                elseif time < 30 then
-                    interactions = 2
-                else
-                    interactions = 1
-                end
-                
-                self:Info("[CheckIncenseStick] Buff duration low (" .. time .. "m), extending " .. interactions .. " times...")
-                for i = 1, interactions do
-                    API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
-                    self:RandomSleep(100, 300, "ms")
-                end
-            end
-            break
-        end
-    end
-    
-    -- If buff not found, apply new buff
-    if not found then
-        self:Info("[CheckIncenseStick] Buff not active, applying new buff...")
-        -- Apply overload
-        API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
-        self:RandomSleep(100, 300, "ms")
-        
-        -- Extend multiple times
-        self:Info("[CheckIncenseStick] Extending new buff...")
-        for i = 1, 4 do
-            API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
-            self:RandomSleep(100, 300, "ms")
-        end
-        self:Info("[CheckIncenseStick] New buff applied and extended")
-        return true
-    end
-
-    return true
-end
-
 -- Recharges silverhawk boots when stored feathers are below minimum quantity
 ---@param MinQuantity number The minimum quantity of feathers to maintain
 ---@return boolean success True if boots were recharged successfully, false if no boots found or no feathers available
@@ -5447,6 +5563,185 @@ function Slib:Note(ItemIds)
     end
 
     return true
+end
+
+--- Buff Up Keep
+--- Possible values: "Overload", "Weapon Poison", "Luck"
+---                  "Guam", "Tarromin", "Marrentill", "Harralander",
+---                  "Ranarr", "Toadflax", "Spiritweed", "Irit", "Wergali",
+---                  "Avantoe", "Kwuarm", "Bloodweed", "Snapdragon", "Cadantine",
+---                  "Lantadyme", "DwarfWeed", "Torstol", "Fellstalk"
+---@param BuffNames string[] The name or names of the buffs to keep up inside of a table
+---@return boolean success True if Buff Up Keep was successful, false if it failed
+function Slib:BuffUpKeep(BuffNames)
+    if not self:Sanitize(BuffNames, {"table_of_strings"}, "BuffNames") then
+        return false
+    end
+
+    local Buffs = API.Buffbar_GetAllIDs()
+    if not Buffs then
+        self:Warn("[BuffUpKeep] Failed to get buff bar information")
+        return false
+    end
+
+    local AllGood = true  -- Tracks if everything is satisfied
+
+    for _, BuffName in ipairs(BuffNames) do
+        if BuffName == "Overload" then
+            local ActiveOverload = nil
+            for _, OverloadBuff in pairs(Slib.Buffs.Overloads) do
+                for _, Object in ipairs(Buffs) do
+                    if Object.id == OverloadBuff.Id then
+                        ActiveOverload = OverloadBuff
+                        break
+                    end
+                end
+                if ActiveOverload then break end
+            end
+
+            if not ActiveOverload then
+                local Priority = {
+                    { Buff = Slib.Buffs.Overloads.Elder,    Items = Slib.Items.ElderOverloads   },
+                    { Buff = Slib.Buffs.Overloads.Supreme,  Items = Slib.Items.SupremeOverloads  },
+                    { Buff = Slib.Buffs.Overloads.Overload, Items = Slib.Items.Overloads         },
+                }
+                local Applied = false
+                for _, Entry in ipairs(Priority) do
+                    local Ids = self:GetIDSFromTable(Entry.Items)
+                    if Inventory:ContainsAny(Ids) then
+                        self:Info("[BuffUpKeep] Drinking " .. Entry.Buff.Name .. "...")
+                        API.DoAction_Inventory2(Ids, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                        Applied = true
+                        break
+                    end
+                end
+                if not Applied then
+                    self:Warn("[BuffUpKeep] No overload potions found in inventory")
+                    AllGood = false
+                end
+            else
+                self:Info("[BuffUpKeep] Overload already active: " .. ActiveOverload.Name)
+            end
+
+        elseif BuffName == "Weapon Poison" then
+            if not self:HasBuff(Slib.Buffs.WeaponPoisons.Poisonous.Id) then
+                local Poisons = self:GetIDSFromTable(Slib.Items.WeaponPoisons)
+                if Inventory:ContainsAny(Poisons) then
+                    self:Info("[BuffUpKeep] Applying Weapon Poison...")
+                    API.DoAction_Inventory2(Poisons, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                else
+                    self:Warn("[BuffUpKeep] No Weapon Poisons in inventory")
+                    AllGood = false
+                end
+            end
+
+        elseif Slib.Items.IncenseSticks[BuffName] then
+            local Stick = Slib.Items.IncenseSticks[BuffName]
+
+            if not Inventory:Contains(Stick.Id) then
+                self:Warn("[BuffUpKeep] " .. Stick.Name .. " not found in inventory, skipping")
+                AllGood = false
+            else
+                local Found = false
+                for _, Object in ipairs(Buffs) do
+                    if Object.id == Stick.Id then
+                        Found = true
+                        self:Info("[BuffUpKeep] Found active buff for " .. Stick.Name)
+
+                        local Time, Level = string.match(Object.text, "(%d+)%a* %((%d+)%)")
+                        Time  = tonumber(Time)
+                        Level = tonumber(Level)
+
+                        if not Time or not Level then
+                            self:Warn("[BuffUpKeep] Failed to parse buff info for " .. Stick.Name)
+                            AllGood = false
+                            break
+                        end
+
+                        if Level < 4 then
+                            self:Info("[BuffUpKeep] " .. Stick.Name .. " level low (" .. Level .. "), overloading...")
+                            API.DoAction_Inventory1(Stick.Id, 0, 2, API.OFF_ACT_GeneralInterface_route)
+                            for I = 1, 5 do
+                                API.DoAction_Inventory1(Stick.Id, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                                self:RandomSleep(100, 300, "ms")
+                            end
+                        end
+
+                        if Time < 10 then
+                            self:Info("[BuffUpKeep] " .. Stick.Name .. " duration low (" .. Time .. "m), extending...")
+                            API.DoAction_Inventory1(Stick.Id, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                        end
+                        break
+                    end
+                end
+
+                if not Found then
+                    local ActiveStickCount = 0
+                    for _, S in pairs(Slib.Items.IncenseSticks) do
+                        for _, Object in ipairs(Buffs) do
+                            if Object.id == S.Id then
+                                ActiveStickCount = ActiveStickCount + 1
+                                break
+                            end
+                        end
+                    end
+
+                    if ActiveStickCount >= 3 then
+                        self:Info("[BuffUpKeep] 3 incense sticks already active, skipping " .. Stick.Name)
+                        AllGood = false
+                    elseif Inventory:GetItemAmount(Stick.Id) < 6 then
+                        self:Warn("[BuffUpKeep] " .. Stick.Name .. " not found in required amount (>=6), skipping")
+                        AllGood = false
+                    else
+                        self:Info("[BuffUpKeep] Applying " .. Stick.Name .. " (" .. ActiveStickCount .. " sticks currently active)...")
+                        API.DoAction_Inventory1(Stick.Id, 0, 2, API.OFF_ACT_GeneralInterface_route)
+                        self:RandomSleep(100, 300, "ms")
+                        self:Info("[BuffUpKeep] " .. Stick.Name .. " applied")
+                    end
+                end
+            end
+            
+        elseif BuffName == "Luck Potion" then
+            -- Check if any luck potion buff is already active
+            local ActiveLuck = nil
+            for _, LuckBuff in pairs(Slib.Buffs.LuckPotions) do
+                for _, Object in ipairs(Buffs) do
+                    if Object.id == LuckBuff.Id then
+                        ActiveLuck = LuckBuff
+                        break
+                    end
+                end
+                if ActiveLuck then break end
+            end
+
+            if not ActiveLuck then
+                local Priority = {
+                    { Buff = Slib.Buffs.LuckPotions.EnhancedLuckPotion, Item = Slib.Items.LuckPotions.EnhancedLuckPotion },
+                    { Buff = Slib.Buffs.LuckPotions.LuckPotion,         Item = Slib.Items.LuckPotions.LuckPotion         },
+                }
+                local Applied = false
+                for _, Entry in ipairs(Priority) do
+                    if Inventory:Contains(Entry.Item.Id) then
+                        self:Info("[BuffUpKeep] Drinking " .. Entry.Buff.Name .. "...")
+                        API.DoAction_Inventory2({Entry.Item.Id}, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                        Applied = true
+                        break
+                    end
+                end
+                if not Applied then
+                    self:Warn("[BuffUpKeep] No Luck Potions found in inventory")
+                    AllGood = false
+                end
+            else
+                self:Info("[BuffUpKeep] Luck Potion already active: " .. ActiveLuck.Name)
+            end
+        else
+            self:Error("[BuffUpKeep] Unknown buff name: " .. tostring(BuffName))
+            AllGood = false
+        end
+    end
+
+    return AllGood
 end
 
 return Slib
