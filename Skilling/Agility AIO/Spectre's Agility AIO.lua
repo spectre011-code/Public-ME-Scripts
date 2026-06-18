@@ -1,6 +1,6 @@
 ScriptName = "Agility AIO"
 Author = "Spectre011"
-ScriptVersion = "2.2.2"
+ScriptVersion = "2.3.0"
 ReleaseDate = "06-09-2024"
 DiscordHandle = "not_spectre011"
 
@@ -64,11 +64,14 @@ v2.2.1 - 27-04-2025
 v2.2.2 - 19-09-2025
     - Changed inventory check to use Inventory:Contains instead of API.CheckInvStuff0
     - Changed inventory check to use Inventory:IsFull instead of API.InvFull_
+v2.3.0 - 17-06-2026
+    - Replaced Natures Grotto method with the Gnome Stronghold course
 
 Move to the starting location of the circuit and set the course]]
 
 local API = require("api")
 local UTILS = require("utils")
+local Slib = require("slib")
 
 local courseID = 0
 --------------------START GUI STUFF--------------------
@@ -166,7 +169,7 @@ local function CreateGUI()
     AddBackground("Background", 0.85, 1, ImColor.new(15, 13, 18, 255))
     AddLabel("Author/Version", ScriptName .. " v" .. ScriptVersion .. " - " .. Author, ImColor.new(238, 230, 0))
     AddLabel("CourseSelect", "Select a course:", ImColor.new(255, 255, 255))
-    local options = {"- none -","1-30 Nature Grotto's bridge", "30-50 Northern Anachronia", "50-52 Southern Anachronia", "52-65 Wilderness","65-77 Het's Oasis", "77-85 Hefin", "85-99+ Advanced Anachronia", "Advanced Gnome Stronghold", "Advanced Barbarian Outpost"}
+    local options = {"- none -","1-30 Gnome Stronghold course", "30-50 Northern Anachronia", "50-52 Southern Anachronia", "52-65 Wilderness","65-77 Het's Oasis", "77-85 Hefin", "85-99+ Advanced Anachronia", "Advanced Gnome Stronghold", "Advanced Barbarian Outpost"}
     AddComboBox("CourseToRun", " ", options)
     AddLabel("Status", "Obstacle ID: 0", ImColor.new(238, 230, 0))
 end
@@ -182,7 +185,7 @@ end
 local function SetCourse()
     selectedOption = GetComponentValue("CourseToRun") or selectedOption
     if selectedOption == "- none -" then courseID = 0 end
-    if selectedOption == "1-30 Nature Grotto's bridge" then courseID = 1 end
+    if selectedOption == "1-30 Gnome Stronghold course" then courseID = 1 end
     if selectedOption == "30-50 Northern Anachronia" then courseID = 2 end
     if selectedOption == "50-52 Southern Anachronia" then courseID = 3 end
     if selectedOption == "52-65 Wilderness" then courseID = 4 end
@@ -209,7 +212,7 @@ EndTable[7] = {"Discord: ".. DiscordHandle}
 --------------------END END TABLE STUFF--------------------
 
 local courseDescriptions = {
-    [1] = "1-30 Jumping the bridge outside the Nature Grotto", -- Starting location https://imgur.com/a/Lj06Ook
+    [1] = "1-30 Gnome Stronghold course", -- Starting location https://imgur.com/I4UzWfA
     [2] = "30-50 Northern Anachronia Agility Course", -- Starting location https://imgur.com/a/kq80Zi2
     [3] = "50-52 Southern Anachronia Agility Course", -- Starting location https://imgur.com/a/giFrpEL
     [4] = "52-65 Wilderness Agility Course", -- Starting location https://imgur.com/a/43kKbVV
@@ -339,31 +342,32 @@ local advancedGnomeObstacle = 1
 local advancedBarbarianObstacle = 1
 local stageFunctions = {
     [1] = function()
-        local playerInCorrectArea = nil
-        local jumped = nil
-        local obstaclesIdsAndCoords = {
-            {3522, 3441, 3329},
-            {3522, 3440, 3331},
-        }
-        if API.PInArea21(3440, 3441, 3327, 3329) then
-            playerInCorrectArea = true
-            jumped = false
-        elseif API.PInArea21(3440, 3441, 3331, 3332) then
-            playerInCorrectArea = true
-            jumped = true
-        else
-            print("Player is not in the starting area. Move to the front of the bridge.")
-            print("Starting location https://imgur.com/a/Lj06Ook")
-            playerInCorrectArea = false
-            API.Write_LoopyLoop(false)
-        end
-        if playerInCorrectArea and not jumped then
-            crossObstacle(obstaclesIdsAndCoords[1][1], obstaclesIdsAndCoords[2][2], obstaclesIdsAndCoords[2][3])
-            return
-        end
-        if playerInCorrectArea and jumped then
-            crossObstacle(obstaclesIdsAndCoords[2][1], obstaclesIdsAndCoords[1][2], obstaclesIdsAndCoords[1][3])
-            return
+        if not API.IsPlayerMoving_(API.GetLocalPlayerName()) and not API.IsPlayerAnimating_(API.GetLocalPlayerName(), 50) then
+            if Slib:IsPlayerInArea(2474, 3438, 0, 2) or Slib:IsPlayerInArea(2483, 3437, 0, 2) or Slib:IsPlayerInArea(2487, 3437, 0, 2)  then
+                Interact:Object("Log balance", "Walk-across")
+                Slib:RandomSleep(1200, 1800, "ms")
+            elseif Slib:IsPlayerInArea(2474, 3429, 0, 2) then
+                Interact:Object("Obstacle net", "Climb-over")
+                Slib:RandomSleep(1200, 1800, "ms")
+            elseif Slib:IsPlayerInArea(2475, 3423, 1, 1) or Slib:IsPlayerInArea(2473, 3423, 1, 1) or Slib:IsPlayerInArea(2471, 3423, 1, 1) then
+                Interact:Object("Tree branch", "Climb")
+                Slib:RandomSleep(1200, 1800, "ms")
+            elseif Slib:IsPlayerInArea(2473, 3420, 2, 2) then
+                Interact:Object("Balancing rope", "Walk-on")
+                Slib:RandomSleep(1200, 1800, "ms")
+            elseif Slib:IsPlayerInArea(2483, 3420, 2, 2) then
+                Interact:Object("Tree branch", "Climb-down")
+                Slib:RandomSleep(1200, 1800, "ms")
+            elseif Slib:IsPlayerInArea(2487, 3417, 0, 2) then
+                Interact:Object("Obstacle net", "Climb-over")
+                Slib:RandomSleep(1200, 1800, "ms")
+            elseif Slib:IsPlayerInArea(2484, 3427, 0, 2) or Slib:IsPlayerInArea(2486, 3427, 0, 2) or Slib:IsPlayerInArea(2488, 3427, 0, 2) then
+                Interact:Object("Obstacle pipe", "Squeeze-through")
+                Slib:RandomSleep(1200, 1800, "ms")
+            else
+                print("Player is not in a valid area to interact with any obstacles.")
+                API.Write_LoopyLoop(false)
+            end
         end
     end,
 
@@ -526,7 +530,9 @@ local stageFunctions = {
 
         local function CheckHealth()
             local health = API.GetHPrecent()
+            print("Health: " .. health)
             local canEat = UTILS.canUseSkill("Eat Food")
+            print("Can Eat: " .. canEat)
             if health < 50 and canEat == true then
                 while API.Read_LoopyLoop() and health < 80 do
                     UseAbilityByName("Eat Food")
@@ -627,6 +633,7 @@ local stageFunctions = {
                 UTILS.randomSleep(1000)
                 API.WaitUntilMovingEnds()
             end
+            print("Checking health")
             CheckHealth()
         end
     end,
@@ -1412,12 +1419,14 @@ API.GetTrackedSkills()
 API.Write_LoopyLoop(true)
 API.Write_fake_mouse_do(false)
 while (API.Read_LoopyLoop()) do
+    API.DoRandomEvents()    
     UTILS:antiIdle()
     GUIDraw()
     SetCourse()
     
     if selectedOption ~= nil and selectedOption ~= "- none -" then
         RechargeSilverhawkBoots(100)
+        Slib:BuffUpKeep({"Torstol"})
         executeStage(courseID)
         UTILS.randomSleep(500)
         AnacResources()
