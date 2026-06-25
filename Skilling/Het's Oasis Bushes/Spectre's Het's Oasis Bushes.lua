@@ -1,6 +1,6 @@
 ScriptName = "Het's Oasis Bushes"
 Author = "Spectre011"
-ScriptVersion = "2.0.0"
+ScriptVersion = "2.1.2"
 ReleaseDate = "22-03-2025"
 DiscordHandle = "not_spectre011"
 
@@ -15,14 +15,27 @@ v1.2 - 23-03-2025
     - Added API.LogDrop to track golden roses
 v2.0.0 - 31-03-2025
     - Adopted SemVer 
-    - Changed Discord variable name to DiscordHandle  
+    - Changed Discord variable name to DiscordHandle
+v2.1.0 - 03-07-2025
+    - Added compost option
+    - Fixed metrics
+v2.1.1 - 03-07-2025
+    - Added API.SetMaxIdleTime(5)
+v2.1.2 - 05-07-2025
+    - Added 3 attempts to find the bush
 ]]
 
 local API = require("api")
-local UTILS = require("utils")
+local Slib = require("slib")
+local BANK = require("bank")
+API.SetMaxIdleTime(5)
+math.randomseed(os.time())
 
 --------------------START GUI STUFF--------------------
 local CurrentStatus = "Starting"
+local TempSelection = nil
+local SetBushOption = "None"
+local SetCompostOption = "None"
 local UIComponents = {}
 local function GetComponentAmount()
     local amount = 0
@@ -87,6 +100,12 @@ local function AddComboBox(name, text, options)
     UIComponents[GetComponentAmount() + 1] = {name, ComboBox, "ComboBox"}
 end
 
+local function AddCheckbox(name, text)
+    CheckBox = API.CreateIG_answer()
+    CheckBox.box_name = text
+    UIComponents[GetComponentAmount() + 1] = {name, CheckBox, "CheckBox"}
+end
+
 local function GUIDraw()
     for i=1,GetComponentAmount() do
         local componentKind = UIComponents[i][3]
@@ -111,9 +130,31 @@ local function GUIDraw()
 end
 
 local function CreateGUI()
-    AddBackground("Background", 0.85, 1, ImColor.new(15, 13, 18, 255))
+    AddBackground("Background", 1, 1, ImColor.new(15, 13, 18, 255))
     AddLabel("Author/Version", ScriptName .. " v" .. ScriptVersion .. " by " .. Author, ImColor.new(238, 230, 0))
+    local CompostOptions = {"- none - ", "Compost", "Supercompost", "Ultracompost"}
+    AddComboBox("CompostComboBox", "Compost", CompostOptions)
+    local BushOptions = {"- none - ", "Rose", "Iris", "Hydrangea", "Hollyhock"}
+    AddComboBox("BushesComboBox", "Bushes", BushOptions)
+    
     AddLabel("Status", "Status: " .. CurrentStatus, ImColor.new(238, 230, 0))
+end
+
+local function SetBushComboBoxOption()
+    TempSelection = GetComponentValue("BushesComboBox") or TempSelection
+    if TempSelection == "- none -" then SetBushOption = "None" end
+    if TempSelection == "Rose" then SetBushOption = "Rose" end
+    if TempSelection == "Iris" then SetBushOption = "Iris" end
+    if TempSelection == "Hydrangea" then SetBushOption = "Hydrangea" end
+    if TempSelection == "Hollyhock" then SetBushOption = "Hollyhock" end
+end
+
+local function SetCompostComboBoxOption()
+    TempSelection = GetComponentValue("CompostComboBox") or SetCompostOption
+    if TempSelection == "- none -" then SetCompostOption = "None" end
+    if TempSelection == "Compost" then SetCompostOption = 6032 end
+    if TempSelection == "Supercompost" then SetCompostOption = 6034 end
+    if TempSelection == "Ultracompost" then SetCompostOption = 43966 end
 end
 
 local function UpdateStatus(newStatus)
@@ -133,11 +174,11 @@ local MetricsTable = {
     {"-", "-"}
 }
 
-local startTime = os.time()
+local startTime = os.time() 
 local counter = 0
-local currentFlowers = 0
 local lastUpdateTime = os.time()
 local updateFrequency = 0
+local ReasonToStop = "None"
 
 local function formatRunTime(seconds)
     local hours = math.floor(seconds / 3600)
@@ -163,240 +204,398 @@ local function calcAverageIncreaseTime()
     end
 end
 
-local function Tracking() -- This is what should be called at the end of every cycle
-    counter = counter + 1
+function Tracking()
+    counter = counter + 1 
     local runTime = os.time() - startTime
-    local increasesPerHour = calcIncreasesPerHour()
-    local avgIncreaseTime = calcAverageIncreaseTime()
+    local increasesPerHour = calcIncreasesPerHour() 
+    local avgIncreaseTime = calcAverageIncreaseTime() 
 
     MetricsTable[1] = {"Thanks for using my script!"}
     MetricsTable[2] = {" "}
     MetricsTable[3] = {"Total Run Time", formatRunTime(runTime)}
     MetricsTable[4] = {"Total golden roses", tostring(counter)}
-    MetricsTable[5] = {"golden roses per Hour", string.format("%.2f", increasesPerHour)}
-    MetricsTable[6] = {"Average golden roses Time (s)", string.format("%.2f", avgIncreaseTime)}
+    MetricsTable[5] = {"Golden roses per Hour", string.format("%.2f", increasesPerHour)}
+    MetricsTable[6] = {"Average golden rose time (s)", string.format("%.2f", avgIncreaseTime)}
     MetricsTable[7] = {"-----", "-----"}
     MetricsTable[8] = {"Script's Name:", ScriptName}
     MetricsTable[9] = {"Author:", Author}
     MetricsTable[10] = {"Version:", ScriptVersion}
     MetricsTable[11] = {"Release Date:", ReleaseDate}
-    MetricsTable[12] = {"Discord:", DiscordHandle}    
+    MetricsTable[12] = {"Discord:", DiscordHandle}
+    MetricsTable[13] = {"Reason to stop:", ReasonToStop}
 end
-   
-
 --------------------END METRICS STUFF--------------------
-local ActionNeeded = "None"
-local ReasonForStopping = "User Action"
-local BushToInteract = 0
-local tick = API.Get_tick()
 local IDS = {
-    ["Rose"] = {
-        122504, --Bare
-        122505, --Budding
-        122506, --Blooming
-        122507  --Harvestable        
+    Bushes = {
+        Rose = {
+            Bare = 122504,
+            Budding = 122505,
+            Blooming = 122506,
+            Harvestable = 122507,
+            Coord = { x = 3357, y = 3257, z = 0 }
+        },
+        Iris = {
+            Bare = 122508,
+            Budding = 122509,
+            Blooming = 122510,
+            Harvestable = 122511,
+            Coord = { x = 3386, y = 3257, z = 0 }
+        },
+        Hydrangea = {
+            Bare = 122512,
+            Budding = 122513,
+            Blooming = 122514,
+            Harvestable = 122515,
+            Coord = { x = 3387, y = 3207, z = 0 }
+        },
+        Hollyhock = {
+            Bare = 122516,
+            Budding = 122517,
+            Blooming = 122518,
+            Harvestable = 122519,
+            Coord = { x = 3353, y = 3218, z = 0 }
+        }
     },
-    ["Iris"] = {
-        122508, --Bare
-        122509, --Budding
-        122510, --Blooming
-        122511  --Harvestable
+    Anomalies = {
+        Scarab = 28671, --TYPE 1
+        Gas = 7620 --TYPE 4
     },
-    ["Hydrangea"] = {
-        122512, --Bare
-        122513, --Budding
-        122514, --Blooming
-        122515  --Harvestable
+    Flowers = {
+        Roses        = 52807,
+        Irises       = 52808,
+        Hydrangeas   = 52809,
+        Hollyhocks   = 52810,
+        GoldenRoses  = 52811
     },
-    ["Hollyhock"] = {
-        122516, --Bare
-        122517, --Budding
-        122518, --Blooming
-        122519  --Harvestable
+    Compost = {
+        Compost = 6032,
+        Supercompost = 6034,
+        Ultracompost = 43966
     },
-    ["Anomalies"] = {
-        28671, --Scarab TYPE 1
-        7620   --Gas TYPE 4
-    },
-    ["Flowers"] = {
-        52807,  --Roses
-        52808,  --Irises
-        52809,  --Hydrangeas
-        52810,  --Hollyhocks
-        52811   --Golden roses
-    }
+    Bucket = 1925
 }
 
-local function ReqCheck()
-    --Checks for the presence of bushes nearby
-    local found = false
-    for flowerType, ids in pairs(IDS) do
-        for _, id in ipairs(ids) do
-            local objects = API.GetAllObjArray1({id}, 10, {0})
-            if #objects > 0 then
-                print(string.format("Found ID %d (%s).", id, flowerType))
-                BushToInteract = id
-                found = true
-                break
-            end
-        end
-        if found then
-            break
-        end
+local function MoveToAdjacentBushTile(coord)
+    -- Guard against nil table or missing fields
+    if not coord or not coord.x or not coord.y or not coord.z then
+        Slib:Info("[MoveToAdjacentBushTile] Invalid coordinate table supplied.")
+        return false
     end
-    if not found then
-        print("No bushes found, exiting...")
-        ReasonForStopping = "No bushes found"
-        API.Write_LoopyLoop(false)
-        return
-    end
+
+    -- Define the four cardinal offsets around the bush
+    local offsets = {
+        { x =  1, y =  0 }, -- East
+        { x = -1, y =  0 }, -- West
+        { x =  0, y =  1 }, -- North
+        { x =  0, y = -1 }  -- South
+    }
+
+    -- Randomly pick one of the offsets
+    local randomIndex = math.random(1, #offsets)
+    local chosenOffset = offsets[randomIndex]
+
+    -- Calculate the destination tile
+    local destX = coord.x + chosenOffset.x
+    local destY = coord.y + chosenOffset.y
+    local destZ = coord.z -- floor level remains unchanged
+
+    -- Debug information
+    Slib:Info(string.format(
+        "[MoveToAdjacentBushTile] Moving to tile (%d, %d, %d) adjacent to bush (%d, %d, %d)",
+        destX, destY, destZ, coord.x, coord.y, coord.z))
+
+    -- Perform the movement using Slib's path-finding utility
+    return Slib:MoveTo(destX, destY, destZ)
 end
 
-local function StateCheck()
-    print("Game tick occurred, checking for action")
-
-    if API.IsPlayerMoving_(API.GetLocalPlayerName()) then
-        print("Player is moving. No action needed. Waiting...")
-        ActionNeeded = "None"
-        return
+local function GetBushID()
+    if not SetBushOption or SetBushOption == "None" then
+        Slib:Info("No bush selected, returning 0")
+        return 0
     end
 
-    local scarabObjects = API.GetAllObjArray1({IDS["Anomalies"][1]}, 10, {1})
-    if #scarabObjects > 0 then
-        print("Scarab anomaly detected. Action needed: HandleScarab")
-        ActionNeeded = "HandleScarab"
-        return
-    end
+    local bushData = IDS.Bushes[SetBushOption]
 
-    local gasCloudObjects = API.GetAllObjArray1({IDS["Anomalies"][2]}, 10, {4})
-    if #gasCloudObjects > 0 then
-        print("Gas Cloud anomaly detected. Action needed: HandleGasCloud")
-        ActionNeeded = "HandleGasCloud"
-        return
-    end
+    local stageIds = {
+        bushData.Harvestable,
+        bushData.Blooming,
+        bushData.Budding,
+        bushData.Bare
+    }
 
-    -- Check player animation for 2 seconds
-    local initialAnim = API.ReadPlayerAnim()
-    print(string.format("Initial player animation: %d", initialAnim))
- 
-    local startTime2 = os.time()
-    local animationChanged = false
- 
-    while os.time() - startTime2 < 2 do
-        local currentAnim = API.ReadPlayerAnim()
-        if currentAnim ~= initialAnim then
-            animationChanged = true
-            break
+    -- Try to find the bush object up to 3 times
+    for attempt = 1, 3 do
+        local obj = Slib:FindObj(stageIds, 15, 0)
+        if obj and obj.Id then
+            Slib:Info("Bush found on attempt " .. attempt .. ", returning " .. obj.Id)
+            return obj.Id
         end
-        UTILS.randomSleep(100)
-    end
- 
-    if not animationChanged and initialAnim ~= 13756 then
-        print(string.format("Player animation (%d) did not change and does not match harvesting state (13756). Action needed: HarvestBush", initialAnim))
-        ActionNeeded = "HarvestBush"
-    else
-        print("Player animation is harvesting or changed during the 2-second check. No action needed.")
-        UpdateStatus("Harvesting bush")
-        ActionNeeded = "None"
+        
+        if attempt < 3 then
+            Slib:Info("Bush not found on attempt " .. attempt .. ", retrying...")
+            Slib:RandomSleep(1000, 2000, "ms") -- Small delay between attempts
+        end
     end
 
-    --Goback to this when the game stops crashing
-    --[[
-    local playerAnim = API.ReadPlayerAnim()
-    if playerAnim ~= 13756 then
-        print(string.format("Player animation (%d) does not match idle state (13756). Action needed: HarvestBush", playerAnim))
-        ActionNeeded = "HarvestBush"
-        return
-    end
-
-    print("No anomalies detected and player is idle. No action needed.")
-    ActionNeeded = "None"
-    ]]
-
-    return
-end
-
-local function PopulateCurrentFlowers()
-    currentFlowers = currentFlowers + Inventory:GetItemAmount(IDS["Flowers"][5])
-end
-
-local function CheckFlowers()
-    local FlowerSum = 0
-    FlowerSum = FlowerSum + Inventory:GetItemAmount(IDS["Flowers"][5])
-    if FlowerSum > currentFlowers then
-        Tracking()
-        API.LogDrop(IDS["Flowers"][5], 1)
-        currentFlowers = FlowerSum
-        print("Golden roses amount changed")
-    else
-        print("Golden roses did not change")
-    end
+    -- Nothing found after 3 attempts
+    Slib:Info("No bush found after 3 attempts, returning 0")
+    ReasonToStop = "No bush found"
+    return 0
 end
 
 local function HandleGasCloud()
-    print("Handling gas cloud")
+    Slib:Info("Handling gas cloud")
     UpdateStatus("Handling gas cloud")
-    API.DoAction_Object1(0x29,API.OFF_ACT_GeneralObject_route0,{BushToInteract},50)
-    ActionNeeded = "None"
-    UTILS.randomSleep(5000)
+    API.DoAction_Object1(0x29,API.OFF_ACT_GeneralObject_route0,{GetBushID()},50)
+    Slib:RandomSleep(7000, 10000, "ms")
 end
 
 local function HandleScarab()
-    print("Trying to shoo the Scarab")
+    Slib:Info("Trying to shoo the Scarab")
     UpdateStatus("Handling scarab")
-    API.DoAction_NPC(0x29,API.OFF_ACT_InteractNPC_route,{IDS["Anomalies"][1]},50)
-    ActionNeeded = "HarvestBush"
-    UTILS.randomSleep(1000)
+    API.DoAction_NPC(0x29,API.OFF_ACT_InteractNPC_route,{IDS.Anomalies.Scarab},50)
+    Slib:RandomSleep(1000, 2000, "ms")
 end
 
 local function HarvestBush()
-    print("Trying to harvest bush")
+    Slib:Info("Trying to harvest bush")
     UpdateStatus("Harvesting bush")
-    API.DoAction_Object1(0x29,API.OFF_ACT_GeneralObject_route0,{BushToInteract},50)
-    ActionNeeded = "None"
-    UTILS.randomSleep(5000)
+    API.DoAction_Object1(0x29,API.OFF_ACT_GeneralObject_route0,{GetBushID()},50)
+    Slib:RandomSleep(3000, 7000, "ms")
+end
+
+local function UseCompost()
+    Slib:Info("Using compost")
+    UpdateStatus("Using compost")
+    API.DoAction_DontResetSelection()
+    API.DoAction_Inventory1(SetCompostOption,0,0,API.OFF_ACT_Bladed_interface_route)
+    Slib:RandomSleep(200, 600, "ms")
+    API.DoAction_DontResetSelection()
+    API.DoAction_Object1(0x24,API.OFF_ACT_GeneralObject_route00,{GetBushID()},50)
+    Slib:RandomSleep(1000, 2000, "ms")
+end
+
+local function IsBushBare()
+    local currentId = GetBushID()
+    if currentId == 0 then
+        return false
+    end
+
+    for _, bushData in pairs(IDS.Bushes) do
+        if currentId == bushData.Bare then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function CheckForAnomalies()
+    local scarabObjects = API.GetAllObjArray1({IDS.Anomalies.Scarab}, 10, {1})
+    local gasCloudObjects = API.GetAllObjArray1({IDS.Anomalies.Gas}, 10, {4})
+
+    if #scarabObjects > 0 then
+        HandleScarab()
+        return
+    end
+
+
+    if #gasCloudObjects > 0 then
+        HandleGasCloud()
+        return
+    end
+end
+
+local UsedCompost = false
+local GoldenRoses = Inventory:GetItemAmount(IDS.Flowers.GoldenRoses)
+Slib:Info("Starting with Golden Roses: " .. GoldenRoses)
+
+local StageID = 1
+local StageDescriptions = {
+    [1] = "Stage 1: Moving to Bushes",
+    [2] = "Stage 2: Harvesting Bushes",
+    [3] = "Stage 3: Banking"
+}
+
+local stageFunctions = {
+    [1] = function()
+        Slib:Info("Stage 1: " .. StageDescriptions[StageID])
+        UpdateStatus("Moving to bushes")
+        if SetBushOption == "None" then
+            Slib:Info("No bush selected, skipping...")
+            return
+        elseif SetBushOption == "Rose" then
+            if not Slib:IsPlayerInArea(IDS.Bushes.Rose.Coord.x, IDS.Bushes.Rose.Coord.y, IDS.Bushes.Rose.Coord.z, 5) then
+                Slib:Info("Player not in area, moving to bushes...")
+                MoveToAdjacentBushTile(IDS.Bushes.Rose.Coord)
+                if Slib:IsPlayerInArea(IDS.Bushes.Rose.Coord.x, IDS.Bushes.Rose.Coord.y, IDS.Bushes.Rose.Coord.z, 5) then
+                    StageID = 2
+                end
+            else
+                Slib:Info("Player near rose bush, skipping...")
+                StageID = 2
+            end
+
+        elseif SetBushOption == "Iris" then
+            if not Slib:IsPlayerInArea(IDS.Bushes.Iris.Coord.x, IDS.Bushes.Iris.Coord.y, IDS.Bushes.Iris.Coord.z, 5) then
+                Slib:Info("Player not in area, moving to bushes...")
+                MoveToAdjacentBushTile(IDS.Bushes.Iris.Coord)
+                if Slib:IsPlayerInArea(IDS.Bushes.Iris.Coord.x, IDS.Bushes.Iris.Coord.y, IDS.Bushes.Iris.Coord.z, 5) then
+                    StageID = 2
+                end
+            else
+                Slib:Info("Player near iris bush, skipping...")
+                StageID = 2
+            end
+
+        elseif SetBushOption == "Hydrangea" then
+            if not Slib:IsPlayerInArea(IDS.Bushes.Hydrangea.Coord.x, IDS.Bushes.Hydrangea.Coord.y, IDS.Bushes.Hydrangea.Coord.z, 5) then
+                Slib:Info("Player not in area, moving to bushes...")
+                MoveToAdjacentBushTile(IDS.Bushes.Hydrangea.Coord)
+                if Slib:IsPlayerInArea(IDS.Bushes.Hydrangea.Coord.x, IDS.Bushes.Hydrangea.Coord.y, IDS.Bushes.Hydrangea.Coord.z, 5) then
+                    StageID = 2
+                end
+            else
+                Slib:Info("Player near hydrangea bush, skipping...")
+                StageID = 2
+            end
+
+        elseif SetBushOption == "Hollyhock" then
+            if not Slib:IsPlayerInArea(IDS.Bushes.Hollyhock.Coord.x, IDS.Bushes.Hollyhock.Coord.y, IDS.Bushes.Hollyhock.Coord.z, 5) then
+                Slib:Info("Player not in area, moving to bushes...")
+                MoveToAdjacentBushTile(IDS.Bushes.Hollyhock.Coord)
+                if Slib:IsPlayerInArea(IDS.Bushes.Hollyhock.Coord.x, IDS.Bushes.Hollyhock.Coord.y, IDS.Bushes.Hollyhock.Coord.z, 5) then
+                    StageID = 2
+                end
+            else
+                Slib:Info("Player near hollyhock bush, skipping...")
+                StageID = 2
+            end
+        end        
+    end,
+
+    [2] = function()
+        Slib:Info("Stage 2: " .. StageDescriptions[StageID])
+        UpdateStatus("Harvesting bush")
+
+        if IsBushBare() and UsedCompost == false then
+            UseCompost()
+            UsedCompost = true
+        else
+            UsedCompost = false
+        end
+
+        if SetCompostOption ~= "None" and not Inventory:Contains(SetCompostOption) then
+            Slib:Info("No compost in inventory, rebanking...")
+            StageID = 3
+            return
+        end
+
+        HarvestBush()
+    end,
+
+    [3] = function()
+        Slib:Info("Stage 3: " .. StageDescriptions[StageID])
+        UpdateStatus("Banking")
+        Slib:MoveTo(3382, 3269, 0)
+        BANK:Open()
+        Slib:SleepUntil(function()
+            return BANK:IsOpen()
+        end, 10, 100)
+        BANK:SetNoteMode(false)
+        Slib:RandomSleep(100, 2000, "ms")
+        BANK:DepositAll(IDS.Bucket)
+        Slib:RandomSleep(100, 2000, "ms")
+        if not BANK:Contains(SetCompostOption) then
+            Slib:Info("No compost in bank, exiting...")
+            ReasonToStop = "No compost in bank"
+            API.Write_LoopyLoop(false)
+            return
+        end
+        Slib:RandomSleep(100, 2000, "ms")
+        BANK:Withdraw10(SetCompostOption)
+        Slib:RandomSleep(100, 2000, "ms")
+        BANK:Withdraw10(SetCompostOption)
+        StageID = 1
+    end
+}
+
+local function ExecuteStage(StageID)
+    if stageFunctions[StageID] then
+        stageFunctions[StageID]()
+    else
+        Slib:Info("Invalid stage ID: " .. tostring(StageID))
+    end
 end
 
 API.Write_fake_mouse_do(false)
---TickEvent.Register(ReqCheck)
---TickEvent.Register(StateCheck)
---TickEvent.Register(CheckFlowers)
-PopulateCurrentFlowers() --Populates currentFlowers with the amount that the playes has in inventory at the start of the script
-
-while (API.Read_LoopyLoop()) do
-    UTILS:antiIdle()
-    if tick ~= API.Get_tick() then
-        print("Tick: "..tick)
-        ReqCheck()
-        StateCheck()
-        CheckFlowers()
-        if ActionNeeded == "HandleScarab" then
-            HandleScarab()
-        elseif ActionNeeded == "HandleGasCloud" then
-            HandleGasCloud()
-        elseif ActionNeeded == "HarvestBush" then
-            HarvestBush()
-        elseif ActionNeeded == "None" then
-            print("Action needed is None. Skipping...") 
-        else
-            print("Something went wrong. Action needed: " .. ActionNeeded)        
-        end
-        tick = API.Get_tick()
-        print("Memory usage: ", collectgarbage("count"), "KB")
-        collectgarbage("collect")
-        print("--------------------------------")
+while API.Read_LoopyLoop() do
+    if API.CacheEnabled == false then
+        Slib:Info("Cache is disabled. Exiting...")
+        ReasonToStop = "Cache is disabled"
+        API.Write_LoopyLoop(false)
+        goto continue
     end
-    UTILS.randomSleep(100)
+
+    Slib:Info("--------------------------------")
+    Slib:Info("Configs:")
+    Slib:Info("Bush: " .. SetBushOption)
+    Slib:Info("Compost: " .. SetCompostOption)
+    Slib:Info("UsedCompost: " .. tostring(UsedCompost))
+    Slib:Info("IsBushBare: " .. tostring(IsBushBare()))
+    Slib:Info("BushID: " .. GetBushID())
+    Slib:Info("GoldenRoses: " .. GoldenRoses)
+    Slib:Info("StageID: " .. StageID)
+    Slib:Info("--------------------------------")
+
+    GUIDraw()
+    SetBushComboBoxOption()
+    SetCompostComboBoxOption()
+
+    -- Bush selected check
+    if SetBushOption == "None" then
+        Slib:Info("No bush selected, skipping...")
+        goto continue
+    end
+
+    CheckForAnomalies()
+
+    -- Player animating check
+    if API.IsPlayerAnimating_(API.GetLocalPlayerName(), 20) then
+        Slib:Info("Player animating. Skipping cycle.")
+        goto continue
+    end
+
+    -- Player moving check
+    if API.IsPlayerMoving_(API.GetLocalPlayerName()) then
+        Slib:Info("Player moving. Skipping cycle.")
+        goto continue
+    end
+
+    ExecuteStage(StageID)
+
+    if Inventory:GetItemAmount(IDS.Flowers.GoldenRoses) ~= GoldenRoses then
+        local Difference = Inventory:GetItemAmount(IDS.Flowers.GoldenRoses) - GoldenRoses
+        Slib:Info("Roses harvested: " .. Difference)
+        for i = 1, Difference do
+            Tracking()
+            Slib:RandomSleep(300, 1000, "ms")
+        end
+        GoldenRoses = Inventory:GetItemAmount(IDS.Flowers.GoldenRoses)
+    end
+
+    ::continue::
+    Slib:RandomSleep(300, 1000, "ms")
+    collectgarbage("collect")
 end
 
 API.Write_LoopyLoop(false)
-
 API.DrawTable(MetricsTable)
-print("----------//----------")
-print("Script Name: " .. ScriptName)
-print("Author: " .. Author)
-print("Version: " .. ScriptVersion)
-print("Release Date: " .. ReleaseDate)
-print("Discord: " .. DiscordHandle)
-print("----------//----------")
-print("Reason for stopping: " .. ReasonForStopping)
+Slib:Info("----------//----------")
+Slib:Info("Script Name: " .. ScriptName)
+Slib:Info("Author: " .. Author)
+Slib:Info("Version: " .. ScriptVersion)
+Slib:Info("Release Date: " .. ReleaseDate)
+Slib:Info("Discord: " .. DiscordHandle)
+Slib:Info("----------//----------")
+
