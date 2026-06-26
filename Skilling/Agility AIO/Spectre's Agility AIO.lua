@@ -1,6 +1,6 @@
 ScriptName = "Agility AIO"
 Author = "Spectre011"
-ScriptVersion = "2.3.0"
+ScriptVersion = "2.3.1"
 ReleaseDate = "06-09-2024"
 DiscordHandle = "not_spectre011"
 
@@ -66,6 +66,8 @@ v2.2.2 - 19-09-2025
     - Changed inventory check to use Inventory:IsFull instead of API.InvFull_
 v2.3.0 - 17-06-2026
     - Replaced Natures Grotto method with the Gnome Stronghold course
+v2.3.1 - 26-06-2026
+    - Changed step logic for area check on Gnome Stronghold course
 
 Move to the starting location of the circuit and set the course]]
 
@@ -349,7 +351,7 @@ local stageFunctions = {
             elseif Slib:IsPlayerInArea(2474, 3429, 0, 2) then
                 Interact:Object("Obstacle net", "Climb-over")
                 Slib:RandomSleep(1200, 1800, "ms")
-            elseif Slib:IsPlayerInArea(2475, 3423, 1, 1) or Slib:IsPlayerInArea(2473, 3423, 1, 1) or Slib:IsPlayerInArea(2471, 3423, 1, 1) then
+            elseif Slib:IsPlayerInRectangle(2471, 2476, 3422, 3424, 1) then
                 Interact:Object("Tree branch", "Climb")
                 Slib:RandomSleep(1200, 1800, "ms")
             elseif Slib:IsPlayerInArea(2473, 3420, 2, 2) then
