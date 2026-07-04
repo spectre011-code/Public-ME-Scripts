@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.13"
+local ScriptVersion = "1.0.14"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -65,6 +65,8 @@ v1.0.13 - 17-04-2026
     - Added BuffUpKeep function.
     - Added GetIDSFromTable function.
     - Removed CheckIncenseStick function.
+v1.0.14 - 04-07-2026
+    - Fixed HighAlch function
 
 ]]
 
@@ -79,53 +81,53 @@ Slib.ChatMessages = {}
 
 Slib.Items.Runes = {
     Normal = { --Normal runes.
-        Fire    = {Id = 554, InventoryVB = 5888, Name = "Fire rune"},
-        Water   = {Id = 555, InventoryVB = 5887, Name = "Water rune"},
-        Air     = {Id = 556, InventoryVB = 5886, Name = "Air rune"},
-        Earth   = {Id = 557, InventoryVB = 5889, Name = "Earth rune"},
-        Mind    = {Id = 558, InventoryVB = 5902, Name = "Mind rune"},
-        Body    = {Id = 559, InventoryVB = 5896, Name = "Body rune"},
-        Death   = {Id = 560, InventoryVB = 5901, Name = "Death rune"},
-        Nature  = {Id = 561, InventoryVB = 5899, Name = "Nature rune"},
-        Chaos   = {Id = 562, InventoryVB = 5898, Name = "Chaos rune"},
-        Law     = {Id = 563, InventoryVB = 5900, Name = "Law rune"},
-        Cosmic  = {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"},
-        Blood   = {Id = 565, InventoryVB = 5904, Name = "Blood rune"},
-        Soul    = {Id = 566, InventoryVB = 5905, Name = "Soul rune"},
-        Astral  = {Id = 9075, InventoryVB = 5903, Name = "Astral rune"},
+        Fire    = {Id = 554, InventoryVB = 5888, Name = "Fire rune"     },
+        Water   = {Id = 555, InventoryVB = 5887, Name = "Water rune"    },
+        Air     = {Id = 556, InventoryVB = 5886, Name = "Air rune"      },
+        Earth   = {Id = 557, InventoryVB = 5889, Name = "Earth rune"    },
+        Mind    = {Id = 558, InventoryVB = 5902, Name = "Mind rune"     },
+        Body    = {Id = 559, InventoryVB = 5896, Name = "Body rune"     },
+        Death   = {Id = 560, InventoryVB = 5901, Name = "Death rune"    },
+        Nature  = {Id = 561, InventoryVB = 5899, Name = "Nature rune"   },
+        Chaos   = {Id = 562, InventoryVB = 5898, Name = "Chaos rune"    },
+        Law     = {Id = 563, InventoryVB = 5900, Name = "Law rune"      },
+        Cosmic  = {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"   },
+        Blood   = {Id = 565, InventoryVB = 5904, Name = "Blood rune"    },
+        Soul    = {Id = 566, InventoryVB = 5905, Name = "Soul rune"     },
+        Astral  = {Id = 9075, InventoryVB = 5903, Name = "Astral rune"  },
         Armadyl = {Id = 21773, InventoryVB = 5906, Name = "Armadyl rune"},
-        Time    = {Id = 58450, InventoryVB = 8291, Name = "Time rune"},
+        Time    = {Id = 58450, InventoryVB = 8291, Name = "Time rune"   }
     },
 
     Combination = { --They dont have an InventoryVB as they change the InventoryVB of the runes that were combined.
-        Steam   = {Id = 4694, Name = "Steam rune"}, -- Water + Fire
-        Mist    = {Id = 4695, Name = "Mist rune"}, -- Air + Water
-        Dust    = {Id = 4696, Name = "Dust rune"}, -- Air + Earth
-        Smoke   = {Id = 4697, Name = "Smoke rune"}, -- Air + Fire
-        Mud     = {Id = 4698, Name = "Mud rune"}, -- Water + Earth
-        Lava    = {Id = 4699, Name = "Lava rune"}, -- Earth + Fire
+        Steam   = {Id = 4694, Name = "Steam rune"   }, -- Water + Fire
+        Mist    = {Id = 4695, Name = "Mist rune"    }, -- Air + Water
+        Dust    = {Id = 4696, Name = "Dust rune"    }, -- Air + Earth
+        Smoke   = {Id = 4697, Name = "Smoke rune"   }, -- Air + Fire
+        Mud     = {Id = 4698, Name = "Mud rune"     }, -- Water + Earth
+        Lava    = {Id = 4699, Name = "Lava rune"    } -- Earth + Fire
     },
 
     Necromancy = { --They dont have an InventoryVB but can be read from container 953 if inside nexus.
-        Spirit  = {Id = 55337, Name = "Spirit rune"},
-        Bone    = {Id = 55338, Name = "Bone rune"},
-        Flesh   = {Id = 55339, Name = "Flesh rune"},
-        Miasma  = {Id = 55340, Name = "Miasma rune"}
+        Spirit  = {Id = 55337, Name = "Spirit rune" },
+        Bone    = {Id = 55338, Name = "Bone rune"   },
+        Flesh   = {Id = 55339, Name = "Flesh rune"  },
+        Miasma  = {Id = 55340, Name = "Miasma rune" }
     }
 }
 
 Slib.Items.Overloads = {
     -- Pure Overloads
-    OverloadVial4               = { Id = 15332, Name = "Overload (4)"                   },
-    OverloadVial3               = { Id = 15333, Name = "Overload (3)"                   },
-    OverloadVial2               = { Id = 15334, Name = "Overload (2)"                   },
-    OverloadVial1               = { Id = 15335, Name = "Overload (1)"                   },
-    OverloadFlask6              = { Id = 23531, Name = "Overload flask (6)"             },
-    OverloadFlask5              = { Id = 23532, Name = "Overload flask (5)"             },
-    OverloadFlask4              = { Id = 23533, Name = "Overload flask (4)"             },
-    OverloadFlask3              = { Id = 23534, Name = "Overload flask (3)"             },
-    OverloadFlask2              = { Id = 23535, Name = "Overload flask (2)"             },
-    OverloadFlask1              = { Id = 23536, Name = "Overload flask (1)"             },
+    OverloadVial4               = { Id = 15332, Name = "Overload (4)"                  },
+    OverloadVial3               = { Id = 15333, Name = "Overload (3)"                  },
+    OverloadVial2               = { Id = 15334, Name = "Overload (2)"                  },
+    OverloadVial1               = { Id = 15335, Name = "Overload (1)"                  },
+    OverloadFlask6              = { Id = 23531, Name = "Overload flask (6)"            },
+    OverloadFlask5              = { Id = 23532, Name = "Overload flask (5)"            },
+    OverloadFlask4              = { Id = 23533, Name = "Overload flask (4)"            },
+    OverloadFlask3              = { Id = 23534, Name = "Overload flask (3)"            },
+    OverloadFlask2              = { Id = 23535, Name = "Overload flask (2)"            },
+    OverloadFlask1              = { Id = 23536, Name = "Overload flask (1)"            },
 
     -- Combination Overloads
     HolyOverloadsFlask6         = { Id = 33246, Name = "Holy overload potion (6)"      },
@@ -157,7 +159,7 @@ Slib.Items.Overloads = {
     HolyAggroverloadFlask4      = { Id = 50873, Name = "Holy aggroverload (4)"         },
     HolyAggroverloadFlask3      = { Id = 50871, Name = "Holy aggroverload (3)"         },
     HolyAggroverloadFlask2      = { Id = 50869, Name = "Holy aggroverload (2)"         },
-    HolyAggroverloadFlask1      = { Id = 50867, Name = "Holy aggroverload (1)"         },
+    HolyAggroverloadFlask1      = { Id = 50867, Name = "Holy aggroverload (1)"         }
 }
 
 Slib.Items.SupremeOverloads = {
@@ -172,7 +174,7 @@ Slib.Items.SupremeOverloads = {
     SupremeOverloadSalveFlask4  = { Id = 33218, Name = "Supreme overload salve (4)"    },
     SupremeOverloadSalveFlask3  = { Id = 33216, Name = "Supreme overload salve (3)"    },
     SupremeOverloadSalveFlask2  = { Id = 33214, Name = "Supreme overload salve (2)"    },
-    SupremeOverloadSalveFlask1  = { Id = 33212, Name = "Supreme overload salve (1)"    },
+    SupremeOverloadSalveFlask1  = { Id = 33212, Name = "Supreme overload salve (1)"    }
 }
 
 Slib.Items.ElderOverloads = {
@@ -187,110 +189,110 @@ Slib.Items.ElderOverloads = {
     ElderOverloadSalveFlask4    = { Id = 49048, Name = "Elder overload salve (4)"      },
     ElderOverloadSalveFlask3    = { Id = 49046, Name = "Elder overload salve (3)"      },
     ElderOverloadSalveFlask2    = { Id = 49044, Name = "Elder overload salve (2)"      },
-    ElderOverloadSalveFlask1    = { Id = 49042, Name = "Elder overload salve (1)"      },
+    ElderOverloadSalveFlask1    = { Id = 49042, Name = "Elder overload salve (1)"      }
 }
 
 Slib.Items.IncenseSticks = {
-    Guam        = { Id = 47699, Name = "Guam incense sticks" },
-    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks" },
-    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks" },
+    Guam        = { Id = 47699, Name = "Guam incense sticks"        },
+    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks"    },
+    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks"  },
     Harralander = { Id = 47702, Name = "Harralander incense sticks" },
-    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks" },
-    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks" },
+    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks"      },
+    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks"    },
     Spiritweed  = { Id = 47705, Name = "Spirit weed incense sticks" },
-    Irit        = { Id = 47706, Name = "Irit incense sticks" },
-    Wergali     = { Id = 47707, Name = "Wergali incense sticks" },
-    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks" },
-    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks" },
-    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks" },
-    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks" },
-    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks" },
-    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks" },
-    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks" },
-    Torstol     = { Id = 47715, Name = "Torstol incense sticks" },
-    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks" },
+    Irit        = { Id = 47706, Name = "Irit incense sticks"        },
+    Wergali     = { Id = 47707, Name = "Wergali incense sticks"     },
+    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks"     },
+    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks"      },
+    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks"   },
+    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks"  },
+    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks"   },
+    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks"   },
+    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks"  },
+    Torstol     = { Id = 47715, Name = "Torstol incense sticks"     },
+    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks"   }
 }
 
 Slib.Items.WeaponPoisons = {
     --+++
-    PlusPlusPlusFlask6 = { Id = 48626, Name = "Weapon poison+++ flask (6)" },
-    PlusPlusPlusFlask5 = { Id = 48628, Name = "Weapon poison+++ flask (5)" },
-    PlusPlusPlusFlask4 = { Id = 48630, Name = "Weapon poison+++ flask (4)" },
-    PlusPlusPlusFlask3 = { Id = 48632, Name = "Weapon poison+++ flask (3)" },
-    PlusPlusPlusFlask2 = { Id = 48634, Name = "Weapon poison+++ flask (2)" },
-    PlusPlusPlusFlask1 = { Id = 48636, Name = "Weapon poison+++ flask (1)" },
-    PlusPlusPlusVial4  = { Id = 49115, Name = "Weapon poison+++ (4)" },
-    PlusPlusPlusVial3  = { Id = 49117, Name = "Weapon poison+++ (3)" },
-    PlusPlusPlusVial2  = { Id = 49119, Name = "Weapon poison+++ (2)" },
-    PlusPlusPlusVial1  = { Id = 49121, Name = "Weapon poison+++ (1)" },
+    PlusPlusPlusFlask6 = { Id = 48626, Name = "Weapon poison+++ flask (6)"  },
+    PlusPlusPlusFlask5 = { Id = 48628, Name = "Weapon poison+++ flask (5)"  },
+    PlusPlusPlusFlask4 = { Id = 48630, Name = "Weapon poison+++ flask (4)"  },
+    PlusPlusPlusFlask3 = { Id = 48632, Name = "Weapon poison+++ flask (3)"  },
+    PlusPlusPlusFlask2 = { Id = 48634, Name = "Weapon poison+++ flask (2)"  },
+    PlusPlusPlusFlask1 = { Id = 48636, Name = "Weapon poison+++ flask (1)"  },
+    PlusPlusPlusVial4  = { Id = 49115, Name = "Weapon poison+++ (4)"        },
+    PlusPlusPlusVial3  = { Id = 49117, Name = "Weapon poison+++ (3)"        },
+    PlusPlusPlusVial2  = { Id = 49119, Name = "Weapon poison+++ (2)"        },
+    PlusPlusPlusVial1  = { Id = 49121, Name = "Weapon poison+++ (1)"        },
 
     --++
-    PlusPlusFlask6 = { Id = 25533, Name = "Weapon poison++ flask (6)"},
-    PlusPlusFlask5 = { Id = 25535, Name = "Weapon poison++ flask (5)"},
-    PlusPlusFlask4 = { Id = 25537, Name = "Weapon poison++ flask (4)"},
-    PlusPlusFlask3 = { Id = 25539, Name = "Weapon poison++ flask (3)"},
-    PlusPlusFlask2 = { Id = 25541, Name = "Weapon poison++ flask (2)"},
-    PlusPlusFlask1 = { Id = 25543, Name = "Weapon poison++ flask (1)"},
-    PlusPlusVial4  = { Id = 25501, Name = "Weapon poison++ (4)"},
-    PlusPlusVial3  = { Id = 25503, Name = "Weapon poison++ (3)"},
-    PlusPlusVial2  = { Id = 25505, Name = "Weapon poison++ (2)"},
-    PlusPlusVial1  = { Id = 25507, Name = "Weapon poison++ (1)"},
+    PlusPlusFlask6 = { Id = 25533, Name = "Weapon poison++ flask (6)"       },
+    PlusPlusFlask5 = { Id = 25535, Name = "Weapon poison++ flask (5)"       },
+    PlusPlusFlask4 = { Id = 25537, Name = "Weapon poison++ flask (4)"       },
+    PlusPlusFlask3 = { Id = 25539, Name = "Weapon poison++ flask (3)"       },
+    PlusPlusFlask2 = { Id = 25541, Name = "Weapon poison++ flask (2)"       },
+    PlusPlusFlask1 = { Id = 25543, Name = "Weapon poison++ flask (1)"       },
+    PlusPlusVial4  = { Id = 25501, Name = "Weapon poison++ (4)"             },
+    PlusPlusVial3  = { Id = 25503, Name = "Weapon poison++ (3)"             },
+    PlusPlusVial2  = { Id = 25505, Name = "Weapon poison++ (2)"             },
+    PlusPlusVial1  = { Id = 25507, Name = "Weapon poison++ (1)"             },
 
     --+
-    PlusFlask6 = { Id = 25521, Name = "Weapon poison+ flask (6)"},
-    PlusFlask5 = { Id = 25523, Name = "Weapon poison+ flask (5)"},
-    PlusFlask4 = { Id = 25525, Name = "Weapon poison+ flask (4)"},
-    PlusFlask3 = { Id = 25527, Name = "Weapon poison+ flask (3)"},
-    PlusFlask2 = { Id = 25529, Name = "Weapon poison+ flask (2)"},
-    PlusFlask1 = { Id = 25531, Name = "Weapon poison+ flask (1)"},
-    PlusVial4  = { Id = 25493, Name = "Weapon poison+ (4)"},
-    PlusVial3  = { Id = 25495, Name = "Weapon poison+ (3)"},
-    PlusVial2  = { Id = 25497, Name = "Weapon poison+ (2)"},
-    PlusVial1  = { Id = 25499, Name = "Weapon poison+ (1)"},
+    PlusFlask6 = { Id = 25521, Name = "Weapon poison+ flask (6)"            },
+    PlusFlask5 = { Id = 25523, Name = "Weapon poison+ flask (5)"            },
+    PlusFlask4 = { Id = 25525, Name = "Weapon poison+ flask (4)"            },
+    PlusFlask3 = { Id = 25527, Name = "Weapon poison+ flask (3)"            },
+    PlusFlask2 = { Id = 25529, Name = "Weapon poison+ flask (2)"            },
+    PlusFlask1 = { Id = 25531, Name = "Weapon poison+ flask (1)"            },
+    PlusVial4  = { Id = 25493, Name = "Weapon poison+ (4)"                  },
+    PlusVial3  = { Id = 25495, Name = "Weapon poison+ (3)"                  },
+    PlusVial2  = { Id = 25497, Name = "Weapon poison+ (2)"                  },
+    PlusVial1  = { Id = 25499, Name = "Weapon poison+ (1)"                  },
 
     --Normal
-    NormalFlask6 = { Id = 25509, Name = "Weapon poison flask (6)"},
-    NormalFlask5 = { Id = 25511, Name = "Weapon poison flask (5)"},
-    NormalFlask4 = { Id = 25513, Name = "Weapon poison flask (4)"},
-    NormalFlask3 = { Id = 25515, Name = "Weapon poison flask (3)"},
-    NormalFlask2 = { Id = 25517, Name = "Weapon poison flask (2)"},
-    NormalFlask1 = { Id = 25519, Name = "Weapon poison flask (1)"},
-    NormalVial4  = { Id = 25485, Name = "Weapon poison (4)"},
-    NormalVial3  = { Id = 25487, Name = "Weapon poison (3)"},
-    NormalVial2  = { Id = 25489, Name = "Weapon poison (2)"},
-    NormalVial1  = { Id = 25491, Name = "Weapon poison (1)"},
+    NormalFlask6 = { Id = 25509, Name = "Weapon poison flask (6)"           },
+    NormalFlask5 = { Id = 25511, Name = "Weapon poison flask (5)"           },
+    NormalFlask4 = { Id = 25513, Name = "Weapon poison flask (4)"           },
+    NormalFlask3 = { Id = 25515, Name = "Weapon poison flask (3)"           },
+    NormalFlask2 = { Id = 25517, Name = "Weapon poison flask (2)"           },
+    NormalFlask1 = { Id = 25519, Name = "Weapon poison flask (1)"           },
+    NormalVial4  = { Id = 25485, Name = "Weapon poison (4)"                 },
+    NormalVial3  = { Id = 25487, Name = "Weapon poison (3)"                 },
+    NormalVial2  = { Id = 25489, Name = "Weapon poison (2)"                 },
+    NormalVial1  = { Id = 25491, Name = "Weapon poison (1)"                 }
 }
 
 Slib.Items.LuckPotions = {
-    LuckPotion  = { Id = 37963, Name = "Luck potion"},
-    EnhancedLuckPotion  = { Id = 39820, Name = "Enhanced luck potion"}
+    LuckPotion          = { Id = 37963, Name = "Luck potion"            },
+    EnhancedLuckPotion  = { Id = 39820, Name = "Enhanced luck potion"   }
 }
 
 Slib.Buffs.Overloads = {
-    Overload = {Id = 26093, Name = "Overload"},
-    Supreme = {Id = 33210, Name = "Supreme Overload"},
-    Elder = {Id = 49039, Name = "Elder Overload"},
+    Overload    = {Id = 26093, Name = "Overload"        },
+    Supreme     = {Id = 33210, Name = "Supreme Overload"},
+    Elder       = {Id = 49039, Name = "Elder Overload"  }
 }
 
 Slib.Buffs.IncenseSticks = {
-    Guam        = { Id = 47699, Name = "Guam incense sticks" },
-    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks" },
-    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks" },
+    Guam        = { Id = 47699, Name = "Guam incense sticks"        },
+    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks"    },
+    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks"  },
     Harralander = { Id = 47702, Name = "Harralander incense sticks" },
-    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks" },
-    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks" },
+    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks"      },
+    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks"    },
     Spiritweed  = { Id = 47705, Name = "Spirit weed incense sticks" },
-    Irit        = { Id = 47706, Name = "Irit incense sticks" },
-    Wergali     = { Id = 47707, Name = "Wergali incense sticks" },
-    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks" },
-    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks" },
-    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks" },
-    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks" },
-    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks" },
-    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks" },
-    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks" },
-    Torstol     = { Id = 47715, Name = "Torstol incense sticks" },
-    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks" },
+    Irit        = { Id = 47706, Name = "Irit incense sticks"        },
+    Wergali     = { Id = 47707, Name = "Wergali incense sticks"     },
+    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks"     },
+    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks"      },
+    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks"   },
+    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks"  },
+    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks"   },
+    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks"   },
+    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks"  },
+    Torstol     = { Id = 47715, Name = "Torstol incense sticks"     },
+    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks"   }
 }
 
 Slib.Buffs.WeaponPoisons = {
@@ -298,8 +300,8 @@ Slib.Buffs.WeaponPoisons = {
 }
 
 Slib.Buffs.LuckPotions = {
-    LuckPotion = { Id = 37963, Name = "LUCK_POTION_ACTIVE" },
-    EnhancedLuckPotion = { Id = 39820, Name = "ENHANCED_LUCK_POTION_ACTIVE" }
+    LuckPotion          = { Id = 37963, Name = "LUCK_POTION_ACTIVE"             },
+    EnhancedLuckPotion  = { Id = 39820, Name = "ENHANCED_LUCK_POTION_ACTIVE"    }
 }
 
 Slib.Interfaces.TextInput = { 
@@ -308,9 +310,9 @@ Slib.Interfaces.TextInput = {
 
 Slib.Interfaces.InstanceOptions = {
     { {1591,15,-1,0} }, -- Base
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,45,-1,0}, {1591,46,-1,0}, {1591,74,-1,0} }, -- Max Players
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,49,-1,0}, {1591,76,-1,0}, {1591,83,-1,0} }, -- Min Combat
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,50,-1,0}, {1591,85,-1,0}, {1591,94,-1,0} }, -- Spawn Speed
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,45,-1,0}, {1591,46,-1,0}, {1591,74,-1,0}  }, -- Max Players
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,49,-1,0}, {1591,76,-1,0}, {1591,83,-1,0}  }, -- Min Combat
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,50,-1,0}, {1591,85,-1,0}, {1591,94,-1,0}  }, -- Spawn Speed
     { {1591,15,-1,0}, {1591,17,-1,0}, {1591,51,-1,0}, {1591,52,-1,0}, {1591,102,-1,0} } -- Protection
 
 }
@@ -324,14 +326,14 @@ Slib.Interfaces.GWD1KillCounts = {
     { {601,11,-1,0}, {601,9,-1,0}, { 601,19,-1,0 } }, -- Bandos
     { {601,11,-1,0}, {601,9,-1,0}, { 601,20,-1,0 } }, -- Saradomin
     { {601,11,-1,0}, {601,9,-1,0}, { 601,21,-1,0 } }, -- Zamorak
-    { {601,11,-1,0}, {601,9,-1,0}, { 601,22,-1,0 } }, -- Zaros
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,22,-1,0 } }  -- Zaros
 }
 
 Slib.Interfaces.GWD2KillCounts = {
     { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,43,-1,0 }, { 1746,47,-1,0 } },  -- Seren
     { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,49,-1,0 }, { 1746,54,-1,0 } },  -- Sliske
     { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,55,-1,0 }, { 1746,60,-1,0 } },  -- Zamorak
-    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,61,-1,0 }, { 1746,66,-1,0 } },  -- Zaros
+    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,61,-1,0 }, { 1746,66,-1,0 } }   -- Zaros
 }
 
 Slib.Interfaces.CurrencyPouch = {
@@ -5492,8 +5494,8 @@ function Slib:HighAlch(ItemIds)
         return false
     end
     
-    if self:GetSpellBook() ~= "Normal" then
-        self:Error("[HighAlch] Must be on Normal spellbook to use High Alch")
+    if self:GetSpellBook() ~= "Standard" then
+        self:Error("[HighAlch] Must be on Standard spellbook to use High Alch")
         return false
     end
 
