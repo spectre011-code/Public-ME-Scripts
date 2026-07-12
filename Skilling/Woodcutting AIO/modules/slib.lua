@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.5"
+local ScriptVersion = "1.0.14"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -40,7 +40,34 @@ v1.0.4 - 22-08-2025
     - Added Note function.
     - Added HighAlch function.
 v1.0.5 - 20-09-2025
-    - Added Slib:AbilityExists function.
+    - Added AbilityExists function.
+    - Added CanCastAbility function.
+v1.0.6 - 28-10-2025
+    - MoveTo() function will only use surge if the distance from the final coordinate is less than 10 tiles.
+    - PrintQuestData() function now prints isComplete method correcly.
+v1.0.7 - 10-01-2026
+    - Updated PrintInterfaceInfo() function to print all(I hope) the mem reads of the interface elements.
+v1.0.8 - 19-01-2026
+    - Fixed the Slib.Interfaces.CurrencyPouch ID after interface changes.
+    - Fixed MemoryStrandTeleport function after interface changes.
+    - Fixed SetInstanceInterfaceOptions where it would disable practice mode if hardmode was passed as false and practice mode as true.
+v1.0.9 - 19-01-2026
+    - Fixed AreaLootOpen function after interface changes.
+v1.0.10 - 22-01-2026
+    - Added PrintVarpVb function.
+    - Added IsBitActive function.
+v1.0.11 - 27-03-2026
+    - Added GetSpecialKeyVK function.
+    - Added PressKey function.
+v1.0.12 - 03-04-2026
+    - Added WorkSleepUntil function.
+v1.0.13 - 17-04-2026
+    - Added BuffUpKeep function.
+    - Added GetIDSFromTable function.
+    - Removed CheckIncenseStick function.
+v1.0.14 - 04-07-2026
+    - Fixed HighAlch function
+
 ]]
 
 local API = require("api")
@@ -48,44 +75,233 @@ local API = require("api")
 local Slib = {}
 
 Slib.Items = {}
+Slib.Buffs = {}
 Slib.Interfaces = {}
 Slib.ChatMessages = {}
 
 Slib.Items.Runes = {
     Normal = { --Normal runes.
-        Fire    = {Id = 554, InventoryVB = 5888, Name = "Fire rune"},
-        Water   = {Id = 555, InventoryVB = 5887, Name = "Water rune"},
-        Air     = {Id = 556, InventoryVB = 5886, Name = "Air rune"},
-        Earth   = {Id = 557, InventoryVB = 5889, Name = "Earth rune"},
-        Mind    = {Id = 558, InventoryVB = 5902, Name = "Mind rune"},
-        Body    = {Id = 559, InventoryVB = 5896, Name = "Body rune"},
-        Death   = {Id = 560, InventoryVB = 5901, Name = "Death rune"},
-        Nature  = {Id = 561, InventoryVB = 5899, Name = "Nature rune"},
-        Chaos   = {Id = 562, InventoryVB = 5898, Name = "Chaos rune"},
-        Law     = {Id = 563, InventoryVB = 5900, Name = "Law rune"},
-        Cosmic  = {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"},
-        Blood   = {Id = 565, InventoryVB = 5904, Name = "Blood rune"},
-        Soul    = {Id = 566, InventoryVB = 5905, Name = "Soul rune"},
-        Astral  = {Id = 9075, InventoryVB = 5903, Name = "Astral rune"},
+        Fire    = {Id = 554, InventoryVB = 5888, Name = "Fire rune"     },
+        Water   = {Id = 555, InventoryVB = 5887, Name = "Water rune"    },
+        Air     = {Id = 556, InventoryVB = 5886, Name = "Air rune"      },
+        Earth   = {Id = 557, InventoryVB = 5889, Name = "Earth rune"    },
+        Mind    = {Id = 558, InventoryVB = 5902, Name = "Mind rune"     },
+        Body    = {Id = 559, InventoryVB = 5896, Name = "Body rune"     },
+        Death   = {Id = 560, InventoryVB = 5901, Name = "Death rune"    },
+        Nature  = {Id = 561, InventoryVB = 5899, Name = "Nature rune"   },
+        Chaos   = {Id = 562, InventoryVB = 5898, Name = "Chaos rune"    },
+        Law     = {Id = 563, InventoryVB = 5900, Name = "Law rune"      },
+        Cosmic  = {Id = 564, InventoryVB = 5897, Name = "Cosmic rune"   },
+        Blood   = {Id = 565, InventoryVB = 5904, Name = "Blood rune"    },
+        Soul    = {Id = 566, InventoryVB = 5905, Name = "Soul rune"     },
+        Astral  = {Id = 9075, InventoryVB = 5903, Name = "Astral rune"  },
         Armadyl = {Id = 21773, InventoryVB = 5906, Name = "Armadyl rune"},
-        Time    = {Id = 58450, InventoryVB = 8291, Name = "Time rune"},
+        Time    = {Id = 58450, InventoryVB = 8291, Name = "Time rune"   }
     },
 
     Combination = { --They dont have an InventoryVB as they change the InventoryVB of the runes that were combined.
-        Steam   = {Id = 4694, Name = "Steam rune"}, -- Water + Fire
-        Mist    = {Id = 4695, Name = "Mist rune"}, -- Air + Water
-        Dust    = {Id = 4696, Name = "Dust rune"}, -- Air + Earth
-        Smoke   = {Id = 4697, Name = "Smoke rune"}, -- Air + Fire
-        Mud     = {Id = 4698, Name = "Mud rune"}, -- Water + Earth
-        Lava    = {Id = 4699, Name = "Lava rune"}, -- Earth + Fire
+        Steam   = {Id = 4694, Name = "Steam rune"   }, -- Water + Fire
+        Mist    = {Id = 4695, Name = "Mist rune"    }, -- Air + Water
+        Dust    = {Id = 4696, Name = "Dust rune"    }, -- Air + Earth
+        Smoke   = {Id = 4697, Name = "Smoke rune"   }, -- Air + Fire
+        Mud     = {Id = 4698, Name = "Mud rune"     }, -- Water + Earth
+        Lava    = {Id = 4699, Name = "Lava rune"    } -- Earth + Fire
     },
 
     Necromancy = { --They dont have an InventoryVB but can be read from container 953 if inside nexus.
-        Spirit  = {Id = 55337, Name = "Spirit rune"},
-        Bone    = {Id = 55338, Name = "Bone rune"},
-        Flesh   = {Id = 55339, Name = "Flesh rune"},
-        Miasma  = {Id = 55340, Name = "Miasma rune"}
+        Spirit  = {Id = 55337, Name = "Spirit rune" },
+        Bone    = {Id = 55338, Name = "Bone rune"   },
+        Flesh   = {Id = 55339, Name = "Flesh rune"  },
+        Miasma  = {Id = 55340, Name = "Miasma rune" }
     }
+}
+
+Slib.Items.Overloads = {
+    -- Pure Overloads
+    OverloadVial4               = { Id = 15332, Name = "Overload (4)"                  },
+    OverloadVial3               = { Id = 15333, Name = "Overload (3)"                  },
+    OverloadVial2               = { Id = 15334, Name = "Overload (2)"                  },
+    OverloadVial1               = { Id = 15335, Name = "Overload (1)"                  },
+    OverloadFlask6              = { Id = 23531, Name = "Overload flask (6)"            },
+    OverloadFlask5              = { Id = 23532, Name = "Overload flask (5)"            },
+    OverloadFlask4              = { Id = 23533, Name = "Overload flask (4)"            },
+    OverloadFlask3              = { Id = 23534, Name = "Overload flask (3)"            },
+    OverloadFlask2              = { Id = 23535, Name = "Overload flask (2)"            },
+    OverloadFlask1              = { Id = 23536, Name = "Overload flask (1)"            },
+
+    -- Combination Overloads
+    HolyOverloadsFlask6         = { Id = 33246, Name = "Holy overload potion (6)"      },
+    HolyOverloadsFlask5         = { Id = 33244, Name = "Holy overload potion (5)"      },
+    HolyOverloadsFlask4         = { Id = 33242, Name = "Holy overload potion (4)"      },
+    HolyOverloadsFlask3         = { Id = 33240, Name = "Holy overload potion (3)"      },
+    HolyOverloadsFlask2         = { Id = 33238, Name = "Holy overload potion (2)"      },
+    HolyOverloadsFlask1         = { Id = 33236, Name = "Holy overload potion (1)"      },
+    AggroverloadFlask6          = { Id = 48239, Name = "Aggroverload (6)"              },
+    AggroverloadFlask5          = { Id = 48237, Name = "Aggroverload (5)"              },
+    AggroverloadFlask4          = { Id = 48235, Name = "Aggroverload (4)"              },
+    AggroverloadFlask3          = { Id = 48233, Name = "Aggroverload (3)"              },
+    AggroverloadFlask2          = { Id = 48231, Name = "Aggroverload (2)"              },
+    AggroverloadFlask1          = { Id = 48229, Name = "Aggroverload (1)"              },
+    SearingOverloadFlask6       = { Id = 33258, Name = "Searing overload potion (6)"   },
+    SearingOverloadFlask5       = { Id = 33256, Name = "Searing overload potion (5)"   },
+    SearingOverloadFlask4       = { Id = 33254, Name = "Searing overload potion (4)"   },
+    SearingOverloadFlask3       = { Id = 33252, Name = "Searing overload potion (3)"   },
+    SearingOverloadFlask2       = { Id = 33250, Name = "Searing overload potion (2)"   },
+    SearingOverloadFlask1       = { Id = 33248, Name = "Searing overload potion (1)"   },
+    OverloadSalveFlask6         = { Id = 33198, Name = "Overload salve (6)"            },
+    OverloadSalveFlask5         = { Id = 33196, Name = "Overload salve (5)"            },
+    OverloadSalveFlask4         = { Id = 33194, Name = "Overload salve (4)"            },
+    OverloadSalveFlask3         = { Id = 33192, Name = "Overload salve (3)"            },
+    OverloadSalveFlask2         = { Id = 33190, Name = "Overload salve (2)"            },
+    OverloadSalveFlask1         = { Id = 33188, Name = "Overload salve (1)"            },
+    HolyAggroverloadFlask6      = { Id = 50877, Name = "Holy aggroverload (6)"         },
+    HolyAggroverloadFlask5      = { Id = 50875, Name = "Holy aggroverload (5)"         },
+    HolyAggroverloadFlask4      = { Id = 50873, Name = "Holy aggroverload (4)"         },
+    HolyAggroverloadFlask3      = { Id = 50871, Name = "Holy aggroverload (3)"         },
+    HolyAggroverloadFlask2      = { Id = 50869, Name = "Holy aggroverload (2)"         },
+    HolyAggroverloadFlask1      = { Id = 50867, Name = "Holy aggroverload (1)"         }
+}
+
+Slib.Items.SupremeOverloads = {
+    SupremeOverloadFlask6       = { Id = 33210, Name = "Supreme overload potion (6)"   },
+    SupremeOverloadFlask5       = { Id = 33208, Name = "Supreme overload potion (5)"   },
+    SupremeOverloadFlask4       = { Id = 33206, Name = "Supreme overload potion (4)"   },
+    SupremeOverloadFlask3       = { Id = 33204, Name = "Supreme overload potion (3)"   },
+    SupremeOverloadFlask2       = { Id = 33202, Name = "Supreme overload potion (2)"   },
+    SupremeOverloadFlask1       = { Id = 33200, Name = "Supreme overload potion (1)"   },
+    SupremeOverloadSalveFlask6  = { Id = 33222, Name = "Supreme overload salve (6)"    },
+    SupremeOverloadSalveFlask5  = { Id = 33220, Name = "Supreme overload salve (5)"    },
+    SupremeOverloadSalveFlask4  = { Id = 33218, Name = "Supreme overload salve (4)"    },
+    SupremeOverloadSalveFlask3  = { Id = 33216, Name = "Supreme overload salve (3)"    },
+    SupremeOverloadSalveFlask2  = { Id = 33214, Name = "Supreme overload salve (2)"    },
+    SupremeOverloadSalveFlask1  = { Id = 33212, Name = "Supreme overload salve (1)"    }
+}
+
+Slib.Items.ElderOverloads = {
+    ElderOverloadFlask6         = { Id = 49039, Name = "Elder overload potion (6)"     },
+    ElderOverloadFlask5         = { Id = 49037, Name = "Elder overload potion (5)"     },
+    ElderOverloadFlask4         = { Id = 49035, Name = "Elder overload potion (4)"     },
+    ElderOverloadFlask3         = { Id = 49033, Name = "Elder overload potion (3)"     },
+    ElderOverloadFlask2         = { Id = 49031, Name = "Elder overload potion (2)"     },
+    ElderOverloadFlask1         = { Id = 49029, Name = "Elder overload potion (1)"     },
+    ElderOverloadSalveFlask6    = { Id = 49052, Name = "Elder overload salve (6)"      },
+    ElderOverloadSalveFlask5    = { Id = 49050, Name = "Elder overload salve (5)"      },
+    ElderOverloadSalveFlask4    = { Id = 49048, Name = "Elder overload salve (4)"      },
+    ElderOverloadSalveFlask3    = { Id = 49046, Name = "Elder overload salve (3)"      },
+    ElderOverloadSalveFlask2    = { Id = 49044, Name = "Elder overload salve (2)"      },
+    ElderOverloadSalveFlask1    = { Id = 49042, Name = "Elder overload salve (1)"      }
+}
+
+Slib.Items.IncenseSticks = {
+    Guam        = { Id = 47699, Name = "Guam incense sticks"        },
+    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks"    },
+    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks"  },
+    Harralander = { Id = 47702, Name = "Harralander incense sticks" },
+    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks"      },
+    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks"    },
+    Spiritweed  = { Id = 47705, Name = "Spirit weed incense sticks" },
+    Irit        = { Id = 47706, Name = "Irit incense sticks"        },
+    Wergali     = { Id = 47707, Name = "Wergali incense sticks"     },
+    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks"     },
+    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks"      },
+    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks"   },
+    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks"  },
+    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks"   },
+    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks"   },
+    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks"  },
+    Torstol     = { Id = 47715, Name = "Torstol incense sticks"     },
+    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks"   }
+}
+
+Slib.Items.WeaponPoisons = {
+    --+++
+    PlusPlusPlusFlask6 = { Id = 48626, Name = "Weapon poison+++ flask (6)"  },
+    PlusPlusPlusFlask5 = { Id = 48628, Name = "Weapon poison+++ flask (5)"  },
+    PlusPlusPlusFlask4 = { Id = 48630, Name = "Weapon poison+++ flask (4)"  },
+    PlusPlusPlusFlask3 = { Id = 48632, Name = "Weapon poison+++ flask (3)"  },
+    PlusPlusPlusFlask2 = { Id = 48634, Name = "Weapon poison+++ flask (2)"  },
+    PlusPlusPlusFlask1 = { Id = 48636, Name = "Weapon poison+++ flask (1)"  },
+    PlusPlusPlusVial4  = { Id = 49115, Name = "Weapon poison+++ (4)"        },
+    PlusPlusPlusVial3  = { Id = 49117, Name = "Weapon poison+++ (3)"        },
+    PlusPlusPlusVial2  = { Id = 49119, Name = "Weapon poison+++ (2)"        },
+    PlusPlusPlusVial1  = { Id = 49121, Name = "Weapon poison+++ (1)"        },
+
+    --++
+    PlusPlusFlask6 = { Id = 25533, Name = "Weapon poison++ flask (6)"       },
+    PlusPlusFlask5 = { Id = 25535, Name = "Weapon poison++ flask (5)"       },
+    PlusPlusFlask4 = { Id = 25537, Name = "Weapon poison++ flask (4)"       },
+    PlusPlusFlask3 = { Id = 25539, Name = "Weapon poison++ flask (3)"       },
+    PlusPlusFlask2 = { Id = 25541, Name = "Weapon poison++ flask (2)"       },
+    PlusPlusFlask1 = { Id = 25543, Name = "Weapon poison++ flask (1)"       },
+    PlusPlusVial4  = { Id = 25501, Name = "Weapon poison++ (4)"             },
+    PlusPlusVial3  = { Id = 25503, Name = "Weapon poison++ (3)"             },
+    PlusPlusVial2  = { Id = 25505, Name = "Weapon poison++ (2)"             },
+    PlusPlusVial1  = { Id = 25507, Name = "Weapon poison++ (1)"             },
+
+    --+
+    PlusFlask6 = { Id = 25521, Name = "Weapon poison+ flask (6)"            },
+    PlusFlask5 = { Id = 25523, Name = "Weapon poison+ flask (5)"            },
+    PlusFlask4 = { Id = 25525, Name = "Weapon poison+ flask (4)"            },
+    PlusFlask3 = { Id = 25527, Name = "Weapon poison+ flask (3)"            },
+    PlusFlask2 = { Id = 25529, Name = "Weapon poison+ flask (2)"            },
+    PlusFlask1 = { Id = 25531, Name = "Weapon poison+ flask (1)"            },
+    PlusVial4  = { Id = 25493, Name = "Weapon poison+ (4)"                  },
+    PlusVial3  = { Id = 25495, Name = "Weapon poison+ (3)"                  },
+    PlusVial2  = { Id = 25497, Name = "Weapon poison+ (2)"                  },
+    PlusVial1  = { Id = 25499, Name = "Weapon poison+ (1)"                  },
+
+    --Normal
+    NormalFlask6 = { Id = 25509, Name = "Weapon poison flask (6)"           },
+    NormalFlask5 = { Id = 25511, Name = "Weapon poison flask (5)"           },
+    NormalFlask4 = { Id = 25513, Name = "Weapon poison flask (4)"           },
+    NormalFlask3 = { Id = 25515, Name = "Weapon poison flask (3)"           },
+    NormalFlask2 = { Id = 25517, Name = "Weapon poison flask (2)"           },
+    NormalFlask1 = { Id = 25519, Name = "Weapon poison flask (1)"           },
+    NormalVial4  = { Id = 25485, Name = "Weapon poison (4)"                 },
+    NormalVial3  = { Id = 25487, Name = "Weapon poison (3)"                 },
+    NormalVial2  = { Id = 25489, Name = "Weapon poison (2)"                 },
+    NormalVial1  = { Id = 25491, Name = "Weapon poison (1)"                 }
+}
+
+Slib.Items.LuckPotions = {
+    LuckPotion          = { Id = 37963, Name = "Luck potion"            },
+    EnhancedLuckPotion  = { Id = 39820, Name = "Enhanced luck potion"   }
+}
+
+Slib.Buffs.Overloads = {
+    Overload    = {Id = 26093, Name = "Overload"        },
+    Supreme     = {Id = 33210, Name = "Supreme Overload"},
+    Elder       = {Id = 49039, Name = "Elder Overload"  }
+}
+
+Slib.Buffs.IncenseSticks = {
+    Guam        = { Id = 47699, Name = "Guam incense sticks"        },
+    Tarromin    = { Id = 47700, Name = "Tarromin incense sticks"    },
+    Marrentill  = { Id = 47701, Name = "Marrentill incense sticks"  },
+    Harralander = { Id = 47702, Name = "Harralander incense sticks" },
+    Ranarr      = { Id = 47703, Name = "Ranarr incense sticks"      },
+    Toadflax    = { Id = 47704, Name = "Toadflax incense sticks"    },
+    Spiritweed  = { Id = 47705, Name = "Spirit weed incense sticks" },
+    Irit        = { Id = 47706, Name = "Irit incense sticks"        },
+    Wergali     = { Id = 47707, Name = "Wergali incense sticks"     },
+    Avantoe     = { Id = 47708, Name = "Avantoe incense sticks"     },
+    Kwuarm      = { Id = 47709, Name = "Kwuarm incense sticks"      },
+    Bloodweed   = { Id = 47710, Name = "Bloodweed incense sticks"   },
+    Snapdragon  = { Id = 47711, Name = "Snapdragon incense sticks"  },
+    Cadantine   = { Id = 47712, Name = "Cadantine incense sticks"   },
+    Lantadyme   = { Id = 47713, Name = "Lantadyme incense sticks"   },
+    DwarfWeed   = { Id = 47714, Name = "Dwarf weed incense sticks"  },
+    Torstol     = { Id = 47715, Name = "Torstol incense sticks"     },
+    Fellstalk   = { Id = 47716, Name = "Fellstalk incense sticks"   }
+}
+
+Slib.Buffs.WeaponPoisons = {
+    Poisonous = { Id = 30095, Name = "Poisonous" },
+}
+
+Slib.Buffs.LuckPotions = {
+    LuckPotion          = { Id = 37963, Name = "LUCK_POTION_ACTIVE"             },
+    EnhancedLuckPotion  = { Id = 39820, Name = "ENHANCED_LUCK_POTION_ACTIVE"    }
 }
 
 Slib.Interfaces.TextInput = { 
@@ -94,9 +310,9 @@ Slib.Interfaces.TextInput = {
 
 Slib.Interfaces.InstanceOptions = {
     { {1591,15,-1,0} }, -- Base
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,45,-1,0}, {1591,46,-1,0}, {1591,74,-1,0} }, -- Max Players
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,49,-1,0}, {1591,76,-1,0}, {1591,83,-1,0} }, -- Min Combat
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,50,-1,0}, {1591,85,-1,0}, {1591,94,-1,0} }, -- Spawn Speed
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,45,-1,0}, {1591,46,-1,0}, {1591,74,-1,0}  }, -- Max Players
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,49,-1,0}, {1591,76,-1,0}, {1591,83,-1,0}  }, -- Min Combat
+    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,50,-1,0}, {1591,85,-1,0}, {1591,94,-1,0}  }, -- Spawn Speed
     { {1591,15,-1,0}, {1591,17,-1,0}, {1591,51,-1,0}, {1591,52,-1,0}, {1591,102,-1,0} } -- Protection
 
 }
@@ -110,18 +326,18 @@ Slib.Interfaces.GWD1KillCounts = {
     { {601,11,-1,0}, {601,9,-1,0}, { 601,19,-1,0 } }, -- Bandos
     { {601,11,-1,0}, {601,9,-1,0}, { 601,20,-1,0 } }, -- Saradomin
     { {601,11,-1,0}, {601,9,-1,0}, { 601,21,-1,0 } }, -- Zamorak
-    { {601,11,-1,0}, {601,9,-1,0}, { 601,22,-1,0 } }, -- Zaros
+    { {601,11,-1,0}, {601,9,-1,0}, { 601,22,-1,0 } }  -- Zaros
 }
 
 Slib.Interfaces.GWD2KillCounts = {
     { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,43,-1,0 }, { 1746,47,-1,0 } },  -- Seren
     { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,49,-1,0 }, { 1746,54,-1,0 } },  -- Sliske
     { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,55,-1,0 }, { 1746,60,-1,0 } },  -- Zamorak
-    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,61,-1,0 }, { 1746,66,-1,0 } },  -- Zaros
+    { { 1746,0,-1,0 }, { 1746,38,-1,0 }, { 1746,41,-1,0 }, { 1746,61,-1,0 }, { 1746,66,-1,0 } }   -- Zaros
 }
 
 Slib.Interfaces.CurrencyPouch = {
-    { {1473,0,-1,0}, {1473,13,-1,0}, {1473,17,-1,0}, {1473,18,-1,0}, {1473,21,-1,0} }
+    { {1473,0,-1,0}, {1473,12,-1,0}, {1473,16,-1,0}, {1473,17,-1,0}, {1473,20,-1,0} }
 }
 
 Slib.Interfaces.AreaLoot = {
@@ -365,7 +581,6 @@ end
 ---   - "table_of_integers" - array of whole numbers
 ---   - "non_empty_table" - table that has at least one element
 ---
----
 ---@param Value any The value to validate
 ---@param ExpectedType string|table The expected type(s) - can be single type or array of types
 ---@param ParamName string|nil Optional parameter name for error messages (default: "Parameter")
@@ -536,7 +751,6 @@ end
 -- Validates function parameters using the sanitization system
 ---
 --- **Usage Examples:**
---- ```lua
 --- -- Basic validation
 --- if not self:ValidateParams({
 ---     {PlayerName, "non_empty_string", "PlayerName"},
@@ -562,7 +776,6 @@ end
 --- }) then
 ---     return false
 --- end
---- ```
 ---
 ---@param Params table Array of parameter specs: {Value, ExpectedType, ParamName, AllowNil}
 ---   - **Value**: The parameter value to validate
@@ -621,7 +834,7 @@ end
 -- #                                #
 -- ##################################
 
--- Generic sleep function that automatically determines the best precision based on duration
+-- Generic sleep function
 ---@param Duration number The sleep duration (must be positive)
 ---@param Unit string The time unit: "ms", "s", "m", "h", "tick" (milliseconds, seconds, minutes, hours, ticks)
 ---@return boolean success True if sleep completed successfully, false if interrupted or invalid parameters
@@ -779,6 +992,76 @@ function Slib:SleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs)
     return false
 end
 
+-- Sleeps and performs action until a condition is met or timeout occurs
+---@param ConditionFunc function The function to check (should return boolean)
+---@param TimeoutSeconds number|nil Maximum wait time in seconds (optional, default: 30)
+---@param CheckIntervalMs number|nil How often to check condition in milliseconds (optional, default: 100)
+---@param ActionFunc function The function to perform until the condition is true
+---@param ActionInterval number|nil How often to call ActionFunc in milliseconds (optional, default: 600)
+---@return boolean success True if condition was met, false if timeout or error occurred
+function Slib:WorkSleepUntil(ConditionFunc, TimeoutSeconds, CheckIntervalMs, ActionFunc, ActionInterval)
+    -- Set defaults
+    TimeoutSeconds = TimeoutSeconds or 30
+    CheckIntervalMs = CheckIntervalMs or 100
+    ActionInterval = ActionInterval or 600
+
+    -- Parameter validation
+    if not self:ValidateParams({
+        {ConditionFunc, "function", "ConditionFunc"},
+        {TimeoutSeconds, "positive_number", "TimeoutSeconds"},
+        {CheckIntervalMs, "positive_number", "CheckIntervalMs"},
+        {ActionFunc, "function", "ActionFunc"},
+        {ActionInterval, "positive_number", "ActionInterval"}
+    }) then
+        return false
+    end
+
+    local StartTime = os.clock()
+    local MaxTime = TimeoutSeconds
+    local CheckCount = 0
+    local ActionClickInterval = math.max(1, math.floor(ActionInterval / CheckIntervalMs))
+
+    self:Info("Waiting for condition with " .. TimeoutSeconds .. "s timeout, checking every " .. CheckIntervalMs .. "ms, acting every " .. ActionInterval .. "ms...")
+
+    while API.Read_LoopyLoop() do
+        CheckCount = CheckCount + 1
+
+        -- Check timeout
+        if (os.clock() - StartTime) >= MaxTime then
+            self:Warn("Timeout reached (" .. TimeoutSeconds .. "s) after " .. CheckCount .. " condition checks")
+            return false
+        end
+
+        -- Test condition with error handling
+        local Success, Result = pcall(ConditionFunc)
+        if not Success then
+            self:Error("Condition function error: " .. tostring(Result))
+            return false
+        end
+
+        if Result then
+            local Elapsed = os.clock() - StartTime
+            self:Info("Condition met after " .. string.format("%.2f", Elapsed) .. " seconds (" .. CheckCount .. " checks)")
+            return true
+        end
+
+        -- Perform action on interval
+        if CheckCount % ActionClickInterval == 0 then
+            local ActionSuccess, ActionResult = pcall(ActionFunc)
+            if not ActionSuccess then
+                self:Error("Action function error: " .. tostring(ActionResult))
+                return false
+            end
+        end
+
+        -- Sleep between checks
+        self:Sleep(CheckIntervalMs, "ms")
+    end
+
+    self:Warn("Loop stopped while waiting for condition after " .. CheckCount .. " checks")
+    return false
+end
+
 -- Converts a character to its corresponding Windows Virtual-Key code
 -- Only supports letters (A-Z, a-z), numbers (0-9), and spaces
 ---@param char string Single character to convert (letters, numbers, spaces only)
@@ -822,6 +1105,26 @@ function Slib:CharToVirtualKey(char)
     return nil
 end
 
+--- Retrieves the virtual-key code (VK) for a supported special key.
+--- @param key string # The name of the special key (case-insensitive).
+--- @return number|nil # Returns the virtual-key code if the key is supported; Otherwise returns nil.                   
+function Slib:GetSpecialKeyVK(key)
+    local keys = {
+        F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73,
+        F5 = 0x74, F6 = 0x75, F7 = 0x76, F8 = 0x77,
+        F9 = 0x78, F10 = 0x79, F11 = 0x7A, F12 = 0x7B,
+        
+        ENTER = 0x0D,
+        TAB = 0x09,
+        ESC = 0x1B,
+        SHIFT = 0x10,
+        CTRL = 0x11,
+        ALT = 0x12
+    }
+
+    return keys[string.upper(key)]
+end
+
 -- Generates a random number between Min and Max and adds it to the Base
 ---@param Base number The base number to add the random number to
 ---@param Min number The minimum value of the random number
@@ -839,6 +1142,18 @@ function Slib:RandomNumber(Base, Min, Max)
 
     local RandomNumber = math.random(Min, Max)
     return Base + RandomNumber
+end
+
+-- Returns a table of IDs from a table of items in the form of {Id = 12345, Name = "Item Name"}
+---@param TB table
+function Slib:GetIDSFromTable(TB)
+    local ids = {}
+    for _, item in pairs(TB) do
+        if type(item) == "table" and item.Id then
+            table.insert(ids, item.Id)
+        end
+    end
+    return ids
 end
 
 -- ##################################
@@ -894,25 +1209,7 @@ function Slib:PrintBuffs()
         print("|   ID             : " .. tostring(Buff.id or "N/A"))
         print("|   Found          : " .. tostring(Buff.found or "N/A"))
         print("|   Text           : " .. tostring(Buff.text or "N/A"))
-        print("|   Conv Text      : " .. tostring(Buff.conv_text or "N/A"))
-        
-        -- Add additional fields if they exist
-        if Buff.duration then
-            print("|   Duration       : " .. tostring(Buff.duration))
-        end
-        
-        if Buff.remaining then
-            print("|   Remaining      : " .. tostring(Buff.remaining))
-        end
-        
-        if Buff.stacks then
-            print("|   Stacks         : " .. tostring(Buff.stacks))
-        end
-        
-        if Buff.icon then
-            print("|   Icon           : " .. tostring(Buff.icon))
-        end
-        
+        print("|   Conv Text      : " .. tostring(Buff.conv_text or "N/A"))      
         print("+=========================+")
         print("")
         
@@ -1588,9 +1885,194 @@ function Slib:PrintVb(Vb)
     return true
 end
 
--- Prints detailed information about interface elements
----@param TargetUnder boolean
----@param InterfaceToScan table|userdata
+-- Prints detailed information about VarBits associated with a specified Varp
+---@param VarpId number|table The Varp ID(s) to query for associated VarBits
+---@return boolean Success True if VarBits were found and processed, false otherwise
+function Slib:PrintVarpVb(VarpId)
+    -- Parameter validation
+    if not self:Sanitize(VarpId, {"number", "table_of_numbers"}, "VarpId") then
+        return false
+    end
+    
+    -- Ensure VarpId is a table for consistent processing
+    local VarpTable = type(VarpId) == "table" and VarpId or {VarpId}
+    
+    local TotalVarBits = 0
+    local ProcessedVarps = 0
+    
+    -- Process each Varp
+    for _, VarpIdValue in ipairs(VarpTable) do
+        ProcessedVarps = ProcessedVarps + 1
+        
+        local VB = API.GetVarbitsFromVarp(VarpIdValue)
+        
+        if not VB then
+            self:Warn("No VarBits found for Varp " .. VarpIdValue)
+            goto continue
+        end
+        
+        -- Accept both table and userdata types (userdata is common for API returns)
+        if type(VB) ~= "table" and type(VB) ~= "userdata" then
+            self:Warn("Invalid data type returned for Varp " .. VarpIdValue .. ": " .. type(VB))
+            goto continue
+        end
+        
+        -- Convert to table if needed, or get length
+        local VarBitCount = 0
+        local VarBitList = {}
+        
+        -- Try to determine count and build iterable list
+        if type(VB) == "table" then
+            VarBitCount = #VB
+            VarBitList = VB
+        elseif type(VB) == "userdata" then
+            -- Try to get size if it's an array-like userdata
+            local success, size = pcall(function() return #VB end)
+            if success and size then
+                VarBitCount = size
+                -- Build list by indexing
+                for i = 1, size do
+                    local item_success, item = pcall(function() return VB[i] end)
+                    if item_success and item then
+                        table.insert(VarBitList, item)
+                    end
+                end
+            else
+                -- Try iterating with pairs if it's dictionary-like
+                local pair_success = pcall(function()
+                    for _, varbit in pairs(VB) do
+                        VarBitCount = VarBitCount + 1
+                        table.insert(VarBitList, varbit)
+                    end
+                end)
+                
+                if not pair_success then
+                    self:Warn("Unable to iterate userdata for Varp " .. VarpIdValue)
+                    goto continue
+                end
+            end
+        end
+        
+        if VarBitCount == 0 then
+            self:Warn("Varp " .. VarpIdValue .. " has no associated VarBits")
+            goto continue
+        end
+        
+        -- Print header for this Varp
+        print("+=============================+")
+        print("|    VARP #" .. string.format("%-4s", VarpIdValue) .. " VARBITS    |")
+        print("+=============================+")
+        print("")
+        
+        -- Process each VarBit in the collection
+        for _, varbit in ipairs(VarBitList) do
+            if varbit then
+                print("+-----------------------------+")
+                
+                -- Safely access fields with pcall for userdata
+                local function safeGet(obj, field)
+                    local success, value = pcall(function() return obj[field] end)
+                    return success and value or "N/A"
+                end
+                
+                print("|   id       : " .. tostring(safeGet(varbit, "id")))
+                print("|   varp     : " .. tostring(safeGet(varbit, "varp")))
+                print("|   startBit : " .. tostring(safeGet(varbit, "startBit")))
+                print("|   endBit   : " .. tostring(safeGet(varbit, "endBit")))
+                print("|   domain   : " .. tostring(safeGet(varbit, "domain")))
+                print("+-----------------------------+")
+                print("")
+                
+                TotalVarBits = TotalVarBits + 1
+            end
+        end
+        
+        ::continue::
+    end
+    
+    if TotalVarBits == 0 then
+        self:Error("No VarBits could be processed from any Varp")
+        return false
+    end
+    
+    self:Info("Varp scan completed - processed " .. ProcessedVarps .. " Varp(s), found " .. TotalVarBits .. " VarBit(s)")
+    return true
+end
+
+-- Checks if a specific bit position is active (set to 1) in a VarBit's state
+---@param VbId number The VarBit ID to check
+---@param BitPosition number|table The bit position(s) to check (0-indexed)
+---@return boolean|table|nil Success Returns boolean for single bit, table of results for multiple bits, or nil on error
+function Slib:IsBitActive(VbId, BitPosition)
+    -- Parameter validation
+    if not self:Sanitize(VbId, {"number"}, "VbId") then
+        return nil
+    end
+    
+    if not self:Sanitize(BitPosition, {"number", "table_of_numbers"}, "BitPosition") then
+        return nil
+    end
+    
+    -- Retrieve the VarBit
+    local Var = API.VB_FindPSettinOrder(VbId)
+    
+    if not Var then
+        self:Warn("VarBit " .. VbId .. " not found")
+        return nil
+    end
+    
+    if type(Var) ~= "table" and type(Var) ~= "userdata" then
+        self:Warn("Invalid data type for VarBit " .. VbId .. ": " .. type(Var))
+        return nil
+    end
+    
+    -- Safely get the state value
+    local BigVB
+    if type(Var) == "table" then
+        BigVB = Var.state
+    else
+        -- Handle userdata with pcall
+        local success, state = pcall(function() return Var.state end)
+        if not success or not state then
+            self:Warn("Unable to retrieve state for VarBit " .. VbId)
+            return nil
+        end
+        BigVB = state
+    end
+    
+    if not BigVB or type(BigVB) ~= "number" then
+        self:Warn("Invalid state value for VarBit " .. VbId .. ": " .. tostring(BigVB))
+        return nil
+    end
+    
+    -- Process single bit position
+    if type(BitPosition) == "number" then
+        if BitPosition < 0 then
+            self:Warn("Bit position must be non-negative, got: " .. BitPosition)
+            return nil
+        end
+        
+        local isActive = ((BigVB >> BitPosition) & 1) == 1
+        return isActive
+    end
+    
+    -- Process multiple bit positions
+    local results = {}
+    for _, pos in ipairs(BitPosition) do
+        if pos < 0 then
+            self:Warn("Skipping invalid bit position: " .. pos .. " (must be non-negative)")
+            results[pos] = nil
+        else
+            results[pos] = ((BigVB >> pos) & 1) == 1
+        end
+    end
+    
+    return results
+end
+
+-- Prints detailed information about interface elements recursively
+---@param TargetUnder boolean True to recursively scan all children, false to get exact interface only
+---@param InterfaceToScan table|userdata The interface path to scan
 ---@return boolean Success
 function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
     -- Parameter validation
@@ -1601,276 +2083,634 @@ function Slib:PrintInterfaceInfo(TargetUnder, InterfaceToScan)
         return false
     end
     
-    -- API call to get interface elements
-    local Interface = API.ScanForInterfaceTest2Get(TargetUnder, InterfaceToScan)
-    
-    if not Interface then
-        self:Error("Failed to scan interface")
-        return false
-    end
-    
-    if type(Interface) ~= "table" and type(Interface) ~= "userdata" then
-        self:Error("Invalid data type returned from API: " .. type(Interface))
-        return false
-    end
-    
-    if #Interface == 0 then
-        self:Info("No interface elements found")
-        return false
-    end
-    
-    self:Info("Found " .. #Interface .. " interface elements:")
-    print("")
-    
-    -- Safe iteration through interface elements
-    for I = 1, #Interface do
-        local Element = Interface[I]
-        
-        -- Check if element exists and is valid
-        if not Element then
-            self:Warn("Skipping nil element at index " .. I)
-            goto continue_element
-        end
-        
-        if type(Element) ~= "table" and type(Element) ~= "userdata" then
-            self:Warn("Skipping invalid element at index " .. I .. " (type: " .. type(Element) .. ")")
-            goto continue_element
-        end
-        
-        -- Format interface element information with nice borders
-        print("+=============================================+")
-        print("|       ELEMENT #" .. string.format("%-2s", I) .. "                    |")
-        print("+=============================================+")
-        print("|   x              : " .. tostring(Element.x or "N/A"))
-        print("|   xs             : " .. tostring(Element.xs or "N/A"))
-        print("|   y              : " .. tostring(Element.y or "N/A"))
-        print("|   ys             : " .. tostring(Element.ys or "N/A"))
-        print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
-        print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
-        print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
-        print("|   id1            : " .. tostring(Element.id1 or "N/A"))
-        print("|   id2            : " .. tostring(Element.id2 or "N/A"))
-        print("|   id3            : " .. tostring(Element.id3 or "N/A"))
-        print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
-        print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
-        print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
-        print("|   hov            : " .. tostring(Element.hov or "N/A"))
-        print("|   textids        : " .. tostring(Element.textids or "N/A"))
-        print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
-        print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
-        print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
-        print("|   index          : " .. tostring(Element.index or "N/A"))
-        print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
-        print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
-        print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
-        print("|   OP             : " .. tostring(Element.OP or "N/A"))
-        print("|   xy             : " .. tostring(Element.xy or "N/A"))
-        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
-        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
-        
-        -- Add memory read information if memloc is available
-        if Element.memloc and type(Element.memloc) == "number" then
-            print("|                                ")
-            print("|     --- MEMORY READS ---       ")
-            print("|                                ")
-            
-            -- Define API constants
-            local ApiConstants = {
-                {name = "I_00textP", value = API.I_00textP},
-                {name = "I_itemids3", value = API.I_itemids3},
-                {name = "I_itemids", value = API.I_itemids},
-                {name = "I_itemstack", value = API.I_itemstack},
-                {name = "I_slides", value = API.I_slides},
-                {name = "I_buffb", value = API.I_buffb}
-            }
-            
-            -- Group memory reads by function type
-            local MemReadGroups = {
-                {
-                    name = "Mem_Read_char",
-                    func = API.Mem_Read_char,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "Mem_Read_short", 
-                    func = API.Mem_Read_short,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "Mem_Read_int",
-                    func = API.Mem_Read_int,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "Mem_Read_uint64",
-                    func = API.Mem_Read_uint64,
-                    reads = {
-                        {name = "memloc", offset = 0}
-                    }
-                },
-                {
-                    name = "ReadCharsLimit",
-                    func = API.ReadCharsLimit,
-                    reads = {}
-                }
-            }
-            
-            -- Add constant combinations to each group
-            for _, Constant in ipairs(ApiConstants) do
-                if Constant.value and type(Constant.value) == "number" then
-                    -- Add to Mem_Read functions
-                    for _, Group in ipairs(MemReadGroups) do
-                        if Group.name ~= "ReadCharsLimit" then
-                            table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
-                        end
-                    end
-                    
-                    -- Add to ReadCharsLimit group
-                    table.insert(MemReadGroups[5].reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
-                end
-            end
-            
-            -- Build all function names first to determine max width
-            local allFunctionNames = {}
-            for _, Group in ipairs(MemReadGroups) do
-                for _, Read in ipairs(Group.reads) do
-                    local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                    if Group.func == API.ReadCharsLimit then
-                        FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                    end
-                    table.insert(allFunctionNames, FunctionName)
-                end
-            end
-            local maxFuncNameLen = 0
-            for _, name in ipairs(allFunctionNames) do
-                if #name > maxFuncNameLen then maxFuncNameLen = #name end
-            end
-            maxFuncNameLen = math.max(maxFuncNameLen, 20)  -- minimum width for aesthetics
-            local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
-
-            -- Process each group
-            local funcIdx = 1
-            for _, Group in ipairs(MemReadGroups) do
-                for _, Read in ipairs(Group.reads) do
-                    local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                    if Group.func == API.ReadCharsLimit then
-                        FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                    end
-                    local Success, Result = pcall(function()
-                        if Group.func == API.ReadCharsLimit then
-                            return Group.func(Element.memloc + Read.offset, Read.limit)
-                        else
-                            return Group.func(Element.memloc + Read.offset)
-                        end
-                    end)
-                    if Success and Result then
-                        local FormattedResult
-                        local ResultType = type(Result)
-                        if ResultType == "number" then
-                            -- Helper function to safely format numbers
-                            local function SafeFormat(result, hexFormat, hexWidth)
-                                -- Check if number is finite and within safe integer range
-                                if result ~= result then -- NaN check
-                                    return "NaN"
-                                elseif result == math.huge then
-                                    return "Infinity"
-                                elseif result == -math.huge then
-                                    return "-Infinity"
-                                elseif math.abs(result) > 9007199254740991 then -- 2^53 - 1 (safe integer limit)
-                                    return string.format("%.0f (too large for hex)", result)
-                                elseif result < 0 then
-                                    return string.format("%.0f (negative)", result)
-                                elseif math.floor(result) ~= result then
-                                    return string.format("%.6f (fractional)", result)
-                                else
-                                    -- Safe to format as integer and hex
-                                    local success, formattedHex = pcall(string.format, hexFormat, result)
-                                    local success2, formattedDec = pcall(string.format, "%.0f", result)
-                                    if success and success2 then
-                                        return formattedHex .. " (" .. formattedDec .. ")"
-                                    else
-                                        return tostring(result) .. " (format error)"
-                                    end
-                                end
-                            end
-                            
-                            if Group.func == API.Mem_Read_char then
-                                FormattedResult = SafeFormat(Result, "0x%02X", 2)
-                            elseif Group.func == API.Mem_Read_short then
-                                FormattedResult = SafeFormat(Result, "0x%04X", 4)
-                            elseif Group.func == API.Mem_Read_int then
-                                FormattedResult = SafeFormat(Result, "0x%08X", 8)
-                            elseif Group.func == API.Mem_Read_uint64 then
-                                FormattedResult = SafeFormat(Result, "0x%016X", 16)
-                            else
-                                FormattedResult = tostring(Result)
-                            end
-                        elseif ResultType == "string" then
-                            if Result == "" then
-                                FormattedResult = '"" (empty string)'
-                            else
-                                local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
-                                    local byteVal = string.byte(c)
-                                    if byteVal and byteVal >= 0 and byteVal <= 255 then
-                                        return string.format("\\x%02X", byteVal)
-                                    else
-                                        return "\\x??"
-                                    end
-                                end)
-                                if string.len(EscapedResult) > 50 then
-                                    EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
-                                end
-                                FormattedResult = '"' .. EscapedResult .. '"'
-                            end
-                        else
-                            -- Handle other types (boolean, table, etc.)
-                            FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
-                        end
-                        
-                        -- Create function name with proper alignment
-                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                        if Group.func == API.ReadCharsLimit then
-                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                        end
-                        
-                        print(string.format(formatString, FunctionName, FormattedResult))
-                    else
-                        -- Create function name with proper alignment
-                        local FunctionName = Group.name .. "(" .. Read.name .. ")"
-                        if Group.func == API.ReadCharsLimit then
-                            FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
-                        end
-                        
-                        local ErrorMsg = "Error"
-                        if not Success then
-                            ErrorMsg = "Failed"
-                        elseif not Result then
-                            ErrorMsg = "No Result"
-                        end
-                        
-                        print(string.format(formatString, FunctionName, ErrorMsg))
-                    end
-                end
-            end
-        else
-            print("|                                ")
-            print("|     --- MEMORY READS ---       ")
-            print("|   No memloc available          ")
-        end
-        
-        print("+=============================================+")
+    if TargetUnder then
+        -- Recursive scanning of all children
+        self:Info("Starting recursive interface scan...")
         print("")
         
-        ::continue_element::
+        local ElementCounter = {count = 0}
+        local VisitedPaths = {}
+        local SeenMemlocs = {}
+        local MaxDepth = 100000
+        
+        -- Internal recursive function
+        local function ScanRecursive(CurrentPath, Depth)
+            if Depth > MaxDepth then
+                print("Warning: Max depth reached (" .. Depth .. ")")
+                return
+            end
+            
+            -- Create path key for duplicate detection
+            local PathParts = {}
+            for I, Segment in ipairs(CurrentPath) do
+                table.insert(PathParts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
+            end
+            local PathKey = table.concat(PathParts, ";")
+            
+            if VisitedPaths[PathKey] then
+                return
+            end
+            VisitedPaths[PathKey] = true
+            
+            -- Try to get the exact interface at this path
+            local ExactSuccess, ExactInterface = pcall(function() 
+                return API.ScanForInterfaceTest2Get(false, CurrentPath) 
+            end)
+            
+            if ExactSuccess and ExactInterface and #ExactInterface > 0 then
+                local Element = ExactInterface[1]
+                
+                -- Check if we've already seen this interface
+                if not (Element.memloc and SeenMemlocs[Element.memloc]) then
+                    if Element.memloc then 
+                        SeenMemlocs[Element.memloc] = true 
+                    end
+                    
+                    ElementCounter.count = ElementCounter.count + 1
+                    
+                    -- Format interface element information with nice borders
+                    print("+=============================================+")
+                    print("|       ELEMENT #" .. string.format("%-2s", ElementCounter.count) .. " (Depth: " .. Depth .. ")              |")
+                    print("+=============================================+")
+                    print("|   x              : " .. tostring(Element.x or "N/A"))
+                    print("|   xs             : " .. tostring(Element.xs or "N/A"))
+                    print("|   y              : " .. tostring(Element.y or "N/A"))
+                    print("|   ys             : " .. tostring(Element.ys or "N/A"))
+                    print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
+                    print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
+                    print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
+                    print("|   id1            : " .. tostring(Element.id1 or "N/A"))
+                    print("|   id2            : " .. tostring(Element.id2 or "N/A"))
+                    print("|   id3            : " .. tostring(Element.id3 or "N/A"))
+                    print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
+                    print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
+                    print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
+                    print("|   hov            : " .. tostring(Element.hov or "N/A"))
+                    print("|   textids        : " .. tostring(Element.textids or "N/A"))
+                    print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
+                    print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
+                    print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
+                    print("|   index          : " .. tostring(Element.index or "N/A"))
+                    print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
+                    print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
+                    print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
+                    print("|   OP             : " .. tostring(Element.OP or "N/A"))
+                    print("|   xy             : " .. tostring(Element.xy or "N/A"))
+                    if Element.xy then
+                        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
+                        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
+                    end
+                    
+                    -- Add memory read information if memloc is available
+                    if Element.memloc and type(Element.memloc) == "number" then
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|                                             |")
+                        
+                        -- Define API constants
+                        local ApiConstants = {
+                            {name = "I_00textP", value = API.I_00textP},
+                            {name = "I_itemids3", value = API.I_itemids3},
+                            {name = "I_itemids", value = API.I_itemids},
+                            {name = "I_itemstack", value = API.I_itemstack},
+                            {name = "I_slides", value = API.I_slides},
+                            {name = "I_buffb", value = API.I_buffb}
+                        }
+                        
+                        -- Group memory reads by function type
+                        local MemReadGroups = {
+                            {
+                                name = "Mem_Read_char",
+                                func = API.Mem_Read_char,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_short", 
+                                func = API.Mem_Read_short,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_int",
+                                func = API.Mem_Read_int,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_uint64",
+                                func = API.Mem_Read_uint64,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "ReadCharsLimit",
+                                func = API.ReadCharsLimit,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadChars",
+                                func = API.ReadChars,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsLimitPointer",
+                                func = API.ReadCharsLimitPointer,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsPointer",
+                                func = API.ReadCharsPointer,
+                                reads = {},
+                                no_limit = true
+                            }
+                        }
+                        
+                        -- Add constant combinations
+                        for _, Constant in ipairs(ApiConstants) do
+                            if Constant.value and type(Constant.value) == "number" then
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name ~= "ReadCharsLimit" and Group.name ~= "ReadChars" and 
+                                       Group.name ~= "ReadCharsLimitPointer" and Group.name ~= "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
+                                    end
+                                end
+                                
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" or Group.name == "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Build function names for formatting
+                        local allFunctionNames = {}
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                table.insert(allFunctionNames, FunctionName)
+                            end
+                        end
+                        
+                        local maxFuncNameLen = 0
+                        for _, name in ipairs(allFunctionNames) do
+                            if #name > maxFuncNameLen then maxFuncNameLen = #name end
+                        end
+                        maxFuncNameLen = math.max(maxFuncNameLen, 20)
+                        local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
+
+                        -- Process each group
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                
+                                local Success, Result = pcall(function()
+                                    if Group.no_limit then
+                                        return Group.func(Element.memloc + Read.offset)
+                                    elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                           Group.name == "ReadCharsLimitPointer" then
+                                        return Group.func(Element.memloc + Read.offset, Read.limit)
+                                    else
+                                        return Group.func(Element.memloc + Read.offset)
+                                    end
+                                end)
+                                
+                                if Success and Result ~= nil then
+                                    local FormattedResult
+                                    local ResultType = type(Result)
+                                    
+                                    if ResultType == "number" then
+                                        -- Safe format helper inline
+                                        if Result ~= Result then
+                                            FormattedResult = "NaN"
+                                        elseif Result == math.huge then
+                                            FormattedResult = "Infinity"
+                                        elseif Result == -math.huge then
+                                            FormattedResult = "-Infinity"
+                                        elseif math.abs(Result) > 9007199254740991 then
+                                            FormattedResult = string.format("%.0f (too large)", Result)
+                                        elseif Result < 0 then
+                                            FormattedResult = string.format("%.0f (negative)", Result)
+                                        elseif math.floor(Result) ~= Result then
+                                            FormattedResult = string.format("%.6f (fractional)", Result)
+                                        else
+                                            local hexFormat
+                                            if Group.func == API.Mem_Read_char then
+                                                hexFormat = "0x%02X"
+                                            elseif Group.func == API.Mem_Read_short then
+                                                hexFormat = "0x%04X"
+                                            elseif Group.func == API.Mem_Read_int then
+                                                hexFormat = "0x%08X"
+                                            elseif Group.func == API.Mem_Read_uint64 then
+                                                hexFormat = "0x%016X"
+                                            end
+                                            
+                                            if hexFormat then
+                                                local success, formattedHex = pcall(string.format, hexFormat, Result)
+                                                local success2, formattedDec = pcall(string.format, "%.0f", Result)
+                                                if success and success2 then
+                                                    FormattedResult = formattedHex .. " (" .. formattedDec .. ")"
+                                                else
+                                                    FormattedResult = tostring(Result)
+                                                end
+                                            else
+                                                FormattedResult = tostring(Result)
+                                            end
+                                        end
+                                    elseif ResultType == "string" then
+                                        if Result == "" then
+                                            FormattedResult = '"" (empty)'
+                                        else
+                                            local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                                return string.format("\\x%02X", string.byte(c))
+                                            end)
+                                            if #EscapedResult > 50 then
+                                                EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
+                                            end
+                                            FormattedResult = '"' .. EscapedResult .. '"'
+                                        end
+                                    else
+                                        FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
+                                    end
+                                    
+                                    print(string.format(formatString, FunctionName, FormattedResult))
+                                else
+                                    print(string.format(formatString, FunctionName, "Error"))
+                                end
+                            end
+                        end
+                    else
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|   No memloc available                       |")
+                    end
+                    
+                    print("+=============================================+")
+                    print("")
+                end
+            end
+            
+            -- Now get all children of this path
+            local ChildrenSuccess, Children = pcall(function() 
+                return API.ScanForInterfaceTest2Get(true, CurrentPath) 
+            end)
+            
+            if not ChildrenSuccess or not Children or #Children == 0 then
+                return
+            end
+            
+            -- Track unique child combinations to explore
+            local UniqueChildren = {}
+            for _, Child in ipairs(Children) do
+                local ChildKey = (Child.id1 or 0) .. "," .. (Child.id2 or 0) .. "," .. (Child.id3 or 0)
+                if not UniqueChildren[ChildKey] then
+                    UniqueChildren[ChildKey] = {
+                        id1 = Child.id1 or 0,
+                        id2 = Child.id2 or 0,
+                        id3 = Child.id3 or 0
+                    }
+                end
+            end
+            
+            -- Recursively explore each unique child path
+            for _, ChildIds in pairs(UniqueChildren) do
+                -- Create child path
+                local ChildPath = {}
+                for I = 1, #CurrentPath do
+                    local PathSegment = {}
+                    for K, V in ipairs(CurrentPath[I]) do
+                        PathSegment[K] = V
+                    end
+                    table.insert(ChildPath, PathSegment)
+                end
+                table.insert(ChildPath, { ChildIds.id1, ChildIds.id2, ChildIds.id3, 0 })
+                
+                -- Create child path key
+                local ChildPathParts = {}
+                for I, Segment in ipairs(ChildPath) do
+                    table.insert(ChildPathParts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
+                end
+                local ChildPathKey = table.concat(ChildPathParts, ";")
+                
+                if not VisitedPaths[ChildPathKey] then
+                    ScanRecursive(ChildPath, Depth + 1)
+                end
+            end
+        end
+        
+        -- Start recursive scan
+        ScanRecursive(InterfaceToScan, 0)
+        
+        print("")
+        self:Info("Found " .. ElementCounter.count .. " total interface elements")
+        self:Info("Interface scan completed successfully")
+    else
+        -- Single interface scan (exact path)
+        local Success, Interface = pcall(function() 
+            return API.ScanForInterfaceTest2Get(false, InterfaceToScan) 
+        end)
+        
+        if not Success then
+            self:Error("Failed to scan interface - " .. tostring(Interface))
+            return false
+        end
+        
+        if not Interface or #Interface == 0 then
+            self:Info("No interface found at specified path")
+            return false
+        end
+        
+        self:Info("Found 1 interface element:")
+        print("")
+        
+        -- Print single interface (reuse recursive function with depth 0 and max depth 0)
+        local ElementCounter = {count = 0}
+        local VisitedPaths = {}
+        local SeenMemlocs = {}
+        
+        local function ScanSingle(CurrentPath)
+            -- Create path key
+            local PathParts = {}
+            for I, Segment in ipairs(CurrentPath) do
+                table.insert(PathParts, Segment[1] .. "," .. Segment[2] .. "," .. Segment[3] .. "," .. Segment[4])
+            end
+            local PathKey = table.concat(PathParts, ";")
+            
+            if VisitedPaths[PathKey] then
+                return
+            end
+            VisitedPaths[PathKey] = true
+            
+            local ExactSuccess, ExactInterface = pcall(function() 
+                return API.ScanForInterfaceTest2Get(false, CurrentPath) 
+            end)
+            
+            if ExactSuccess and ExactInterface and #ExactInterface > 0 then
+                local Element = ExactInterface[1]
+                
+                if not (Element.memloc and SeenMemlocs[Element.memloc]) then
+                    if Element.memloc then 
+                        SeenMemlocs[Element.memloc] = true 
+                    end
+                    
+                    ElementCounter.count = ElementCounter.count + 1
+                    
+                    print("+=============================================+")
+                    print("|       ELEMENT #1                            |")
+                    print("+=============================================+")
+                    print("|   x              : " .. tostring(Element.x or "N/A"))
+                    print("|   xs             : " .. tostring(Element.xs or "N/A"))
+                    print("|   y              : " .. tostring(Element.y or "N/A"))
+                    print("|   ys             : " .. tostring(Element.ys or "N/A"))
+                    print("|   box_x          : " .. tostring(Element.box_x or "N/A"))
+                    print("|   box_y          : " .. tostring(Element.box_y or "N/A"))
+                    print("|   scroll_y       : " .. tostring(Element.scroll_y or "N/A"))
+                    print("|   id1            : " .. tostring(Element.id1 or "N/A"))
+                    print("|   id2            : " .. tostring(Element.id2 or "N/A"))
+                    print("|   id3            : " .. tostring(Element.id3 or "N/A"))
+                    print("|   itemid1        : " .. tostring(Element.itemid1 or "N/A"))
+                    print("|   itemid1_size   : " .. tostring(Element.itemid1_size or "N/A"))
+                    print("|   itemid2        : " .. tostring(Element.itemid2 or "N/A"))
+                    print("|   hov            : " .. tostring(Element.hov or "N/A"))
+                    print("|   textids        : " .. tostring(Element.textids or "N/A"))
+                    print("|   textitem       : " .. tostring(Element.textitem or "N/A"))
+                    print("|   memloc         : " .. tostring(Element.memloc or "N/A"))
+                    print("|   memloctop      : " .. tostring(Element.memloctop or "N/A"))
+                    print("|   index          : " .. tostring(Element.index or "N/A"))
+                    print("|   fullpath       : " .. tostring(Element.fullpath or "N/A"))
+                    print("|   fullIDpath     : " .. tostring(Element.fullIDpath or "N/A"))
+                    print("|   notvisible     : " .. tostring(Element.notvisible or "N/A"))
+                    print("|   OP             : " .. tostring(Element.OP or "N/A"))
+                    print("|   xy             : " .. tostring(Element.xy or "N/A"))
+                    if Element.xy then
+                        print("|   xy.x           : " .. tostring(Element.xy.x or "N/A"))
+                        print("|   xy.y           : " .. tostring(Element.xy.y or "N/A"))
+                    end
+                    
+                    -- Add memory read information if memloc is available
+                    if Element.memloc and type(Element.memloc) == "number" then
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|                                             |")
+                        
+                        -- Define API constants
+                        local ApiConstants = {
+                            {name = "I_00textP", value = API.I_00textP},
+                            {name = "I_itemids3", value = API.I_itemids3},
+                            {name = "I_itemids", value = API.I_itemids},
+                            {name = "I_itemstack", value = API.I_itemstack},
+                            {name = "I_slides", value = API.I_slides},
+                            {name = "I_buffb", value = API.I_buffb}
+                        }
+                        
+                        -- Group memory reads by function type
+                        local MemReadGroups = {
+                            {
+                                name = "Mem_Read_char",
+                                func = API.Mem_Read_char,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_short", 
+                                func = API.Mem_Read_short,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_int",
+                                func = API.Mem_Read_int,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "Mem_Read_uint64",
+                                func = API.Mem_Read_uint64,
+                                reads = {{name = "memloc", offset = 0}}
+                            },
+                            {
+                                name = "ReadCharsLimit",
+                                func = API.ReadCharsLimit,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadChars",
+                                func = API.ReadChars,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsLimitPointer",
+                                func = API.ReadCharsLimitPointer,
+                                reads = {}
+                            },
+                            {
+                                name = "ReadCharsPointer",
+                                func = API.ReadCharsPointer,
+                                reads = {},
+                                no_limit = true
+                            }
+                        }
+                        
+                        -- Add constant combinations
+                        for _, Constant in ipairs(ApiConstants) do
+                            if Constant.value and type(Constant.value) == "number" then
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name ~= "ReadCharsLimit" and Group.name ~= "ReadChars" and 
+                                       Group.name ~= "ReadCharsLimitPointer" and Group.name ~= "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value})
+                                    end
+                                end
+                                
+                                for _, Group in ipairs(MemReadGroups) do
+                                    if Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" or Group.name == "ReadCharsPointer" then
+                                        table.insert(Group.reads, {name = "memloc+" .. Constant.name, offset = Constant.value, limit = 255})
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Build function names for formatting
+                        local allFunctionNames = {}
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                table.insert(allFunctionNames, FunctionName)
+                            end
+                        end
+                        
+                        local maxFuncNameLen = 0
+                        for _, name in ipairs(allFunctionNames) do
+                            if #name > maxFuncNameLen then maxFuncNameLen = #name end
+                        end
+                        maxFuncNameLen = math.max(maxFuncNameLen, 20)
+                        local formatString = string.format("|   %%-%ds : %%s", maxFuncNameLen)
+
+                        -- Process each group
+                        for _, Group in ipairs(MemReadGroups) do
+                            for _, Read in ipairs(Group.reads) do
+                                local FunctionName
+                                if Group.no_limit then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                       Group.name == "ReadCharsLimitPointer" then
+                                    FunctionName = Group.name .. "(" .. Read.name .. ", 255)"
+                                else
+                                    FunctionName = Group.name .. "(" .. Read.name .. ")"
+                                end
+                                
+                                local Success, Result = pcall(function()
+                                    if Group.no_limit then
+                                        return Group.func(Element.memloc + Read.offset)
+                                    elseif Group.name == "ReadCharsLimit" or Group.name == "ReadChars" or 
+                                           Group.name == "ReadCharsLimitPointer" then
+                                        return Group.func(Element.memloc + Read.offset, Read.limit)
+                                    else
+                                        return Group.func(Element.memloc + Read.offset)
+                                    end
+                                end)
+                                
+                                if Success and Result ~= nil then
+                                    local FormattedResult
+                                    local ResultType = type(Result)
+                                    
+                                    if ResultType == "number" then
+                                        -- Safe format helper inline
+                                        if Result ~= Result then
+                                            FormattedResult = "NaN"
+                                        elseif Result == math.huge then
+                                            FormattedResult = "Infinity"
+                                        elseif Result == -math.huge then
+                                            FormattedResult = "-Infinity"
+                                        elseif math.abs(Result) > 9007199254740991 then
+                                            FormattedResult = string.format("%.0f (too large)", Result)
+                                        elseif Result < 0 then
+                                            FormattedResult = string.format("%.0f (negative)", Result)
+                                        elseif math.floor(Result) ~= Result then
+                                            FormattedResult = string.format("%.6f (fractional)", Result)
+                                        else
+                                            local hexFormat
+                                            if Group.func == API.Mem_Read_char then
+                                                hexFormat = "0x%02X"
+                                            elseif Group.func == API.Mem_Read_short then
+                                                hexFormat = "0x%04X"
+                                            elseif Group.func == API.Mem_Read_int then
+                                                hexFormat = "0x%08X"
+                                            elseif Group.func == API.Mem_Read_uint64 then
+                                                hexFormat = "0x%016X"
+                                            end
+                                            
+                                            if hexFormat then
+                                                local success, formattedHex = pcall(string.format, hexFormat, Result)
+                                                local success2, formattedDec = pcall(string.format, "%.0f", Result)
+                                                if success and success2 then
+                                                    FormattedResult = formattedHex .. " (" .. formattedDec .. ")"
+                                                else
+                                                    FormattedResult = tostring(Result)
+                                                end
+                                            else
+                                                FormattedResult = tostring(Result)
+                                            end
+                                        end
+                                    elseif ResultType == "string" then
+                                        if Result == "" then
+                                            FormattedResult = '"" (empty)'
+                                        else
+                                            local EscapedResult = string.gsub(Result, "[\0-\31\127-\255]", function(c)
+                                                return string.format("\\x%02X", string.byte(c))
+                                            end)
+                                            if #EscapedResult > 50 then
+                                                EscapedResult = string.sub(EscapedResult, 1, 47) .. "..."
+                                            end
+                                            FormattedResult = '"' .. EscapedResult .. '"'
+                                        end
+                                    else
+                                        FormattedResult = tostring(Result) .. " (" .. ResultType .. ")"
+                                    end
+                                    
+                                    print(string.format(formatString, FunctionName, FormattedResult))
+                                else
+                                    print(string.format(formatString, FunctionName, "Error"))
+                                end
+                            end
+                        end
+                    else
+                        print("|                                             |")
+                        print("|     --- MEMORY READS ---                    |")
+                        print("|   No memloc available                       |")
+                    end
+                    
+                    print("+=============================================+")
+                    print("")
+                end
+            end
+        end
+        
+        ScanSingle(InterfaceToScan)
+        
+        print("")
+        self:Info("Interface scan completed successfully")
     end
     
-    self:Info("Interface scan completed successfully")
     return true
 end
 
@@ -1926,25 +2766,29 @@ function Slib:PrintQuestData(QuestIdsOrNames)
         print("|     --- Methods ---            ")
         
         -- Call methods safely
-        if QuestData.getProgress then
-            local Success, Progress = pcall(QuestData.getProgress, QuestData)
-            print("|   getProgress()      : " .. tostring(Success and Progress or "Error"))
+        if QuestData.isComplete then
+            local Success, Result = pcall(function() return QuestData:isComplete() end)
+            if Success then
+                print("|   isComplete()       : " .. tostring(Result))
+            else
+                print("|   isComplete()       : ERROR - " .. tostring(Result))
+            end
         else
-            print("|   getProgress()      : N/A")
+            print("|   isComplete()       : N/A")
         end
         
         if QuestData.isStarted then
-            local Success, Started = pcall(QuestData.isStarted, QuestData)
+            local Success, Started = pcall(function() return QuestData:isStarted() end)
             print("|   isStarted()        : " .. tostring(Success and Started or "Error"))
         else
             print("|   isStarted()        : N/A")
         end
         
-        if QuestData.isComplete then
-            local Success, Complete = pcall(QuestData.isComplete, QuestData)
-            print("|   isComplete()       : " .. tostring(Success and Complete or "Error"))
+        if QuestData.getProgress then
+            local Success, Progress = pcall(function() return QuestData:getProgress() end)
+            print("|   getProgress()      : " .. tostring(Success and Progress or "Error"))
         else
-            print("|   isComplete()       : N/A")
+            print("|   getProgress()       : N/A")
         end
         
         print("|                                ")
@@ -3464,17 +4308,85 @@ function Slib:GetRuneAmounts()
 end
 
 --- Get the currently active spellbook
----@return string|nil spellbook_name The name of the active spellbook ("Normal", "Ancient", "Lunar") or nil if unknown
+---@return string The name of the active spellbook ("Standard", "Ancient", "Lunar") or unknown
 function Slib:GetSpellBook()
     local spellbook = API.GetVarbitValue(39733)
     if spellbook == 0 then
-        return "Normal"
+        return "Standard"
     elseif spellbook == 1 then
         return "Ancient"
     elseif spellbook == 2 then
         return "Lunar"
     end
     return "Unknown"
+end
+
+-- Checks if an ability exists by its ID or name
+---@param AbilityIdOrName number|string The ID (number) or name (string) of the ability to check
+---@return boolean exists True if the ability exists, false otherwise
+function Slib:AbilityExists(AbilityIdOrName)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityIdOrName, {"number", "string"}, "AbilityIdOrName"}
+    }) then
+        return false
+    end
+    
+    self:Info(string.format("[AbilityExists] Checking if ability exists: %s (type: %s)", tostring(AbilityIdOrName), type(AbilityIdOrName)))
+    
+    local AbilityData = nil
+    
+    -- Get ability data based on parameter type
+    if type(AbilityIdOrName) == "number" then
+        AbilityData = API.GetABs_id(AbilityIdOrName)
+        if not AbilityData or AbilityData.id == 0 then
+            self:Warn(string.format("[AbilityExists] Ability with ID %d not found", AbilityIdOrName))
+            return false
+        end
+    elseif type(AbilityIdOrName) == "string" then
+        AbilityData = API.GetABs_name(AbilityIdOrName, true)
+        if not AbilityData or AbilityData.id == 0 then
+            self:Warn(string.format("[AbilityExists] Ability with name '%s' not found", AbilityIdOrName))
+            return false
+        end
+    end
+    
+    self:Info(string.format("[AbilityExists] Ability found: %s", tostring(AbilityIdOrName)))
+    return true
+end
+
+-- Checks if an ability can be cast
+---@param AbilityIdOrName number|string The ID (number) or name (string) of the ability to check
+---@return boolean True if the ability can be cast, false otherwise
+function Slib:CanCastAbility(AbilityIdOrName)
+    -- Parameter validation
+    if not self:ValidateParams({
+        {AbilityIdOrName, {"number", "string"}, "AbilityIdOrName"}
+    }) then
+        return false
+    end
+    
+    self:Info(string.format("[CanCastAbility] Checking if ability can be cast: %s (type: %s)", tostring(AbilityIdOrName), type(AbilityIdOrName)))
+    
+    local AbilityData = nil
+    
+    -- Get ability data based on parameter type
+    if type(AbilityIdOrName) == "number" then
+        AbilityData = API.GetABs_id(AbilityIdOrName)
+        if not AbilityData or not AbilityData.enabled or AbilityData.id == 0 or AbilityData.cooldown_timer > 0 then
+            self:Warn(string.format("[CanCastAbility] Ability with ID %d cannot be cast", AbilityIdOrName))
+            return false
+        end
+    elseif type(AbilityIdOrName) == "string" then
+        AbilityData = API.GetABs_name(AbilityIdOrName, true)
+        if not AbilityData or not AbilityData.enabled or AbilityData.id == 0 or AbilityData.cooldown_timer > 0 then
+            self:Warn(string.format("[CanCastAbility] Ability with name '%s' cannot be cast", AbilityIdOrName))
+            return false
+        end
+    end
+    
+    self:Info(string.format("[CanCastAbility] Ability can be cast: %s", tostring(AbilityIdOrName)))
+    return true
 end
 
 -- ##################################
@@ -3581,41 +4493,6 @@ function Slib:Dive(X, Y, Z)
     
     self:Error("[Dive] All dive attempts failed")
     return false
-end
-
--- Checks if an ability exists by its ID or name
----@param AbilityIdOrName number|string The ID (number) or name (string) of the ability to check
----@return boolean exists True if the ability exists, false otherwise
-function Slib:AbilityExists(AbilityIdOrName)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {AbilityIdOrName, {"number", "string"}, "AbilityIdOrName"}
-    }) then
-        return false
-    end
-    
-    self:Info(string.format("[AbilityExists] Checking if ability exists: %s (type: %s)", tostring(AbilityIdOrName), type(AbilityIdOrName)))
-    
-    local AbilityData = nil
-    
-    -- Get ability data based on parameter type
-    if type(AbilityIdOrName) == "number" then
-        AbilityData = API.GetABs_id(AbilityIdOrName)
-        if not AbilityData or AbilityData.id == 0 then
-            self:Warn(string.format("[AbilityExists] Ability with ID %d not found", AbilityIdOrName))
-            return false
-        end
-    elseif type(AbilityIdOrName) == "string" then
-        -- Use exact match for consistency with other ability functions
-        AbilityData = API.GetABs_name(AbilityIdOrName, false)
-        if not AbilityData or AbilityData.id == 0 then
-            self:Warn(string.format("[AbilityExists] Ability with name '%s' not found", AbilityIdOrName))
-            return false
-        end
-    end
-    
-    self:Info(string.format("[AbilityExists] Ability found: %s", tostring(AbilityIdOrName)))
-    return true
 end
 
 -- Uses an ability by its ID
@@ -3731,6 +4608,7 @@ function Slib:MoveTo(X, Y, Z)
     local StuckCheckCount = 0
     local LastPosition = nil
     local MaxStuckChecks = 10  -- Fail after 10 consecutive checks of no movement/position change
+    local LoopCount = 0  -- Made local to avoid global pollution
     
     if not PlayerName then
         self:Error("[MoveTo] Failed to get player name")
@@ -3754,7 +4632,7 @@ function Slib:MoveTo(X, Y, Z)
         -- Calculate distance to target
         local DistanceToTarget = math.sqrt((X - CurrentPos.x)^2 + (Y - CurrentPos.y)^2)
         -- Only show position info every 10 iterations to reduce spam
-        LoopCount = (LoopCount or 0) + 1
+        LoopCount = LoopCount + 1
         if LoopCount % 10 == 1 then
             self:Info(string.format("[MoveTo] Position: (%d, %d, %d), Distance: %.1f", 
                 CurrentPos.x, CurrentPos.y, CurrentPos.z, DistanceToTarget))
@@ -3858,98 +4736,100 @@ function Slib:MoveTo(X, Y, Z)
                     end
                 end
                 
-                -- Try surge if available and facing a compatible direction
-                local Surge = API.GetABs_id(14233)
-                local CanSurge = Surge and Surge.id ~= 0 and Surge.enabled and Surge.cooldown_timer < 1
-                
-                if CanSurge then
-                    -- Get player facing direction using PlayerFacing helper function
-                    local PlayerDirection = self:PlayerFacing()
+                -- Try surge if available, facing compatible direction, AND more than 10 tiles from destination
+                if DistanceToTarget > 10 then
+                    local Surge = API.GetABs_id(14233)
+                    local CanSurge = Surge and Surge.id ~= 0 and Surge.enabled and Surge.cooldown_timer < 1
                     
-                    -- Determine target direction (walk target if available, otherwise destination)
-                    local TargetX, TargetY
-                    if LastWalkTarget then
-                        TargetX = LastWalkTarget.x
-                        TargetY = LastWalkTarget.y
-                    else
-                        TargetX = X
-                        TargetY = Y
-                    end
-                    
-                    local DeltaX = TargetX - CurrentPos.x
-                    local DeltaY = TargetY - CurrentPos.y
-                    
-                    -- Calculate required movement direction based on position deltas
-                    local MovementDirection
-                    if math.abs(DeltaX) > math.abs(DeltaY) then
-                        -- More horizontal movement
-                        if DeltaX > 0 then
-                            MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NE" or "SE") or "E"
-                        else
-                            MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NW" or "SW") or "W"
-                        end
-                    else
-                        -- More vertical movement
-                        if DeltaY > 0 then
-                            MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "NE" or "NW") or "N"
-                        else
-                            MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "SE" or "SW") or "S"
-                        end
-                    end
-                    
-                    -- Check if player is facing movement direction or compatible adjacent direction
-                    local CanSurgeInDirection = false
-                    if PlayerDirection == MovementDirection then
-                        CanSurgeInDirection = true
-                    else
-                        -- Allow surge for adjacent compass directions (e.g., N and NE are compatible)
-                        local CompatibleDirections = {
-                            N = {"NE", "NW"},
-                            NE = {"N", "E"},
-                            E = {"NE", "SE"},
-                            SE = {"E", "S"},
-                            S = {"SE", "SW"},
-                            SW = {"S", "W"},
-                            W = {"SW", "NW"},
-                            NW = {"W", "N"}
-                        }
+                    if CanSurge then
+                        -- Get player facing direction using PlayerFacing helper function
+                        local PlayerDirection = self:PlayerFacing()
                         
-                        if CompatibleDirections[PlayerDirection] then
-                            for _, compatDir in ipairs(CompatibleDirections[PlayerDirection]) do
-                                if compatDir == MovementDirection then
-                                    CanSurgeInDirection = true
-                                    break
+                        -- Determine target direction (walk target if available, otherwise destination)
+                        local TargetX, TargetY
+                        if LastWalkTarget then
+                            TargetX = LastWalkTarget.x
+                            TargetY = LastWalkTarget.y
+                        else
+                            TargetX = X
+                            TargetY = Y
+                        end
+                        
+                        local DeltaX = TargetX - CurrentPos.x
+                        local DeltaY = TargetY - CurrentPos.y
+                        
+                        -- Calculate required movement direction based on position deltas
+                        local MovementDirection
+                        if math.abs(DeltaX) > math.abs(DeltaY) then
+                            -- More horizontal movement
+                            if DeltaX > 0 then
+                                MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NE" or "SE") or "E"
+                            else
+                                MovementDirection = math.abs(DeltaY) > math.abs(DeltaX) * 0.4 and (DeltaY > 0 and "NW" or "SW") or "W"
+                            end
+                        else
+                            -- More vertical movement
+                            if DeltaY > 0 then
+                                MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "NE" or "NW") or "N"
+                            else
+                                MovementDirection = math.abs(DeltaX) > math.abs(DeltaY) * 0.4 and (DeltaX > 0 and "SE" or "SW") or "S"
+                            end
+                        end
+                        
+                        -- Check if player is facing movement direction or compatible adjacent direction
+                        local CanSurgeInDirection = false
+                        if PlayerDirection == MovementDirection then
+                            CanSurgeInDirection = true
+                        else
+                            -- Allow surge for adjacent compass directions (e.g., N and NE are compatible)
+                            local CompatibleDirections = {
+                                N = {"NE", "NW"},
+                                NE = {"N", "E"},
+                                E = {"NE", "SE"},
+                                SE = {"E", "S"},
+                                S = {"SE", "SW"},
+                                SW = {"S", "W"},
+                                W = {"SW", "NW"},
+                                NW = {"W", "N"}
+                            }
+                            
+                            if CompatibleDirections[PlayerDirection] then
+                                for _, compatDir in ipairs(CompatibleDirections[PlayerDirection]) do
+                                    if compatDir == MovementDirection then
+                                        CanSurgeInDirection = true
+                                        break
+                                    end
                                 end
                             end
                         end
-                    end
-                    
-                    if CanSurgeInDirection then
-                        if self:UseAbilityById(14233) then  -- Surge ability ID
-                            self:Info("[MoveTo] Surge successful")
-                            self:RandomSleep(200, 400, "ms")  -- Short delay after surge
-                            -- Continue walking from new position toward destination
-                            local WalkDistance = math.random(15, 30)
-                            local NewPos = API.PlayerCoord()
-                            if NewPos then
-                                local NewDistanceToTarget = math.sqrt((X - NewPos.x)^2 + (Y - NewPos.y)^2)
-                                if NewDistanceToTarget > WalkDistance then
-                                    -- Calculate new intermediate walk point from post-surge position
-                                    local DirectionX = X - NewPos.x
-                                    local DirectionY = Y - NewPos.y
-                                    local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
-                                    local NormalizedX = DirectionX / DirectionLength
-                                    local NormalizedY = DirectionY / DirectionLength
-                                    local WalkX = math.floor(NewPos.x + (NormalizedX * WalkDistance))
-                                    local WalkY = math.floor(NewPos.y + (NormalizedY * WalkDistance))
-                                    self:WalkToCoordinates(WalkX, WalkY, Z)
-                                    LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
-                                else
-                                    self:WalkToCoordinates(X, Y, Z)
-                                    LastWalkTarget = {x = X, y = Y, z = Z}
+                        
+                        if CanSurgeInDirection then
+                            if self:UseAbilityById(14233) then  -- Surge ability ID
+                                self:Info("[MoveTo] Surge successful")
+                                self:RandomSleep(200, 400, "ms")  -- Short delay after surge
+                                -- Continue walking from new position toward destination
+                                local WalkDistance = math.random(15, 30)
+                                local NewPos = API.PlayerCoord()
+                                if NewPos then
+                                    local NewDistanceToTarget = math.sqrt((X - NewPos.x)^2 + (Y - NewPos.y)^2)
+                                    if NewDistanceToTarget > WalkDistance then
+                                        -- Calculate new intermediate walk point from post-surge position
+                                        local DirectionX = X - NewPos.x
+                                        local DirectionY = Y - NewPos.y
+                                        local DirectionLength = math.sqrt(DirectionX^2 + DirectionY^2)
+                                        local NormalizedX = DirectionX / DirectionLength
+                                        local NormalizedY = DirectionY / DirectionLength
+                                        local WalkX = math.floor(NewPos.x + (NormalizedX * WalkDistance))
+                                        local WalkY = math.floor(NewPos.y + (NormalizedY * WalkDistance))
+                                        self:WalkToCoordinates(WalkX, WalkY, Z)
+                                        LastWalkTarget = {x = WalkX, y = WalkY, z = Z}
+                                    else
+                                        self:WalkToCoordinates(X, Y, Z)
+                                        LastWalkTarget = {x = X, y = Y, z = Z}
+                                    end
                                 end
+                                goto continue_loop
                             end
-                            goto continue_loop
                         end
                     end
                 end
@@ -4051,104 +4931,12 @@ function Slib:MemoryStrandTeleport()
 
     while API.Read_LoopyLoop() and not (self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 5)) do
         self:Info("[MemoryStrandTeleport] Attempting to use Memory Strand teleport...")
-        API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 10, 4097, API.OFF_ACT_GeneralInterface_route) -- Open currency pouch
-        API.DoAction_Interface(0x24,0x9A3E,1,1473,21,MemStrandSlot,API.OFF_ACT_GeneralInterface_route) -- Memory Strand teleport
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,1473,9,4097,API.OFF_ACT_GeneralInterface_route) -- Open currency pouch
+        API.DoAction_Interface(0x24,0x9a3e,1,1473,20,MemStrandSlot,API.OFF_ACT_GeneralInterface_route)
         self:SleepUntil(function()
             return self:IsPlayerInArea(2265, 3554, 0, 20) or self:IsPlayerInArea(2293, 3554, 0, 20)
         end, 6, 100)
-        API.DoAction_Interface(0x24, 0x9A3E, 1, 1473, 15, -1, API.OFF_ACT_GeneralInterface_route) -- Close currency pouch
-    end
-
-    return true
-end
-
--- Uses incense sticks and keep them active
----@param BuffID number
----@return boolean
-function Slib:CheckIncenseStick(BuffID)
-    -- Parameter validation
-    if not self:ValidateParams({
-        {BuffID, "id", "buffID"}
-    }) then
-        return false
-    end
-
-    self:Info("[CheckIncenseStick] Checking incense stick buff: " .. BuffID)
-    
-    -- Get all active buffs
-    local buffs = API.Buffbar_GetAllIDs()
-    if not buffs then
-        self:Error("[CheckIncenseStick] Failed to get buff information")
-        return false
-    end
-    
-    -- Check if the buff is active
-    local found = false
-    for _, object in ipairs(buffs) do
-        if object.id == BuffID then
-            found = true
-            self:Info("[CheckIncenseStick] Found active incense stick buff")
-            
-            -- Parse buff information
-            local time, level = string.match(object.text, "(%d+)%a* %((%d+)%)")
-            time = tonumber(time)
-            level = tonumber(level)
-            
-            if not time or not level then
-                self:Error("[CheckIncenseStick] Failed to parse buff time or level")
-                return false
-            end
-            
-            -- Check and maintain buff level
-            if level < 4 then
-                self:Info("[CheckIncenseStick] Buff level low (" .. level .. "), applying overload...")
-                API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
-                for i = 1, 5 do
-                    API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
-                    self:RandomSleep(50, 100, "ms")
-                end
-            end
-            
-            -- Check and extend duration if needed with granular approach
-            local interactions = 0
-            if time < 50 then
-                if time < 10 then
-                    interactions = 5
-                elseif time < 20 then
-                    interactions = 4
-                elseif time < 30 then
-                    interactions = 3
-                elseif time < 40 then
-                    interactions = 2
-                else -- time < 50
-                    interactions = 1
-                end
-                
-                self:Info("[CheckIncenseStick] Buff duration low (" .. time .. "m), extending " .. interactions .. " times...")
-                for i = 1, interactions do
-                    API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
-                    self:RandomSleep(100, 300, "ms")
-                end
-            end
-            break
-        end
-    end
-    
-    -- If buff not found, apply new buff
-    if not found then
-        self:Info("[CheckIncenseStick] Buff not active, applying new buff...")
-        -- Apply overload
-        API.DoAction_Inventory1(BuffID,0,2,API.OFF_ACT_GeneralInterface_route)
-        self:RandomSleep(100, 300, "ms")
-        
-        -- Extend multiple times
-        self:Info("[CheckIncenseStick] Extending new buff...")
-        for i = 1, 5 do
-            API.DoAction_Inventory1(BuffID,0,1,API.OFF_ACT_GeneralInterface_route)
-            self:RandomSleep(100, 300, "ms")
-        end
-        self:Info("[CheckIncenseStick] New buff applied and extended")
-        return true
+        API.DoAction_Interface(0xffffffff,0xffffffff,1,1473,9,4097,API.OFF_ACT_GeneralInterface_route) -- Close currency pouch
     end
 
     return true
@@ -4213,7 +5001,7 @@ function Slib:AreaLootOpen()
     self:Info("[AreaLootOpen] Attempting to open area loot interface...")
     
     -- Attempt to open the interface
-    API.DoAction_Interface(0xffffffff,0xffffffff,1,1678,8,-1,API.OFF_ACT_GeneralInterface_route)
+    API.DoAction_Interface(0xffffffff,0xffffffff,1,1678,7,-1,API.OFF_ACT_GeneralInterface_route)
     
     -- Wait for the interface to actually open
     local Success = self:SleepUntil(function()
@@ -4254,7 +5042,7 @@ function Slib:AreaLootTakeItems(ItemIds)
             return true
         elseif lowerItemIds == "all" then
             self:Info("[AreaLootTakeItems] Taking all loot...")
-            API.DoAction_Interface(0x24, 0xffffffff, 1, 1622, 22, -1, API.OFF_ACT_GeneralInterface_route)
+            API.DoAction_Interface(0x24, 0xffffffff, 1, 1622, 21, -1, API.OFF_ACT_GeneralInterface_route)
             return true
         else
             self:Error("[AreaLootTakeItems] Invalid string parameter: '" .. ItemIds .. "'. Valid options: 'custom', 'all'")
@@ -4380,6 +5168,26 @@ function Slib:TypeText(Text)
     end
 end
 
+--- Presses a key using its virtual-key code, supporting both single-character input and named special keys.
+--- @param key string # The key to press.
+--- @return boolean # Returns true if the key press was successful; False otherwise.
+function Slib:PressKey(key)
+    local vk = nil
+
+    if #key == 1 then
+        vk = self:CharToVirtualKey(key)
+    else
+        vk = self:GetSpecialKeyVK(key)
+    end
+
+    if not vk then
+        self:Error("[PressKey] Invalid key: " .. tostring(key))
+        return false
+    end
+
+    return API.KeyboardPress2(vk, 40, 60)
+end
+
 -- Sets instance interface options to specified values
 ---@param MaxPlayers number|nil Target maximum players (or nil to skip)
 ---@param MinCombat number|nil Target minimum combat level (or nil to skip)
@@ -4444,20 +5252,31 @@ function Slib:SetInstanceInterfaceOptions(MaxPlayers, MinCombat, SpawnSpeed, Pro
         return false
     end
 
-    for i = 1, 2 do --Needed to run 2 times in case HM is checked and practice mode is passed as true
-        -- Set PracticeMode
-        if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
-            API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
-            self:RandomSleep(600, 1000, "ms")
-        end
-
-        -- Set HardMode
-        if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
-            API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
-            self:RandomSleep(600, 1000, "ms")
-        end
-        self:RandomSleep(1000, 3000, "ms")
+    -- Disable HardMode first if we're enabling PracticeMode
+    if PracticeMode == true and CurrentOptions.HardMode == true then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
     end
+
+    -- Disable PracticeMode first if we're enabling HardMode
+    if HardMode == true and CurrentOptions.PracticeMode == true then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    -- Now set PracticeMode
+    if PracticeMode ~= nil and CurrentOptions.PracticeMode ~= PracticeMode then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 113, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    -- Now set HardMode
+    if HardMode ~= nil and CurrentOptions.HardMode ~= HardMode then
+        API.DoAction_Interface(0xffffffff, 0xffffffff, 1, 1591, 4, -1, API.OFF_ACT_GeneralInterface_route)
+        self:RandomSleep(600, 1000, "ms")
+    end
+
+    self:RandomSleep(1000, 2000, "ms")
 
     CurrentOptions = self:GetInstanceInterfaceOptions() --Update options in case HM checkbox was checked, which makes MaxPlayers always 1 on the first read
 
@@ -4655,7 +5474,7 @@ function Slib:Lobby()
     if API.GetGameState2() == 3 then --In game
         API.DoAction_Interface(0xffffffff,0xffffffff,1,1431,0,7,API.OFF_ACT_GeneralInterface_route) --Config
         self:RandomSleep(1000, 3000, "ms")
-        API.DoAction_Interface(0x24,0xffffffff,1,1433,68,-1,API.OFF_ACT_GeneralInterface_route) --Lobby
+        API.DoAction_Interface(0x24,0xffffffff,1,1433,69,-1,API.OFF_ACT_GeneralInterface_route) --Lobby
         self:RandomSleep(1000, 3000, "ms")
 
         return true
@@ -4675,8 +5494,8 @@ function Slib:HighAlch(ItemIds)
         return false
     end
     
-    if self:GetSpellBook() ~= "Normal" then
-        self:Error("[HighAlch] Must be on Normal spellbook to use High Alch")
+    if self:GetSpellBook() ~= "Standard" then
+        self:Error("[HighAlch] Must be on Standard spellbook to use High Alch")
         return false
     end
 
@@ -4744,6 +5563,187 @@ function Slib:Note(ItemIds)
 
         ::skip::
     end
+
+    return true
+end
+
+--- Buff Up Keep
+--- Possible values: "Overload", "Weapon Poison", "Luck"
+---                  "Guam", "Tarromin", "Marrentill", "Harralander",
+---                  "Ranarr", "Toadflax", "Spiritweed", "Irit", "Wergali",
+---                  "Avantoe", "Kwuarm", "Bloodweed", "Snapdragon", "Cadantine",
+---                  "Lantadyme", "DwarfWeed", "Torstol", "Fellstalk"
+---@param BuffNames string[] The name or names of the buffs to keep up inside of a table
+---@return boolean success True if Buff Up Keep was successful, false if it failed
+function Slib:BuffUpKeep(BuffNames)
+    if not self:Sanitize(BuffNames, {"table_of_strings"}, "BuffNames") then
+        return false
+    end
+
+    local Buffs = API.Buffbar_GetAllIDs()
+    if not Buffs then
+        self:Warn("[BuffUpKeep] Failed to get buff bar information")
+        return false
+    end
+
+    local AllGood = true  -- Tracks if everything is satisfied
+
+    for _, BuffName in ipairs(BuffNames) do
+        if BuffName == "Overload" then
+            local ActiveOverload = nil
+            for _, OverloadBuff in pairs(Slib.Buffs.Overloads) do
+                for _, Object in ipairs(Buffs) do
+                    if Object.id == OverloadBuff.Id then
+                        ActiveOverload = OverloadBuff
+                        break
+                    end
+                end
+                if ActiveOverload then break end
+            end
+
+            if not ActiveOverload then
+                local Priority = {
+                    { Buff = Slib.Buffs.Overloads.Elder,    Items = Slib.Items.ElderOverloads   },
+                    { Buff = Slib.Buffs.Overloads.Supreme,  Items = Slib.Items.SupremeOverloads  },
+                    { Buff = Slib.Buffs.Overloads.Overload, Items = Slib.Items.Overloads         },
+                }
+                local Applied = false
+                for _, Entry in ipairs(Priority) do
+                    local Ids = self:GetIDSFromTable(Entry.Items)
+                    if Inventory:ContainsAny(Ids) then
+                        self:Info("[BuffUpKeep] Drinking " .. Entry.Buff.Name .. "...")
+                        API.DoAction_Inventory2(Ids, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                        Applied = true
+                        break
+                    end
+                end
+                if not Applied then
+                    self:Warn("[BuffUpKeep] No overload potions found in inventory")
+                    AllGood = false
+                end
+            else
+                self:Info("[BuffUpKeep] Overload already active: " .. ActiveOverload.Name)
+            end
+
+        elseif BuffName == "Weapon Poison" then
+            if not self:HasBuff(Slib.Buffs.WeaponPoisons.Poisonous.Id) then
+                local Poisons = self:GetIDSFromTable(Slib.Items.WeaponPoisons)
+                if Inventory:ContainsAny(Poisons) then
+                    self:Info("[BuffUpKeep] Applying Weapon Poison...")
+                    API.DoAction_Inventory2(Poisons, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                else
+                    self:Warn("[BuffUpKeep] No Weapon Poisons in inventory")
+                    AllGood = false
+                end
+            end
+
+        elseif Slib.Items.IncenseSticks[BuffName] then
+            local Stick = Slib.Items.IncenseSticks[BuffName]
+
+            if not Inventory:Contains(Stick.Id) then
+                self:Warn("[BuffUpKeep] " .. Stick.Name .. " not found in inventory, skipping")
+                AllGood = false
+            else
+                local Found = false
+                for _, Object in ipairs(Buffs) do
+                    if Object.id == Stick.Id then
+                        Found = true
+                        self:Info("[BuffUpKeep] Found active buff for " .. Stick.Name)
+
+                        local Time, Level = string.match(Object.text, "(%d+)%a* %((%d+)%)")
+                        Time  = tonumber(Time)
+                        Level = tonumber(Level)
+
+                        if not Time or not Level then
+                            self:Warn("[BuffUpKeep] Failed to parse buff info for " .. Stick.Name)
+                            AllGood = false
+                            break
+                        end
+
+                        if Level < 4 then
+                            self:Info("[BuffUpKeep] " .. Stick.Name .. " level low (" .. Level .. "), overloading...")
+                            API.DoAction_Inventory1(Stick.Id, 0, 2, API.OFF_ACT_GeneralInterface_route)
+                            for I = 1, 5 do
+                                API.DoAction_Inventory1(Stick.Id, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                                self:RandomSleep(100, 300, "ms")
+                            end
+                        end
+
+                        if Time < 10 then
+                            self:Info("[BuffUpKeep] " .. Stick.Name .. " duration low (" .. Time .. "m), extending...")
+                            API.DoAction_Inventory1(Stick.Id, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                        end
+                        break
+                    end
+                end
+
+                if not Found then
+                    local ActiveStickCount = 0
+                    for _, S in pairs(Slib.Items.IncenseSticks) do
+                        for _, Object in ipairs(Buffs) do
+                            if Object.id == S.Id then
+                                ActiveStickCount = ActiveStickCount + 1
+                                break
+                            end
+                        end
+                    end
+
+                    if ActiveStickCount >= 3 then
+                        self:Info("[BuffUpKeep] 3 incense sticks already active, skipping " .. Stick.Name)
+                        AllGood = false
+                    elseif Inventory:GetItemAmount(Stick.Id) < 6 then
+                        self:Warn("[BuffUpKeep] " .. Stick.Name .. " not found in required amount (>=6), skipping")
+                        AllGood = false
+                    else
+                        self:Info("[BuffUpKeep] Applying " .. Stick.Name .. " (" .. ActiveStickCount .. " sticks currently active)...")
+                        API.DoAction_Inventory1(Stick.Id, 0, 2, API.OFF_ACT_GeneralInterface_route)
+                        self:RandomSleep(100, 300, "ms")
+                        self:Info("[BuffUpKeep] " .. Stick.Name .. " applied")
+                    end
+                end
+            end
+            
+        elseif BuffName == "Luck Potion" then
+            -- Check if any luck potion buff is already active
+            local ActiveLuck = nil
+            for _, LuckBuff in pairs(Slib.Buffs.LuckPotions) do
+                for _, Object in ipairs(Buffs) do
+                    if Object.id == LuckBuff.Id then
+                        ActiveLuck = LuckBuff
+                        break
+                    end
+                end
+                if ActiveLuck then break end
+            end
+
+            if not ActiveLuck then
+                local Priority = {
+                    { Buff = Slib.Buffs.LuckPotions.EnhancedLuckPotion, Item = Slib.Items.LuckPotions.EnhancedLuckPotion },
+                    { Buff = Slib.Buffs.LuckPotions.LuckPotion,         Item = Slib.Items.LuckPotions.LuckPotion         },
+                }
+                local Applied = false
+                for _, Entry in ipairs(Priority) do
+                    if Inventory:Contains(Entry.Item.Id) then
+                        self:Info("[BuffUpKeep] Drinking " .. Entry.Buff.Name .. "...")
+                        API.DoAction_Inventory2({Entry.Item.Id}, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                        Applied = true
+                        break
+                    end
+                end
+                if not Applied then
+                    self:Warn("[BuffUpKeep] No Luck Potions found in inventory")
+                    AllGood = false
+                end
+            else
+                self:Info("[BuffUpKeep] Luck Potion already active: " .. ActiveLuck.Name)
+            end
+        else
+            self:Error("[BuffUpKeep] Unknown buff name: " .. tostring(BuffName))
+            AllGood = false
+        end
+    end
+
+    return AllGood
 end
 
 return Slib

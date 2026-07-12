@@ -7,10 +7,11 @@ DATA.BUFFS = {
     ["Cadantine incense sticks"] = 47712,
     ["Guam incense sticks"] = 47699,
     ["Torstol incense sticks"] = 47715,
-    ["Sharpening stone"] = {58257},
-    ["Imbued bird feed"] = {58258},
-    ["Lumberjack's courage"] = {58259},
-    ["Scrimshaw"] = {26097},
+    ["Sharpening stone"] = 58257,
+    ["Imbued bird feed"] = 58258,
+    ["Lumberjack's courage"] = 58259,
+    ["Scrimshaw"] = 26097,
+    ["Light Form"] = 26048,
 }
 
 DATA.ITEMS = {

@@ -1,13 +1,13 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.3.2
+-- Version: 1.4.0
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.3.2"
-ReleaseDate = "28-06-2025"
+ScriptVersion = "1.4.0"
+ReleaseDate = "11-07-2026"
 DiscordHandle = "not_spectre011"
 
 --[[
@@ -39,6 +39,23 @@ v1.3.1 - 29-01-2026
     - Updated the burthorpe bank after jagex changed it to a bank chest instead of a gnome banker
 v1.3.2 - 07-06-2026
     - Removed require config from func.lua
+v1.4.0 - 11-07-2026
+    - Updated Slib to v1.0.14.
+    - Updated lodestones library (new interface component IDs and fixed coordinates).
+    - Removed aura support completely.
+    - Replaced Slib:CheckIncenseStick() calls with Slib:BuffUpKeep() (removed in Slib v1.0.13).
+    - Fixed sharpening stone, imbued bird feed and lumberjack's courage buff checks spamming
+      the item when the buff was already active (buff IDs were tables, Buffbar_GetIDstatus needs numbers).
+    - Rewrote crystalize: proper spell selection with DoAction_DontResetSelection(),
+      requirement checks (Ancient spellbook + 6 water/fire/chaos/soul runes) and
+      a randomized 30s recast timer that occasionally lets the buff lapse.
+    - Added Light Form support when crystalize is active (with CanCastAbility guard).
+    - Fixed crystalize cast being cancelled by the cut click that followed it.
+    - Fixed tree hopping when a floor highlight was present (target tree is now sticky
+      until it dies; always picks the closest tree on a fresh pick).
+    - Added human-like breaks (micro-breaks every 15-40 min, occasional long breaks).
+    - Randomized the main loop tick (200-600ms instead of fixed 300ms).
+    - Replaced API.SetMaxIdleTime() with an inlined anti-idle that also runs during breaks.
 ]]
 
 local API = require("api")
@@ -139,7 +156,36 @@ local States = {
 local CurrentState = "STARTING"
 local IsFirstRun = true
 
-API.SetMaxIdleTime(7)
+--Anti-idle based on UTILS:antiIdle() from utils.lua (by Dead), inlined to avoid the import.
+--Fires PIdle2 at a random point between 60% and 90% of the 5 minute idle timeout.
+local MaxIdleTimeMinutes = 5
+local AfkTimer = os.time()
+local NextAntiIdleIn = math.random((MaxIdleTimeMinutes * 60) * 0.6, (MaxIdleTimeMinutes * 60) * 0.9)
+
+local function AntiIdle()
+    if os.difftime(os.time(), AfkTimer) > NextAntiIdleIn then
+        API.PIdle2()
+        AfkTimer = os.time()
+        NextAntiIdleIn = math.random((MaxIdleTimeMinutes * 60) * 0.6, (MaxIdleTimeMinutes * 60) * 0.9)
+        return true
+    end
+    return false
+end
+
+--Human-like breaks: micro-break every 15-40 minutes, occasionally a long one
+local function RollNextBreakTime()
+    return os.time() + math.random(15 * 60, 40 * 60)
+end
+
+local function RollBreakDuration()
+    if math.random(100) <= 15 then
+        return math.random(5 * 60, 15 * 60) --long break (5-15 min)
+    end
+    return math.random(30, 180) --micro break (30s-3min)
+end
+
+local NextBreakTime = RollNextBreakTime()
+
 API.Write_fake_mouse_do(false)
 while (API.Read_LoopyLoop()) do
     if not API.CacheEnabled then
@@ -165,6 +211,20 @@ while (API.Read_LoopyLoop()) do
         IsFirstRun = false
     end
 
+    if CurrentState == States.AT_TREES and os.time() >= NextBreakTime then
+        local BreakDuration = RollBreakDuration()
+        Slib:Info("Taking a break for " .. BreakDuration .. " seconds.")
+        UpdateStatus("Taking a break")
+        local BreakEnd = os.time() + BreakDuration
+        while API.Read_LoopyLoop() and os.time() < BreakEnd do
+            AntiIdle() --keep the client from logging out during long breaks
+            Slib:Sleep(500, "ms")
+        end
+        NextBreakTime = RollNextBreakTime()
+        goto continue
+    end
+
+    AntiIdle()
     API.DoRandomEvents()
     if CurrentState == States.STARTING then
         UpdateStatus("Starting")
@@ -198,6 +258,6 @@ while (API.Read_LoopyLoop()) do
     end
     
     ::continue::
-    Slib:Sleep(300, "ms")
+    Slib:RandomSleep(200, 600, "ms")
     collectgarbage("collect")
 end

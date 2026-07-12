@@ -5,7 +5,6 @@ local Slib = require("Woodcutting AIO.modules.slib")
 local LODESTONES = require("Woodcutting AIO.modules.lodestones")
 local FUNC = require("Woodcutting AIO.modules.func")
 local DATA = require("Woodcutting AIO.modules.data")
-local AURAS = require("Woodcutting AIO.modules.auras")
 local BANK = require("Woodcutting AIO.modules.bank")
 
 PROC = {}
@@ -18,13 +17,34 @@ local CanRenewal = {
     torstolStick = nil,
     sharpeningStone = nil,
     imbuedBirdFeed = nil,
-    lumberjacksCourage = nil, 
+    lumberjacksCourage = nil,
 }
+
+local LastCrystalizeCast = 0
+
+--Crystalize expires after 30 seconds. Recast timing is randomized to look human:
+--usually a bit before expiry, sometimes letting the buff run out for a few seconds.
+local function RollCrystalizeDelay()
+    if math.random(100) <= 20 then
+        return math.random(31, 40) --let it lapse occasionally
+    end
+    return math.random(25, 29)
+end
+
+local NextCrystalizeDelay = RollCrystalizeDelay()
+
+local function CrystalizeIsDue(config)
+    if not (config.Crystalize == true or config.Crystalize == "true") then
+        return false
+    end
+    if not CanRenewal.crystalize then
+        return false
+    end
+    return (os.time() - LastCrystalizeCast) >= NextCrystalizeDelay
+end
 
 function PROC:HandleStartingState(config)
     Slib:Info("Current state: STARTING")
-    local auraToUse = string.lower(config.Aura)
-    Slib:Info("Aura to use: " .. auraToUse)
     FUNC:PrintConfig(config)
 
     -- Set all CanRenewal values to true
@@ -336,7 +356,7 @@ function PROC:HandleAtTreesState(config)
                 Slib:Warn("No cadantine incense sticks found in inventory.")
                 CanRenewal.cadantineStick = false
             else
-                Slib:CheckIncenseStick(DATA.BUFFS["Cadantine incense sticks"])
+                Slib:BuffUpKeep({"Cadantine"})
             end
         end
     end
@@ -347,7 +367,7 @@ function PROC:HandleAtTreesState(config)
                 Slib:Warn("No guam incense sticks found in inventory.")
                 CanRenewal.guamStick = false
             else
-                Slib:CheckIncenseStick(DATA.BUFFS["Guam incense sticks"])
+                Slib:BuffUpKeep({"Guam"})
             end
         end
     end
@@ -358,7 +378,7 @@ function PROC:HandleAtTreesState(config)
                 Slib:Warn("No torstol incense sticks found in inventory.")
                 CanRenewal.torstolStick = false
             else
-                Slib:CheckIncenseStick(DATA.BUFFS["Torstol incense sticks"])
+                Slib:BuffUpKeep({"Torstol"})
             end
         end
     end
@@ -411,12 +431,12 @@ function PROC:HandleAtTreesState(config)
         local Highlight = Slib:FindObj({8447}, 25, {4})
         if Highlight and not Slib:IsPlayerInArea(Highlight.Tile_XYZ.x, Highlight.Tile_XYZ.y, 0, 1) then
             Slib:WalkToCoordinates(math.floor(Highlight.Tile_XYZ.x), math.floor(Highlight.Tile_XYZ.y), 0)
-            Slib:RandomSleep(1000, 2000, "ms")
+            Slib:RandomSleep(2400, 3000, "ms")
         end
     end
 
     --Start action skipping
-    if API.IsPlayerAnimating_(API.GetLocalPlayerName(), 10) then
+    if API.IsPlayerAnimating_(API.GetLocalPlayerName(), 10) and not CrystalizeIsDue(config) then
         return "AT_TREES"
     end
 
@@ -425,13 +445,6 @@ function PROC:HandleAtTreesState(config)
     end
 
     --End action skipping
-
-    if config.Aura ~= "None" and not AURAS.noResets then
-        if not AURAS.isAuraActive() then
-            AURAS.activateAura(config.Aura)
-            return "AT_TREES"
-        end
-    end
 
     if Inventory:IsFull() then
         Slib:Info("Inventory is full")
@@ -452,11 +465,32 @@ function PROC:HandleAtTreesState(config)
     local BestTree = FUNC:GetBestTree(CONFIG)    
     if BestTree then
         Slib:Info("BestTree = " .. tostring(BestTree.Name))
-        if config.Crystalize == true or config.Crystalize == "true" then
-            API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,181,API.OFF_ACT_Bladed_interface_route)
-            Slib:RandomSleep(100, 200, "ms")
-            API.DoAction_Object2(0x9d,API.OFF_ACT_GeneralObject_route00,{BestTree.Id},50,WPOINT.new(BestTree.CalcX, BestTree.CalcY, 0))
-            Slib:RandomSleep(100, 200, "ms")
+        if CrystalizeIsDue(config) then
+            if FUNC:HasCrystalizeRequirements() then
+                if not API.Buffbar_GetIDstatus(DATA.BUFFS["Light Form"], false).found then
+                    if Slib:CanCastAbility(DATA.BUFFS["Light Form"]) then
+                        Slib:Info("Activating Light Form")
+                        Slib:UseAbilityById(DATA.BUFFS["Light Form"])
+                        Slib:Sleep(1200, "ms")
+                    else
+                        Slib:Warn("Light Form cannot be cast. Continuing without it.")
+                    end
+                end
+                API.DoAction_DontResetSelection()
+                API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,181,API.OFF_ACT_Bladed_interface_route)
+                Slib:RandomSleep(300, 600, "ms")
+                API.DoAction_DontResetSelection()
+                API.DoAction_Object1(0x9d,API.OFF_ACT_GeneralObject_route00,{ BestTree.Id },50)
+                LastCrystalizeCast = os.time()
+                NextCrystalizeDelay = RollCrystalizeDelay()
+                --Let the cast finish before anything else clicks the tree;
+                --an immediate cut click cancels the queued spell cast.
+                Slib:RandomSleep(1800, 2400, "ms")
+                return "AT_TREES"
+            else
+                Slib:Warn("Crystalize requirements not met. Disabling crystalize until next trip to the trees.")
+                CanRenewal.crystalize = false
+            end
         end
 
         Slib:Info("Cutting tree: " .. BestTree.Name)
