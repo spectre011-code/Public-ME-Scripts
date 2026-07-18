@@ -58,6 +58,8 @@ v2.1.0 - 18-07-2026
     - Removed full garbage collection on every recursion step (was very slow)
     - The ScriptManager stop button now works: the scan checks
       API.Read_LoopyLoop() and aborts, exporting whatever was scanned so far
+    - Added progress prints every ~5 seconds during the scan (interfaces
+      recorded, paths scanned, current path)
 
 ]]
 
@@ -361,6 +363,21 @@ local function PerformMemoryReads(Memloc)
     return MemoryReads
 end
 
+-- Progress tracking for status prints during long scans
+local ScanStats = { Scanned = 0, Recorded = 0, LastPrintTime = os.time() }
+
+-- Prints a progress line at most every 5 seconds so long scans do not look stuck
+---@param CurrentIDString string Path string of the interface being scanned
+local function PrintProgress(CurrentIDString)
+    local Now = os.time()
+    if os.difftime(Now, ScanStats.LastPrintTime) >= 5 then
+        ScanStats.LastPrintTime = Now
+        print("[" .. ScriptName .. "] Progress: "
+            .. ScanStats.Recorded .. " interfaces recorded, "
+            .. ScanStats.Scanned .. " paths scanned, current: " .. CurrentIDString)
+    end
+end
+
 -- Copies one interface's IInfo fields plus metadata into the export list
 ---@param Interface table The IInfo data returned by the API
 ---@param ParentIDString string Path string of the parent interface
@@ -410,6 +427,8 @@ local function RecordInterface(Interface, ParentIDString, IDString, Depth, AllIn
         xy = Interface.xy
     })
 
+    ScanStats.Recorded = ScanStats.Recorded + 1
+
     return true
 end
 
@@ -447,6 +466,9 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
     VisitedPaths[PathKey] = true
 
     local CurrentIDString = PathToIDString(CurrentPath)
+
+    ScanStats.Scanned = ScanStats.Scanned + 1
+    PrintProgress(CurrentIDString)
 
     -- Record the starting interface itself once; the child scans below only
     -- return elements under a path, never the path's own node
@@ -502,7 +524,8 @@ end
 -- Main export function that orchestrates scanning and CSV generation
 ---@return boolean Success True if export completed successfully, false on error
 local function ExportInterfacesToCSV()
-    print("[" .. ScriptName .. "] Scanning interfaces...")
+    print("[" .. ScriptName .. "] Scanning interfaces... (each scan waits "
+        .. Config.ScanDelayMs .. "ms for fresh data; progress prints every ~5s)")
     
     local AllInterfaces = ScanAllInterfaces(Config.StartingInterface, {}, {}, 0, 100000, {})
     collectgarbage("collect")
