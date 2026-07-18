@@ -1,16 +1,16 @@
 local ScriptName = "Interface Exporter"
 local Author = "Spectre011"
-local ScriptVersion = "2.0.0"
-local ReleaseDate = "10-01-2026"
+local ScriptVersion = "2.1.0"
+local ReleaseDate = "15-06-2025"
 local DiscordHandle = "not_spectre011"
 
 --[[
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                          INTERFACE EXPORTER SCRIPT                           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  Description: Recursively scans game interfaces and exports IInfo fields     ║
+║  Description: Recursively scans game interfaces and exports data to CSV      ║
 ║  Usage:       Configure parameters in the Config table below and execute     ║
-║  Output:      CSV file with IInfo interface data                             ║
+║  Output:      CSV file with detailed interface information                   ║
 ║                                                                              ║
 ║  Credits:     Based on the excellent work of Ernie                           ║
 ║               GitHub: https://github.com/Ernestohh/                          ║
@@ -43,15 +43,32 @@ v2.0.0 - 10-01-2026
     - Now correctly explores all child combinations recursively
     - Includes memloc + API constant combinations
     - Increased max depth to 100000
+
+v2.1.0 - 18-07-2026
+    - Fixed missing interfaces: ScanForInterfaceTest2Get results lag behind the
+      query, so back-to-back calls returned the previous query's data. Added
+      Config.ScanDelayMs sleep before every scan so each call gets fresh results
+    - Major speedup: one child scan per path already returns full IInfo data for
+      every element under it, so elements are recorded directly from that call
+      instead of doing an extra exact-match API call per node
+    - Child path segments now carry the element's concrete id3 when present, so
+      sub-element paths like {942,8,14848,0} are explored too
+    - Fixed parentInterfaceID column (was identical to interfaceID)
+    - Memory read columns are now collected from all interfaces, not just the first one
+    - Removed full garbage collection on every recursion step (was very slow)
+    - The ScriptManager stop button now works: the scan checks
+      API.Read_LoopyLoop() and aborts, exporting whatever was scanned so far
+
 ]]
 
 local API = require("api")
 
 -- Configuration
 local Config = {
-    StartingInterface = { {1473,0,-1,0}, {1473,7,-1,0}, {1473,10,-1,0}, {1473,10,5120,0} },
+    StartingInterface = { { 942,3,-1,0 } },
     OutputDirectory = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\exports\\interfaces\\",
-    OutputFileName = "interfaces_export.csv"
+    OutputFileName = "interfaces_export.csv",
+    ScanDelayMs = 600   -- Sleep before every interface scan; results lag behind the query, so back-to-back scans return stale data. Lower this if the debug script shows a smaller sleep is enough.
 }
 
 -- Opens the specified directory in Windows Explorer
@@ -175,6 +192,17 @@ local function PathToKey(Path)
     return table.concat(Parts, ";")
 end
 
+-- Formats an interface path as a readable ID string like "{ {942,3,-1,0} }"
+---@param Path table Array of interface path segments
+---@return string IDString The formatted path string
+local function PathToIDString(Path)
+    local Parts = {}
+    for _, Segment in ipairs(Path) do
+        table.insert(Parts, "{" .. table.concat(Segment, ",") .. "}")
+    end
+    return "{ " .. table.concat(Parts, ", ") .. " }"
+end
+
 -- Creates child interface path by appending new segment to existing path
 ---@param CurrentPath table The current interface path hierarchy
 ---@param Id1 number The id1 value to append
@@ -190,9 +218,9 @@ local function CreateChildPath(CurrentPath, Id1, Id2, Id3)
         end
         table.insert(ChildPath, PathSegment)
     end
-    
+
     table.insert(ChildPath, { Id1, Id2, Id3, 0 })
-    
+
     return ChildPath
 end
 
@@ -333,7 +361,62 @@ local function PerformMemoryReads(Memloc)
     return MemoryReads
 end
 
--- Recursively scans interface hierarchies and extracts IInfo data
+-- Copies one interface's IInfo fields plus metadata into the export list
+---@param Interface table The IInfo data returned by the API
+---@param ParentIDString string Path string of the parent interface
+---@param IDString string Path string of this interface
+---@param Depth number Depth of this interface in the hierarchy
+---@param AllInterfaces table Accumulator for all discovered interfaces
+---@param SeenMemlocs table Memory location tracker for duplicate detection
+---@return boolean Recorded True if added, false if it was a duplicate memloc
+local function RecordInterface(Interface, ParentIDString, IDString, Depth, AllInterfaces, SeenMemlocs)
+    if Interface.memloc and SeenMemlocs[Interface.memloc] then
+        return false
+    end
+    if Interface.memloc then
+        SeenMemlocs[Interface.memloc] = true
+    end
+
+    local MemoryReads = PerformMemoryReads(Interface.memloc)
+
+    table.insert(AllInterfaces, {
+        _parentInterfaceID = ParentIDString,
+        _interfaceID = IDString,
+        _depth = Depth,
+        _memoryReads = MemoryReads,
+        index = Interface.index,
+        x = Interface.x,
+        xs = Interface.xs,
+        y = Interface.y,
+        ys = Interface.ys,
+        box_x = Interface.box_x,
+        box_y = Interface.box_y,
+        scroll_y = Interface.scroll_y,
+        id1 = Interface.id1,
+        id2 = Interface.id2,
+        id3 = Interface.id3,
+        itemid1 = Interface.itemid1,
+        itemid1_size = Interface.itemid1_size,
+        itemid2 = Interface.itemid2,
+        hov = Interface.hov,
+        textids = Interface.textids,
+        textitem = Interface.textitem,
+        memloc = Interface.memloc,
+        memloctop = Interface.memloctop,
+        fullpath = Interface.fullpath,
+        fullIDpath = Interface.fullIDpath,
+        notvisible = Interface.notvisible,
+        OP = Interface.OP,
+        xy = Interface.xy
+    })
+
+    return true
+end
+
+-- Recursively scans interface hierarchies and extracts IInfo data.
+-- One ScanForInterfaceTest2Get(true, path) call returns full IInfo data for
+-- every element under the path, so each element is recorded directly and then
+-- explored one level deeper via its id2 (id3 stays -1 as a wildcard).
 ---@param CurrentPath table Current interface path being scanned
 ---@param VisitedPaths table Tracking table to prevent infinite recursion
 ---@param AllInterfaces table Accumulator for all discovered interfaces
@@ -347,126 +430,72 @@ local function ScanAllInterfaces(CurrentPath, VisitedPaths, AllInterfaces, Depth
     VisitedPaths = VisitedPaths or {}
     AllInterfaces = AllInterfaces or {}
     SeenMemlocs = SeenMemlocs or {}
-    
+
+    -- Read_LoopyLoop turns false when the stop button is pressed
+    if not API.Read_LoopyLoop() then
+        return AllInterfaces
+    end
+
     if Depth > MaxDepth then
         return AllInterfaces
     end
-    
+
     local PathKey = PathToKey(CurrentPath)
     if VisitedPaths[PathKey] then
         return AllInterfaces
     end
     VisitedPaths[PathKey] = true
-    
-    local PathString = ""
-    for I, Segment in ipairs(CurrentPath) do
-        if I > 1 then PathString = PathString .. " -> " end
-        PathString = PathString .. table.concat(Segment, ",")
-    end
-    
-    local InterfaceIDString = "{ "
-    for I, Segment in ipairs(CurrentPath) do
-        if I > 1 then InterfaceIDString = InterfaceIDString .. ", " end
-        InterfaceIDString = InterfaceIDString .. "{" .. table.concat(Segment, ",") .. "}"
-    end
-    InterfaceIDString = InterfaceIDString .. " }"
-    
-    -- First, try to get the exact interface at this path
-    local ExactSuccess, ExactInterface = pcall(function() 
-        return API.ScanForInterfaceTest2Get(false, CurrentPath) 
-    end)
-    
-    if ExactSuccess and ExactInterface and #ExactInterface > 0 then
-        local Interface = ExactInterface[1]
-        
-        -- Check if we've already seen this interface
-        if not (Interface.memloc and SeenMemlocs[Interface.memloc]) then
-            if Interface.memloc then 
-                SeenMemlocs[Interface.memloc] = true 
-            end
 
-            local ProperInterfaceID = InterfaceIDString
-            
-            -- Perform memory reads
-            local MemoryReads = PerformMemoryReads(Interface.memloc)
+    local CurrentIDString = PathToIDString(CurrentPath)
 
-            -- Create interface data with only IInfo base fields
-            local InterfaceCopy = {
-                _parentInterfaceID = InterfaceIDString,
-                _interfaceID = ProperInterfaceID,
-                _depth = Depth,
-                _memoryReads = MemoryReads,
-                index = Interface.index,
-                x = Interface.x,
-                xs = Interface.xs,
-                y = Interface.y,
-                ys = Interface.ys,
-                box_x = Interface.box_x,
-                box_y = Interface.box_y,
-                scroll_y = Interface.scroll_y,
-                id1 = Interface.id1,
-                id2 = Interface.id2,
-                id3 = Interface.id3,
-                itemid1 = Interface.itemid1,
-                itemid1_size = Interface.itemid1_size,
-                itemid2 = Interface.itemid2,
-                hov = Interface.hov,
-                textids = Interface.textids,
-                textitem = Interface.textitem,
-                memloc = Interface.memloc,
-                memloctop = Interface.memloctop,
-                fullpath = Interface.fullpath,
-                fullIDpath = Interface.fullIDpath,
-                notvisible = Interface.notvisible,
-                OP = Interface.OP,
-                xy = Interface.xy
-            }
-            
-            table.insert(AllInterfaces, InterfaceCopy)
+    -- Record the starting interface itself once; the child scans below only
+    -- return elements under a path, never the path's own node
+    if Depth == 0 then
+        API.RandomSleep2(Config.ScanDelayMs, 0, 0)
+        local ExactSuccess, ExactInterface = pcall(function()
+            return API.ScanForInterfaceTest2Get(false, CurrentPath)
+        end)
+        if ExactSuccess and ExactInterface and #ExactInterface > 0 then
+            RecordInterface(ExactInterface[1], "", CurrentIDString, 0, AllInterfaces, SeenMemlocs)
         end
     end
-    
-    -- Now get all children of this path
-    local ChildrenSuccess, Children = pcall(function() 
-        return API.ScanForInterfaceTest2Get(true, CurrentPath) 
+
+    -- One call returns every element under this path with full IInfo data.
+    -- Scan results lag behind the query, so sleep first or this scan would
+    -- return the PREVIOUS query's results
+    API.RandomSleep2(Config.ScanDelayMs, 0, 0)
+    local Success, Interfaces = pcall(function()
+        return API.ScanForInterfaceTest2Get(true, CurrentPath)
     end)
-    
-    if not ChildrenSuccess then
+
+    if not Success or not Interfaces then
         return AllInterfaces
     end
-    
-    if not Children or #Children == 0 then
-        return AllInterfaces
-    end
-    
-    -- Track unique child combinations to explore
-    local UniqueChildren = {}
-    
-    for _, Child in ipairs(Children) do
-        -- Create a key for this child combination
-        local ChildKey = (Child.id1 or 0) .. "," .. (Child.id2 or 0) .. "," .. (Child.id3 or 0)
-        
-        if not UniqueChildren[ChildKey] then
-            UniqueChildren[ChildKey] = {
-                id1 = Child.id1 or 0,
-                id2 = Child.id2 or 0,
-                id3 = Child.id3 or 0
-            }
+
+    local RootId1 = CurrentPath[1][1]
+
+    for I = 1, #Interfaces do
+        if not API.Read_LoopyLoop() then
+            return AllInterfaces
         end
-    end
-    
-    -- Recursively explore each unique child path
-    for _, ChildIds in pairs(UniqueChildren) do
-        local ChildPath = CreateChildPath(CurrentPath, ChildIds.id1, ChildIds.id2, ChildIds.id3)
-        local ChildPathKey = PathToKey(ChildPath)
-        
-        if not VisitedPaths[ChildPathKey] then
+
+        local Interface = Interfaces[I]
+
+        -- The child's own path appends its id2/id3 (components come back with
+        -- id3=-1, sub-elements with a concrete id3, both formats match the
+        -- paths seen in game, e.g. {942,1,-1,0} and {942,8,14848,0})
+        local ChildPath = nil
+        if Interface.id2 then
+            ChildPath = CreateChildPath(CurrentPath, RootId1, Interface.id2, Interface.id3 or -1)
+        end
+
+        local IDString = ChildPath and PathToIDString(ChildPath) or CurrentIDString
+
+        if RecordInterface(Interface, CurrentIDString, IDString, Depth + 1, AllInterfaces, SeenMemlocs) and ChildPath then
             ScanAllInterfaces(ChildPath, VisitedPaths, AllInterfaces, Depth + 1, MaxDepth, SeenMemlocs)
         end
     end
-    
-    collectgarbage("collect")
-    
+
     return AllInterfaces
 end
 
@@ -476,7 +505,12 @@ local function ExportInterfacesToCSV()
     print("[" .. ScriptName .. "] Scanning interfaces...")
     
     local AllInterfaces = ScanAllInterfaces(Config.StartingInterface, {}, {}, 0, 100000, {})
-    
+    collectgarbage("collect")
+
+    if not API.Read_LoopyLoop() then
+        print("[" .. ScriptName .. "] Stop pressed - exporting what was scanned so far")
+    end
+
     if not AllInterfaces or #AllInterfaces == 0 then
         print("[" .. ScriptName .. "] No interfaces found")
         return false
@@ -500,14 +534,21 @@ local function ExportInterfacesToCSV()
         "fullpath", "fullIDpath", "notvisible", "OP", "xy"
     }
     
-    -- Collect memory read headers from first interface
+    -- Collect memory read headers from all interfaces (the first one may have no
+    -- memloc, so relying on it alone can silently drop every memory column)
+    local MemoryReadHeaderSet = {}
     local MemoryReadHeaders = {}
-    if AllInterfaces and #AllInterfaces > 0 and AllInterfaces[1]._memoryReads then
-        for FunctionName, _ in pairs(AllInterfaces[1]._memoryReads) do
-            table.insert(MemoryReadHeaders, FunctionName)
+    for _, Interface in ipairs(AllInterfaces) do
+        if Interface._memoryReads then
+            for FunctionName, _ in pairs(Interface._memoryReads) do
+                if not MemoryReadHeaderSet[FunctionName] then
+                    MemoryReadHeaderSet[FunctionName] = true
+                    table.insert(MemoryReadHeaders, FunctionName)
+                end
+            end
         end
-        table.sort(MemoryReadHeaders)
     end
+    table.sort(MemoryReadHeaders)
     
     local EscapedHeaders = {}
     for _, Header in ipairs(Headers) do
@@ -588,5 +629,5 @@ if Success then
     OpenDirectory(Config.OutputDirectory)
 end
 
--- The line below is needed to run the script from the ScriptManager, do not uncomment it
+-- This exporter runs once and exits. The ScriptManager loop below stays commented out on purpose; do not remove the line.
 -- while API.Read_LoopyLoop() do
