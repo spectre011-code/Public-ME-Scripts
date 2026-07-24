@@ -121,7 +121,11 @@ DATA.TREES.TEAK = {
     NAME = "Teak",
     ["Karamja"] = {
         area = {x1 = 2817, y1 = 3076, x2 = 2829, y2 = 3090, z = 0},
+    },
+    ["Musa Point"] = {
+        area = {x1 = 2892, y1 = 3148, x2 = 2900, y2 = 3156, z = 0},
     }
+
 }
 
 DATA.TREES.MAPLE = {
@@ -152,6 +156,20 @@ DATA.TREES.MAHOGANY = {
     NAME = "Mahogany",
     ["Karamja"] = {
         area = {x1 = 2817, y1 = 3076, x2 = 2829, y2 = 3090, z = 0},
+    },
+    ["South of Cairn Isle"] = {
+        area = {x1 = 2774, y1 = 2944, x2 = 2786, y2 = 2953, z = 0},
+    }
+
+}
+
+DATA.TREES.YEW = {
+    NAME = "Yew",
+    ["Edgeville"] = {
+        area = {x1 = 3084, y1 = 3467, x2 = 3090, y2 = 3483, z = 0},
+    },
+    ["South of Seers bank"] = {
+        area = {x1 = 2703, y1 = 3457, x2 = 2718, y2 = 3468, z = 0},
     }
 }
 

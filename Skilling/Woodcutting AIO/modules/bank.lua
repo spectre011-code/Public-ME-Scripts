@@ -287,7 +287,7 @@ local function GetNearestBank()
         table.insert(BankNames, bank.Name)
     end
     
-    local AllBanks = API.GetAllObjArrayInteract_str(BankNames, 50, {0, 1, 12})
+    local AllBanks = API.FindObject_string(BankNames, 50)
     
     if not AllBanks or #AllBanks == 0 then
         return false

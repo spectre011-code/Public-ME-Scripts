@@ -1,13 +1,13 @@
 -- Title: Spectre011's Woodcutting AIO
 -- Author: Spectre011
 -- Description: Cuts trees
--- Version: 1.4.0
+-- Version: 1.5.0
 -- Category: Woodcutting
 
 ScriptName = "Spectre's Woodcutting AIO"
 Author = "Spectre011"
-ScriptVersion = "1.4.0"
-ReleaseDate = "11-07-2026"
+ScriptVersion = "1.5.0"
+ReleaseDate = "28-06-2025"
 DiscordHandle = "not_spectre011"
 
 --[[
@@ -56,6 +56,12 @@ v1.4.0 - 11-07-2026
     - Added human-like breaks (micro-breaks every 15-40 min, occasional long breaks).
     - Randomized the main loop tick (200-600ms instead of fixed 300ms).
     - Replaced API.SetMaxIdleTime() with an inlined anti-idle that also runs during breaks.
+v1.5.0 - 23-07-2026
+    - Added Mahogany trees - South of Cairn Isle
+    - Added Teak tree - Musa Point
+    - Added Yew tree - Edgeville
+    - Added Edgeville Bank
+    - Removed disable fake mouse function
 ]]
 
 local API = require("api")
@@ -186,7 +192,6 @@ end
 
 local NextBreakTime = RollNextBreakTime()
 
-API.Write_fake_mouse_do(false)
 while (API.Read_LoopyLoop()) do
     if not API.CacheEnabled then
         Slib:Error("Cache is not enabled. Halting script.")

@@ -134,6 +134,8 @@ function FUNC:GetBestTree(config)
         treeData = DATA.TREES.EUCALYPTUS
     elseif treeType == "Mahogany trees" then
         treeData = DATA.TREES.MAHOGANY
+    elseif treeType == "Yew tree" then
+        treeData = DATA.TREES.YEW
     elseif treeType == "Ivy" then
         treeData = DATA.TREES.IVY
     elseif treeType == "Magic tree" then
@@ -315,6 +317,8 @@ function FUNC:GetLogIdFromTree(treeSelection)
         return 12581
     elseif lowerTree:find("mahogany tree") then
         return 6332
+    elseif lowerTree:find("yew tree") then
+        return 1515
     elseif lowerTree:find("magic tree") and not lowerTree:find("eternal") then
         return 1513
     elseif lowerTree:find("elder tree") then
