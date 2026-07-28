@@ -1,6 +1,6 @@
 local ScriptName = "VB Scanner"
 local Author = "Spectre011"
-local ScriptVersion = "1.0.0"
+local ScriptVersion = "1.1.0"
 local ReleaseDate = "08-02-2026"
 local DiscordHandle = "not_spectre011"
 
@@ -26,6 +26,9 @@ local DiscordHandle = "not_spectre011"
 Changelog:
 v1.0.0 - 08-02-2026
     - Initial release.
+v1.1.0 - 28-07-2026
+    - Added VARCS.
+    - Maybe faster scans
 ]]
 
 
@@ -34,8 +37,9 @@ local Slib = require("slib")
 
 ClearRender()
 
-local VARBIT_MAX = 60000
-local VARP_MAX = 12000
+local VARBIT_MAX = 62000
+local VARP_MAX = 14000
+local VARC_MAX = 9000
 
 -- ==========================================
 -- STATE & CONFIGURATION
@@ -43,6 +47,7 @@ local VARP_MAX = 12000
 local state = {
     varbits = {}, -- Master list of varbits (NEVER modified by filters)
     varps = {},   -- Master list of varps (NEVER modified by filters)
+    varcs = {},   -- Master list of varcs (NEVER modified by filters)
     
     -- Scanning/Process States
     isInitialScanning = false,
@@ -63,7 +68,16 @@ local state = {
     
     -- Deferred Actions
     pendingAction = nil,
-    executionTime = 0
+    executionTime = 0,
+
+    -- Filtered-list cache (rebuilt only when data or filters change,
+    -- NOT every frame - avoids re-filtering/re-sorting 85k entries per draw)
+    filterDirty = true,
+    cache = {
+        varbits = {}, varbitsFiltered = 0,
+        varps = {},   varpsFiltered = 0,
+        varcs = {},   varcsFiltered = 0
+    }
 }
 
 -- Colors (Solarized Dark / Gold Theme)
@@ -79,76 +93,155 @@ local colors = {
 -- LOGIC FUNCTIONS
 -- ==========================================
 
--- Helper to create a new entry
-local function createEntry(id, val)
-    return {
-        id = id,
-        val = val,
-        prev = val,
-        changed = false,
-        lastUpdate = 0
-    }
-end
-
 -- 1. INITIAL SCAN (ALL AT ONCE)
 local function performInitialScan()
     state.isInitialScanning = true
-    
-    -- Scan all Varbits
-    for i = 0, VARBIT_MAX do
-        local val = API.GetVarbitValue(i)
-        state.varbits[i] = createEntry(i, val)
-    end
-    
-    -- Scan all Varps
-    for i = 0, VARP_MAX do
-        local vb = API.VB_FindPSettinOrder(i)
-        if vb then
-            state.varps[i] = createEntry(i, vb.state)
-        end
-    end
-    
-    state.isInitialScanning = false
-    state.statusText = "Scan Complete. Ready."
-    state.statusColor = colors.textGreen
-    print(string.format("Initial Scan Complete - %d varbits and %d varps scanned", VARBIT_MAX + 1, VARP_MAX + 1))
-end
+    print("=== Starting full scan (this may take a moment) ===")
+    local t0 = os.clock()
 
--- 2. UPDATE VALUES
-local function updateValues()
-    local count = 0
-    
-    -- Update Varbits
-    for id, entry in pairs(state.varbits) do
-        local newVal = API.GetVarbitValue(id)
-        if newVal ~= entry.val then
-            entry.prev = entry.val
-            entry.val = newVal
-            entry.changed = true
-            entry.lastUpdate = os.clock()
-            count = count + 1
-        else
-            entry.changed = false
+    -- Hoist to locals: avoids an API-table lookup on every native call
+    local VB_FindPSettinOrder = API.VB_FindPSettinOrder
+    local GetVarbitsFromVarp  = API.GetVarbitsFromVarp
+    local VC_FindPSett        = API.VC_FindPSett
+    local ReadLoop            = API.Read_LoopyLoop
+    local varbits, varps, varcs = state.varbits, state.varps, state.varcs
+
+    -- Combined varp + varbit scan.
+    -- For each varp we fetch its 32-bit value ONCE, then extract every child
+    -- varbit's value locally via bitmask (varp >> startBit) & mask - no per-varbit
+    -- native call. This is exactly what GetVarbitValue does internally.
+    print("Scanning varps + varbits (varps 1-" .. VARP_MAX .. ")...")
+    local varpCount, varbitCount = 0, 0
+    for i = 1, VARP_MAX do
+        if i % 2000 == 0 and not ReadLoop() then
+            print("Scan aborted (script stopped).")
+            state.isInitialScanning = false
+            return
         end
-    end
-    
-    -- Update Varps
-    for id, entry in pairs(state.varps) do
-        local vb = API.VB_FindPSettinOrder(id)
+        local vb = VB_FindPSettinOrder(i)
         if vb then
-            local newVal = vb.state
-            if newVal ~= entry.val then
-                entry.prev = entry.val
-                entry.val = newVal
-                entry.changed = true
-                entry.lastUpdate = os.clock()
-                count = count + 1
-            else
-                entry.changed = false
+            local varpVal = vb.state
+            varps[i] = { id = i, val = varpVal, prev = varpVal, changed = false, lastUpdate = 0 }
+            varpCount = varpCount + 1
+
+            -- Derive child varbit values from this varp's value (no native call).
+            -- Mask varp to 32-bit unsigned first so a signed/negative state
+            -- doesn't leak high bits through the logical shift.
+            local u = varpVal & 0xFFFFFFFF
+            local children = GetVarbitsFromVarp(i)
+            if children then
+                for _, vbit in ipairs(children) do
+                    local sb = vbit.startBit
+                    local width = vbit.endBit - sb + 1
+                    local val = (u >> sb) & ((1 << width) - 1)
+                    -- Store parent varp + bit layout so updates can re-derive
+                    -- this varbit without a full-range rescan.
+                    varbits[vbit.id] = {
+                        id = vbit.id, val = val, prev = val, changed = false, lastUpdate = 0,
+                        varp = i, startBit = sb, width = width
+                    }
+                    varbitCount = varbitCount + 1
+                end
             end
         end
     end
-    
+
+    print("Scanning varcs (1-" .. VARC_MAX .. ")...")
+    local varcCount = 0
+    for i = 1, VARC_MAX do
+        if i % 2000 == 0 and not ReadLoop() then
+            print("Scan aborted (script stopped).")
+            state.isInitialScanning = false
+            return
+        end
+        local vc = VC_FindPSett(i)
+        if vc then
+            local val = vc.state
+            varcs[i] = { id = i, val = val, prev = val, changed = false, lastUpdate = 0 }
+            varcCount = varcCount + 1
+        end
+    end
+
+    state.isInitialScanning = false
+    local elapsed = os.clock() - t0
+    state.statusText = string.format("Scan Complete in %.2fs. Ready.", elapsed)
+    state.statusColor = colors.textGreen
+    print(string.format("Initial Scan Complete in %.2fs - %d varbits (derived), %d/%d varps, %d/%d varcs",
+        elapsed, varbitCount, varpCount, VARP_MAX, varcCount, VARC_MAX))
+end
+
+-- 2. UPDATE VALUES
+-- Apply a fresh value to an entry, tracking change state. Returns 1 if changed.
+local function applyValue(entry, newVal, now)
+    if newVal ~= entry.val then
+        entry.prev = entry.val
+        entry.val = newVal
+        entry.changed = true
+        entry.lastUpdate = now
+        return 1
+    else
+        entry.changed = false
+        return 0
+    end
+end
+
+-- Updates ONLY the entries still in the lists (respects removals).
+-- Each varp value is fetched at most once per cycle and cached; varbits are
+-- re-derived locally from their parent varp's cached value (no per-varbit call).
+local function updateValues()
+    local count = 0
+    local now = os.clock()
+    local tick = 0
+
+    local VB_FindPSettinOrder = API.VB_FindPSettinOrder
+    local VC_FindPSett        = API.VC_FindPSett
+    local ReadLoop            = API.Read_LoopyLoop
+    local varbits, varps, varcs = state.varbits, state.varps, state.varcs
+
+    -- Per-cycle cache: varp id -> 32-bit unsigned value (false if varp returned nil)
+    local varpU = {}
+
+    -- Update remaining varps
+    for id, entry in pairs(varps) do
+        tick = tick + 1
+        if tick % 1000 == 0 and not ReadLoop() then return count end
+        local vb = VB_FindPSettinOrder(id)
+        if vb then
+            local v = vb.state
+            varpU[id] = v & 0xFFFFFFFF
+            count = count + applyValue(entry, v, now)
+        else
+            varpU[id] = false
+        end
+    end
+
+    -- Update remaining varbits (derive from parent varp's cached value)
+    for id, entry in pairs(varbits) do
+        tick = tick + 1
+        if tick % 1000 == 0 and not ReadLoop() then return count end
+        local u = varpU[entry.varp]
+        if u == nil then
+            -- Parent varp not in the list; fetch it once and cache
+            local vb = VB_FindPSettinOrder(entry.varp)
+            u = vb and (vb.state & 0xFFFFFFFF) or false
+            varpU[entry.varp] = u
+        end
+        if u then
+            local val = (u >> entry.startBit) & ((1 << entry.width) - 1)
+            count = count + applyValue(entry, val, now)
+        end
+    end
+
+    -- Update remaining varcs
+    for id, entry in pairs(varcs) do
+        tick = tick + 1
+        if tick % 1000 == 0 and not ReadLoop() then return count end
+        local vc = VC_FindPSett(id)
+        if vc then
+            count = count + applyValue(entry, vc.state, now)
+        end
+    end
+
     state.statusText = string.format("Update complete. %d changes found.", count)
     state.statusColor = count > 0 and colors.textGreen or colors.text
     print(string.format("Update complete: %d changes found", count))
@@ -278,6 +371,14 @@ local function getFilteredList(sourceTable)
     return result, filtered
 end
 
+-- Rebuild all three cached filtered lists (call only when dirty)
+local function rebuildCache()
+    state.cache.varbits, state.cache.varbitsFiltered = getFilteredList(state.varbits)
+    state.cache.varps,   state.cache.varpsFiltered   = getFilteredList(state.varps)
+    state.cache.varcs,   state.cache.varcsFiltered   = getFilteredList(state.varcs)
+    state.filterDirty = false
+end
+
 -- 4. REMOVAL LOGIC (permanent operations on master data)
 local function removeChangedItems()
     local removed = 0
@@ -288,12 +389,18 @@ local function removeChangedItems()
         end
     end
     for id, entry in pairs(state.varps) do
-        if entry.changed then 
+        if entry.changed then
             state.varps[id] = nil
             removed = removed + 1
         end
     end
-    
+    for id, entry in pairs(state.varcs) do
+        if entry.changed then
+            state.varcs[id] = nil
+            removed = removed + 1
+        end
+    end
+
     state.statusText = string.format("Removed %d changed items.", removed)
     state.statusColor = colors.textGreen
     print(string.format("Removed %d changed items", removed))
@@ -309,12 +416,18 @@ local function removeUnchangedItems()
         end
     end
     for id, entry in pairs(state.varps) do
-        if not entry.changed then 
+        if not entry.changed then
             state.varps[id] = nil
             removed = removed + 1
         end
     end
-    
+    for id, entry in pairs(state.varcs) do
+        if not entry.changed then
+            state.varcs[id] = nil
+            removed = removed + 1
+        end
+    end
+
     state.statusText = string.format("Removed %d unchanged items.", removed)
     state.statusColor = colors.textGreen
     print(string.format("Removed %d unchanged items", removed))
@@ -405,6 +518,7 @@ local function DrawControls()
     
     if filterModeChanged then
         state.filterMode = newFilterMode
+        state.filterDirty = true
     end
     ImGui.PopItemWidth()
     
@@ -422,7 +536,7 @@ local function DrawControls()
     ImGui.SameLine()
     ImGui.PushItemWidth(150)
     local changed1, val1 = ImGui.InputText("##searchId", state.searchId, 100)
-    if changed1 then state.searchId = val1 end
+    if changed1 then state.searchId = val1; state.filterDirty = true end
     ImGui.PopItemWidth()
     
     -- Filter 2: Current Value
@@ -433,7 +547,7 @@ local function DrawControls()
     ImGui.SameLine()
     ImGui.PushItemWidth(150)
     local changed2, val2 = ImGui.InputText("##searchValue", state.searchValue, 100)
-    if changed2 then state.searchValue = val2 end
+    if changed2 then state.searchValue = val2; state.filterDirty = true end
     ImGui.PopItemWidth()
     
     -- Move to RIGHT COLUMN
@@ -447,7 +561,7 @@ local function DrawControls()
     ImGui.SameLine()
     ImGui.PushItemWidth(150)
     local changed3, val3 = ImGui.InputText("##searchFrom", state.searchFrom, 100)
-    if changed3 then state.searchFrom = val3 end
+    if changed3 then state.searchFrom = val3; state.filterDirty = true end
     ImGui.PopItemWidth()
     
     -- Filter 4: Changed To
@@ -458,7 +572,7 @@ local function DrawControls()
     ImGui.SameLine()
     ImGui.PushItemWidth(150)
     local changed4, val4 = ImGui.InputText("##searchTo", state.searchTo, 100)
-    if changed4 then state.searchTo = val4 end
+    if changed4 then state.searchTo = val4; state.filterDirty = true end
     ImGui.PopItemWidth()
     
     -- Reset columns
@@ -541,17 +655,24 @@ local function Draw()
         DrawControls()
         ImGui.Separator()
         
-        -- Main Data Area (Split 50/50)
-        ImGui.Columns(2, "MainSplit", true)
-        
-        local filteredVarbits, vbFiltered = getFilteredList(state.varbits)
-        DrawList("VARBITS", filteredVarbits, vbFiltered, "vblist")
-        
+        -- Rebuild filtered lists only when data/filters changed (not every frame)
+        if state.filterDirty then
+            rebuildCache()
+        end
+
+        -- Main Data Area (3-way split)
+        ImGui.Columns(3, "MainSplit", true)
+
+        DrawList("VARBITS", state.cache.varbits, state.cache.varbitsFiltered, "vblist")
+
         ImGui.NextColumn()
-        
-        local filteredVarps, vpFiltered = getFilteredList(state.varps)
-        DrawList("VARPS", filteredVarps, vpFiltered, "vplist")
-        
+
+        DrawList("VARPS", state.cache.varps, state.cache.varpsFiltered, "vplist")
+
+        ImGui.NextColumn()
+
+        DrawList("VARCS", state.cache.varcs, state.cache.varcsFiltered, "vclist")
+
         ImGui.Columns(1) -- Reset Main Split
     end
     
@@ -580,6 +701,7 @@ while API.Read_LoopyLoop() do
         if state.pendingAction == "scan" then
             state.varbits = {}
             state.varps = {}
+            state.varcs = {}
             performInitialScan()
             
         elseif state.pendingAction == "update" then
@@ -591,7 +713,10 @@ while API.Read_LoopyLoop() do
         elseif state.pendingAction == "remove_unchanged" then
             removeUnchangedItems()
         end
-        
+
+        -- Data changed - force cache rebuild on next draw
+        state.filterDirty = true
+
         -- Reset action after finishing
         state.pendingAction = nil
     end
