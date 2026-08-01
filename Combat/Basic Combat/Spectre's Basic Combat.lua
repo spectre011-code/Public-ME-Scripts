@@ -1314,7 +1314,8 @@ while API.Read_LoopyLoop() do
         -- Runs mid-combat too, so heals are never held up by the attack logic.
         Sustain()
 
-        -- Loot only between fights, or the walk to an item interrupts combat.
+        -- Looting runs mid-combat too. Only skipped on the tick an attack was
+        -- just sent, so the loot walk does not cancel the approach to it.
         local Attacked = AttackByPriority()
         local Idle = IsReadyToAttack()
         if not Attacked then
