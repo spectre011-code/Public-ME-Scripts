@@ -1,13 +1,15 @@
 ScriptName = "Basic Combat"
 Author = "Spectre011"
-ScriptVersion = "1.0.0"
+ScriptVersion = "1.0.1"
 ReleaseDate = "01-08-2026"
 DiscordHandle = "not_spectre011"
 
 --[[
 Changelog:
-v1.0 - 01-08-2026
+v1.0.0 - 01-08-2026
     - Initial release.
+v1.0.1 - 01-08-2026
+    - Loot now work on all times instead of just when idling.
 ]]
 
 local API = require("api")
@@ -1315,7 +1317,7 @@ while API.Read_LoopyLoop() do
         -- Loot only between fights, or the walk to an item interrupts combat.
         local Attacked = AttackByPriority()
         local Idle = IsReadyToAttack()
-        if not Attacked and Idle then
+        if not Attacked then
             LootGround()
         end
 
