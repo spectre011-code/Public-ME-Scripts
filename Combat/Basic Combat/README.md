@@ -38,7 +38,7 @@ buffs topped up — all from a single ImGui window.
 
 ## Requirements
 
-- `[slib.lua](https://github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/slib.lua)` in your `Lua_Scripts` folder
+- [slib.lua](https://github.com/spectre011-code/Public-ME-Scripts/blob/main/Libraries/slib.lua) in your `Lua_Scripts` folder
 
 ## Installation
 
