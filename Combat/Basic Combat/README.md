@@ -21,7 +21,7 @@ buffs topped up — all from a single ImGui window.
 - **Strykewyrms** — add the wyrm itself and the script investigates the matching
   mound to spawn it. Mound types are told apart by id, so it won't spawn the
   wrong one.
-- **Looting** — add ground loot by item id; it only loots between fights.
+- **Looting** — add ground loot by item id.
 - **Sustain** — Excalibur, food, Elven Shard and prayer potions, each with a
   toggle and adjustable trigger percentages.
 - **Buff upkeep** — tick the buffs to maintain: overloads, aggression, weapon
