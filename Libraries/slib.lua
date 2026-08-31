@@ -1,7 +1,7 @@
 --asslib
 local ScriptName = "Spectre011's Lua Utility Library" 
 local Author = "Spectre011"
-local ScriptVersion = "1.0.15"
+local ScriptVersion = "1.0.17"
 local ReleaseDate = "09-07-2025"
 local DiscordHandle = "not_spectre011"
 
@@ -66,10 +66,13 @@ v1.0.13 - 17-04-2026
     - Added GetIDSFromTable function.
     - Removed CheckIncenseStick function.
 v1.0.14 - 04-07-2026
-    - Fixed HighAlch function
+    - Fixed HighAlch function.
 v1.0.15 - 01-08-2026
-    - Added Powders and Aspects to BuffUpKeep() function
-
+    - Added Powders and Aspects to BuffUpKeep() function.
+v1.0.16 - 04-08-2026
+    - Fixed varc reading function on GetRuneAmounts() and PrintRunes() functions.
+v1.0.17 - 31-08-2026
+    - Added Charming Potion to BuffUpKeep() function.
 ]]
 
 local API = require("api")
@@ -278,6 +281,19 @@ Slib.Items.AggressionPotions = {
     AggressionVial1  = { Id = 37965, Name = "Aggression potion (1)" }
 }
 
+Slib.Items.CharmingPotions = {
+    CharmingFlask6 = { Id = 48662, Name = "Charming potion flask (6)" },
+    CharmingFlask5 = { Id = 48664, Name = "Charming potion flask (5)" },
+    CharmingFlask4 = { Id = 48666, Name = "Charming potion flask (4)" },
+    CharmingFlask3 = { Id = 48668, Name = "Charming potion flask (3)" },
+    CharmingFlask2 = { Id = 48670, Name = "Charming potion flask (2)" },
+    CharmingFlask1 = { Id = 48672, Name = "Charming potion flask (1)" },
+    CharmingVial4  = { Id = 48984, Name = "Charming potion (4)"       },
+    CharmingVial3  = { Id = 48986, Name = "Charming potion (3)"       },
+    CharmingVial2  = { Id = 48988, Name = "Charming potion (2)"       },
+    CharmingVial1  = { Id = 48990, Name = "Charming potion (1)"       }
+}
+
 Slib.Items.LuckPotions = {
     LuckPotion          = { Id = 37963, Name = "Luck potion"            },
     EnhancedLuckPotion  = { Id = 39820, Name = "Enhanced luck potion"   }
@@ -318,6 +334,10 @@ Slib.Buffs.AggressionPotions = {
     Aggression = { Id = 37969, Name = "Aggression" }
 }
 
+Slib.Buffs.CharmingPotions = {
+    Charming = { Id = 48986, Name = "Charming" }
+}
+
 Slib.Buffs.LuckPotions = {
     LuckPotion          = { Id = 37963, Name = "LUCK_POTION_ACTIVE"             },
     EnhancedLuckPotion  = { Id = 39820, Name = "ENHANCED_LUCK_POTION_ACTIVE"    }
@@ -345,11 +365,11 @@ Slib.Interfaces.TextInput = {
 }
 
 Slib.Interfaces.InstanceOptions = {
-    { {1591,15,-1,0} }, -- Base
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,45,-1,0}, {1591,46,-1,0}, {1591,74,-1,0}  }, -- Max Players
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,49,-1,0}, {1591,76,-1,0}, {1591,83,-1,0}  }, -- Min Combat
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,50,-1,0}, {1591,85,-1,0}, {1591,94,-1,0}  }, -- Spawn Speed
-    { {1591,15,-1,0}, {1591,17,-1,0}, {1591,51,-1,0}, {1591,52,-1,0}, {1591,102,-1,0} } -- Protection
+    { {1591,12,-1,0} }, -- Base
+    { {1591,12,-1,0}, {1591,14,-1,0}, {1591,41,-1,0}, {1591,42,-1,0}, {1591,70,-1,0}, {1591,71,-1,0} }, -- Max Players
+    { {1591,12,-1,0}, {1591,14,-1,0}, {1591,45,-1,0}, {1591,72,-1,0}, {1591,79,-1,0}, {1591,80,-1,0} }, -- Min Combat
+    { {1591,12,-1,0}, {1591,14,-1,0}, {1591,46,-1,0}, {1591,81,-1,0}, {1591,90,-1,0}, {1591,91,-1,0} }, -- Spawn Speed
+    { {1591,12,-1,0}, {1591,14,-1,0}, {1591,47,-1,0}, {1591,48,-1,0}, {1591,98,-1,0}, {1591,99,-1,0} } -- Protection
 
 }
 
@@ -3004,7 +3024,7 @@ function Slib:PrintRunes()
     
     for _, Rune in pairs(self.Items.Runes.Normal) do
         local Success, Result = pcall(function()
-            return API.VB_FindPSettinOrder(Rune.InventoryVB, 1)
+            return API.VC_FindPSett(Rune.InventoryVB, 1)
         end)
         
         local RuneAmount = 0
@@ -4288,7 +4308,7 @@ function Slib:GetRuneAmounts()
     -- Get Normal Runes (from pouches + inventory)
     for RuneName, Rune in pairs(self.Items.Runes.Normal) do
         local Success, Result = pcall(function()
-            return API.VB_FindPSettinOrder(Rune.InventoryVB, 1)
+            return API.VC_FindPSett(Rune.InventoryVB, 1)
         end)
         
         local RuneAmount = 0
@@ -5425,7 +5445,7 @@ function Slib:InstanceStart()
         return false
     end
 
-    API.DoAction_Interface(0x24, 0xffffffff, 1, 1591, 60, -1, API.OFF_ACT_GeneralInterface_route)
+    API.DoAction_Interface(0x24, 0xffffffff, 1, 1591, 56, -1, API.OFF_ACT_GeneralInterface_route)
     self:Info("[InstanceStart] Started instance")
 
     return true
@@ -5552,10 +5572,10 @@ function Slib:HighAlch(ItemIds)
             goto skip
         end
 
-        API.DoAction_DontResetSelection()
-        API.DoAction_Interface(0xffffffff,0xffffffff,0,1461,1,47,API.OFF_ACT_Bladed_interface_route) -- Select High Alch
+        --API.DoAction_DontResetSelection()
+        API.DoAction_Interface(0xffffffff,0xffffffff,0,1672,1,47,API.OFF_ACT_Bladed_interface_route) -- Select High Alch
         self:RandomSleep(50, 100, "ms")
-        API.DoAction_DontResetSelection()
+        --API.DoAction_DontResetSelection()
         API.DoAction_Inventory1(itemId,0,0,API.OFF_ACT_GeneralInterface_route1)
         self:RandomSleep(50, 100, "ms")
         ::skip::
@@ -5603,7 +5623,7 @@ function Slib:Note(ItemIds)
 end
 
 --- Buff Up Keep
---- Possible values: "Overload", "Weapon Poison", "Luck Potion", "Aggression",
+--- Possible values: "Overload", "Weapon Poison", "Luck Potion", "Aggression", "Charming Potion",
 ---                  "Vampyrism", "Penance", "Darkness", "Animate Dead", "Temporal Anomaly",
 ---                  "Powder of Defense", "Powder of Protection", "Powder of Item Protection",
 ---                  "Powder of Pulverising", "Powder of Burials", "Powder of Penance",
@@ -5764,6 +5784,19 @@ function Slib:BuffUpKeep(BuffNames)
                 end
 
                 self:Warn("[BuffUpKeep] No Aggression potions found in inventory")
+                AllGood = false
+            end
+
+        elseif BuffName == "Charming Potion" then
+            if not self:HasBuff(Slib.Buffs.CharmingPotions.Charming.Id) then
+                local Potions = self:GetIDSFromTable(Slib.Items.CharmingPotions)
+                if Inventory:ContainsAny(Potions) then
+                    self:Info("[BuffUpKeep] Drinking Charming potion...")
+                    API.DoAction_Inventory2(Potions, 0, 1, API.OFF_ACT_GeneralInterface_route)
+                    return true
+                end
+
+                self:Warn("[BuffUpKeep] No Charming potions found in inventory")
                 AllGood = false
             end
 
