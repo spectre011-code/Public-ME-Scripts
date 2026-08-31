@@ -1,15 +1,26 @@
 ScriptName = "Basic Combat"
 Author = "Spectre011"
-ScriptVersion = "1.0.1"
-ReleaseDate = "01-08-2026"
+ScriptVersion = "1.1.0"
+ReleaseDate = "31-08-2026"
 DiscordHandle = "not_spectre011"
 
 --[[
 Changelog:
-v1.0.0 - 01-08-2026
+v1.0 - 01-08-2026
     - Initial release.
+
 v1.0.1 - 01-08-2026
     - Loot now work on all times instead of just when idling.
+
+v1.1.0 - 31-08-2026
+    - Added Charming Potion to the buff upkeep list (needs slib v1.0.17).
+    - The loot id box now accepts several ids at once, separated by commas
+      and/or spaces.
+    - Added static lists (seeds, runes, grimy herbs, salvage, cut and uncut
+      gems, noted and unnoted) that can be added in one click. A list shows as
+      a single row instead of its hundreds of items.
+    - Added an Alch tab that High Alchs the listed items.
+    - Added a Note tab that notes the listed items with magic notepaper.
 ]]
 
 local API = require("api")
@@ -30,6 +41,9 @@ local Config = {
     LootRange = 20,            -- Tile distance / radius to loot ground items
     LootMinSleep = 400,        -- Post-loot min sleep (ms)
     LootMaxSleep = 700,        -- Post-loot max sleep (ms)
+    ItemListMaxRows = 8,       -- Item list rows shown before the box starts scrolling
+    AlchInterval = 3,          -- Min seconds between High Alch passes
+    NoteInterval = 3,          -- Min seconds between Note passes
     MoundMinSleep = 1200,      -- Post-investigate min sleep (ms), the wyrm takes a moment
     MoundMaxSleep = 1800,      -- Post-investigate max sleep (ms)
     NoTargetTimeout = 120,     -- Stop the script after this many seconds with no target
@@ -65,7 +79,7 @@ local PrayerPotionIds = { 23399, 23401, 23403, 23405, 23407, 23409, 3024, 3026, 
 local BuffGroups = {
     {
         Name = "Potions",
-        Buffs = { "Aggression", "Luck Potion", "Overload", "Weapon Poison" },
+        Buffs = { "Aggression", "Charming Potion", "Luck Potion", "Overload", "Weapon Poison" },
     },
     {
         Name = "Aspects",
@@ -87,6 +101,119 @@ local BuffGroups = {
         },
     },
 }
+
+-- Static loot lists offered by the "Add List" dropdown on the Loot tab. Ids came
+-- from the rs3-cs2-dumps-main item dump; only ids are stored, because AddIdsToList
+-- resolves the display names through Item:Get when the list is added.
+-- Seeds and runes stack, so they have no noted form and get one list each. The
+-- noted lists skip anything with no noted version (quest herbs, for instance).
+local LootPresets = {
+    {
+        Name = "Seeds",
+        Ids = {
+            5096, 5097, 5098, 5099, 5100, 5101, 5102, 5103, 5104, 5105, 5106, 5280,
+            5282, 5283, 5284, 5285, 5286, 5287, 5288, 5289, 5290, 5291, 5292, 5293,
+            5294, 5295, 5296, 5297, 5298, 5299, 5300, 5301, 5302, 5303, 5304, 5305,
+            5306, 5307, 5308, 5309, 5310, 5311, 5312, 5313, 5314, 5315, 5316, 5317,
+            5318, 5319, 5320, 5321, 5322, 5323, 5324, 6311, 6461, 12176, 14589, 14870,
+            21620, 21621, 28258, 28259, 28260, 28261, 28262, 28263, 28264, 28265,
+            28266, 31437, 37952, 48201, 48716, 48717, 48718, 48763, 48764, 48765,
+            48766, 48767, 48768, 48769, 48770, 58882, 58976, 60670
+        },
+    },
+    {
+        Name = "Runes",
+        Ids = {
+            554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 4694,
+            4695, 4696, 4697, 4698, 4699, 9075, 21773, 55337, 55338, 55339, 55340
+        },
+    },
+    {
+        Name = "Grimy herbs (noted)",
+        Ids = {
+            200, 202, 204, 206, 208, 210, 212, 214, 216, 218, 220, 2486, 3050, 3052,
+            12175, 14837, 27040, 27041, 27042, 27043, 27044, 21627, 37976, 48244
+        },
+    },
+    {
+        Name = "Grimy herbs",
+        Ids = {
+            199, 201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 2485, 3049, 3051,
+            12174, 14836, 19984, 19985, 19986, 19987, 19988, 21626, 37975, 48243
+        },
+    },
+    {
+        Name = "Salvage (noted)",
+        Ids = {
+            47077, 47079, 47081, 47083, 47085, 47087, 47089, 47091, 47093, 47095,
+            47097, 47099, 47101, 47103, 47105, 47107, 47109, 47111, 47113, 47115,
+            47117, 47119, 47121, 47123, 47125, 47127, 47129, 47131, 47133, 47135,
+            47137, 47139, 47141, 47143, 47145, 47147, 47149, 47151, 47153, 47155,
+            47157, 47159, 47161, 47163, 47165, 47167, 47169, 47171, 47173, 47175,
+            47177, 47179, 47181, 47183, 47185, 47187, 47189, 47191, 47193, 47195,
+            47197, 47199, 47201, 47203, 47205, 47207, 47209, 47211, 47213, 47215,
+            47217, 47219, 47221, 47223, 47225, 47227, 47229, 47231, 47233, 47235,
+            47237, 47239, 47241, 47243, 47245, 47247, 47249, 47251, 47253, 47255,
+            47257, 47259, 47261, 47263, 47265, 47267, 47269, 47271, 47273, 47275,
+            47277, 47279, 47281, 47283, 47285, 47287, 47289, 47291, 47293, 47295,
+            47297, 47299, 47301, 47303, 47305, 47307, 47309, 47311, 47313, 47315,
+            50253, 51104, 51106, 51870, 51872, 51874, 51876, 51878, 52122, 52549,
+            52551, 52553, 52946, 52948, 53504, 53506, 53508, 53510, 53512, 58230,
+            58232, 58234, 58236, 58238, 58240
+        },
+    },
+    {
+        Name = "Salvage",
+        Ids = {
+            47076, 47078, 47080, 47082, 47084, 47086, 47088, 47090, 47092, 47094,
+            47096, 47098, 47100, 47102, 47104, 47106, 47108, 47110, 47112, 47114,
+            47116, 47118, 47120, 47122, 47124, 47126, 47128, 47130, 47132, 47134,
+            47136, 47138, 47140, 47142, 47144, 47146, 47148, 47150, 47152, 47154,
+            47156, 47158, 47160, 47162, 47164, 47166, 47168, 47170, 47172, 47174,
+            47176, 47178, 47180, 47182, 47184, 47186, 47188, 47190, 47192, 47194,
+            47196, 47198, 47200, 47202, 47204, 47206, 47208, 47210, 47212, 47214,
+            47216, 47218, 47220, 47222, 47224, 47226, 47228, 47230, 47232, 47234,
+            47236, 47238, 47240, 47242, 47244, 47246, 47248, 47250, 47252, 47254,
+            47256, 47258, 47260, 47262, 47264, 47266, 47268, 47270, 47272, 47274,
+            47276, 47278, 47280, 47282, 47284, 47286, 47288, 47290, 47292, 47294,
+            47296, 47298, 47300, 47302, 47304, 47306, 47308, 47310, 47312, 47314,
+            50252, 51103, 51105, 51869, 51871, 51873, 51875, 51877, 52121, 52548,
+            52550, 52552, 52945, 52947, 53503, 53505, 53507, 53509, 53511, 58229,
+            58231, 58233, 58235, 58237, 58239
+        },
+    },
+    {
+        Name = "Uncut gems (noted)",
+        Ids = {
+            1618, 1620, 1622, 1624, 1626, 1628, 1630, 1632, 6572, 23056, 31854, 56399
+        },
+    },
+    {
+        Name = "Uncut gems",
+        Ids = {
+            1617, 1619, 1621, 1623, 1625, 1627, 1629, 1631, 6571, 21345, 31853, 56398
+        },
+    },
+    {
+        Name = "Cut gems (noted)",
+        Ids = {
+            1602, 1604, 1606, 1608, 1610, 1612, 1614, 1616, 6574, 23057, 31856, 56401
+        },
+    },
+    {
+        Name = "Cut gems",
+        Ids = {
+            1601, 1603, 1605, 1607, 1609, 1611, 1613, 1615, 6573, 21346, 31855, 56400
+        },
+    },
+}
+
+-- Dropdown labels, built once so the render loop is not rebuilding a table
+-- every frame.
+local LootPresetNames = {}
+for Index, Preset in ipairs(LootPresets) do
+    LootPresetNames[Index] = Preset.Name .. " (" .. #Preset.Ids .. ")"
+end
 
 local ExcaliburModeVarbit = 54934
 local ExcaliburWieldMode = 1     -- Wield mode   -> inventory option 2
@@ -148,8 +275,18 @@ local State = {
     TargetMode = "list",         -- One of TargetModes: list order, closest, or random
     LastTarget = "-",            -- Last NPC name we issued an attack on (display only)
     LastAttackedId = 0,          -- Unique id (AllObject.Unique_Id) of the last NPC attacked
-    Loot = {},                   -- Loot list: array of { Id = number, Name = string }
-    LootInput = "",              -- Current text of the loot id input box
+    -- The Loot, Alch and Note tabs are the same widget over three separate
+    -- lists, so they share one shape. Entries are { Id, Name } for a single
+    -- item or { List = string } for a whole LootPresets list. Ids / IdSet are
+    -- the entries flattened, rebuilt only when the list changes.
+    Lists = {
+        Loot = { Entries = {}, Input = "", PresetIndex = 0, Ids = {}, IdSet = {}, Enabled = true },
+        Alch = { Entries = {}, Input = "", PresetIndex = 0, Ids = {}, IdSet = {}, Enabled = false },
+        Note = { Entries = {}, Input = "", PresetIndex = 0, Ids = {}, IdSet = {}, Enabled = false },
+    },
+    LastAlch = 0,                -- os.clock() of the last High Alch pass
+    LastNote = 0,                -- os.clock() of the last Note pass
+    LastNotepaperWarn = 0,       -- os.clock() of the last "no notepaper" warning
     Sustain = {                  -- Sustain toggles (set from the Options tab)
         Excalibur = false,       -- Heal HP with Excalibur
         EatFood = false,         -- Heal HP by eating food
@@ -177,7 +314,8 @@ local State = {
 State.NextIdleDelay = math.random(Config.AntiIdleMinSeconds, Config.AntiIdleMaxSeconds)
 
 -- Enqueue an intent from the render/GUI thread for the main loop to process.
--- Payload is whatever that action needs: a list index, or the loot id text.
+-- Payload is whatever that action needs: a priority index, or a
+-- { Key = "Loot"/"Alch"/"Note", Value = ... } pair for the item list actions.
 local function QueueAction(Kind, Payload)
     State.Actions[#State.Actions + 1] = { Kind = Kind, Payload = Payload }
 end
@@ -190,7 +328,7 @@ end
 -- single self-contained file with no external settings file.
 -- The block is generated - do not edit it by hand.
 --@@CONFIG_START
-local SavedConfig = {["Priority"]={},["Loot"]={[1]={["Id"]=39814,["Name"]="Hazelmere's signet ring"}},["Sustain"]={["ElvenShard"]=false,["PrayerPotion"]=false,["EatFood"]=false,["Excalibur"]=false},["TargetMode"]="list",["Thresholds"]={["Health"]=25,["Prayer"]=25},["Buffs"]={}}
+local SavedConfig = {["Thresholds"]={["Health"]=25,["Prayer"]=25},["TargetMode"]="closest",["Lists"]={["Loot"]={["Enabled"]=true,["Entries"]={[1]={["Name"]="Hazelmere's signet ring",["Id"]=39814}}},["Note"]={["Enabled"]=false,["Entries"]={}},["Alch"]={["Enabled"]=false,["Entries"]={}}},["Buffs"]={},["Sustain"]={["ElvenShard"]=true,["EatFood"]=true,["PrayerPotion"]=true,["Excalibur"]=true},["Priority"]={}}
 --@@CONFIG_END
 
 local ScriptPath = os.getenv("USERPROFILE") .. "\\MemoryError\\Lua_Scripts\\Spectre's Basic Combat.lua"
@@ -220,6 +358,17 @@ local function Serialize(Value)
     return "nil"
 end
 
+-- Only the entries and the toggle are worth saving. Ids, IdSet, Input and
+-- PresetIndex are all rebuilt at runtime, and writing the flattened ids would
+-- put hundreds of numbers in the config block for no gain.
+local function BuildListConfig()
+    local Data = {}
+    for Key, List in pairs(State.Lists) do
+        Data[Key] = { Entries = List.Entries, Enabled = List.Enabled }
+    end
+    return Data
+end
+
 -- Rewrite the inline config block in this script file with the current config.
 local function SaveConfig()
     local File = io.open(ScriptPath, "r")
@@ -240,7 +389,7 @@ local function SaveConfig()
     local Data = {
         Priority = State.Priority,
         TargetMode = State.TargetMode,
-        Loot = State.Loot,
+        Lists = BuildListConfig(),
         Sustain = State.Sustain,
         Thresholds = State.Thresholds,
         Buffs = State.Buffs,
@@ -270,8 +419,23 @@ local function LoadConfig()
     if TargetModeLabels[SavedConfig.TargetMode] then
         State.TargetMode = SavedConfig.TargetMode
     end
+    -- Configs written before the Alch and Note tabs existed stored the loot
+    -- list at the top level, so both shapes are accepted.
     if type(SavedConfig.Loot) == "table" then
-        State.Loot = SavedConfig.Loot
+        State.Lists.Loot.Entries = SavedConfig.Loot
+    end
+    if type(SavedConfig.Lists) == "table" then
+        for Key, List in pairs(State.Lists) do
+            local Saved = SavedConfig.Lists[Key]
+            if type(Saved) == "table" then
+                if type(Saved.Entries) == "table" then
+                    List.Entries = Saved.Entries
+                end
+                if Saved.Enabled ~= nil then
+                    List.Enabled = Saved.Enabled == true
+                end
+            end
+        end
     end
     if type(SavedConfig.Sustain) == "table" then
         State.Sustain.Excalibur = SavedConfig.Sustain.Excalibur == true
@@ -546,49 +710,175 @@ local function ResolveItem(Input)
     return nil
 end
 
-local function LootContains(Id)
-    for _, Entry in ipairs(State.Loot) do
-        if Entry.Id == Id then return true end
+-- The Loot, Alch and Note tabs are three instances of the same list, told apart
+-- by Key. Everything below takes that Key so none of it is written three times.
+local ListLabels = { Loot = "Loot", Alch = "Alch", Note = "Note" }
+
+-- Find a preset by the name stored in a list entry. Returns nil when a saved
+-- config names a list that no longer exists.
+local function FindPreset(Name)
+    for _, Preset in ipairs(LootPresets) do
+        if Preset.Name == Name then return Preset end
+    end
+    return nil
+end
+
+-- Every id an entry covers: one for a single item, the whole preset for a list.
+local function EntryIds(Entry)
+    if Entry.List ~= nil then
+        local Preset = FindPreset(Entry.List)
+        return Preset ~= nil and Preset.Ids or {}
+    end
+    return { Entry.Id }
+end
+
+-- Flatten a list's entries to a plain id array plus a lookup set. Called only
+-- when the list changes, so the main loop never expands the presets itself.
+local function RebuildListIds(Key)
+    local List = State.Lists[Key]
+    local Ids, Seen = {}, {}
+    for _, Entry in ipairs(List.Entries) do
+        for _, Id in ipairs(EntryIds(Entry)) do
+            if not Seen[Id] then
+                Seen[Id] = true
+                Ids[#Ids + 1] = Id
+            end
+        end
+    end
+    List.Ids = Ids
+    List.IdSet = Seen
+end
+
+local function RebuildAllListIds()
+    for Key in pairs(State.Lists) do
+        RebuildListIds(Key)
+    end
+end
+
+-- True when the id is already covered, whether by a single entry or by a list.
+local function ListContains(Key, Id)
+    return State.Lists[Key].IdSet[Id] == true
+end
+
+local function ListContainsPreset(Key, Name)
+    for _, Entry in ipairs(State.Lists[Key].Entries) do
+        if Entry.List == Name then return true end
     end
     return false
 end
 
-local function AddLoot(Input)
-    if Input == nil or Input == "" then
-        Slib:Warn("[Loot] No item id entered")
-        return
+-- Split an id input box into individual tokens. Commas and whitespace both
+-- separate, and runs of either are collapsed, so "995, 12163  39814" and
+-- "995,12163,39814" both give three ids.
+local function SplitIdInput(Input)
+    local Tokens = {}
+    for Token in string.gmatch(Input, "[^%s,]+") do
+        Tokens[#Tokens + 1] = Token
     end
-
-    local Id, Name = ResolveItem(Input)
-    if Id == nil then
-        Slib:Warn("[Loot] No item found for id '" .. tostring(Input) .. "'")
-        return
-    end
-    if LootContains(Id) then
-        Slib:Warn("[Loot] Item " .. Id .. " (" .. Name .. ") already in list")
-        return
-    end
-
-    State.Loot[#State.Loot + 1] = { Id = Id, Name = Name }
-    Slib:Info("[Loot] Added " .. Id .. " (" .. Name .. ")")
+    return Tokens
 end
 
-local function RemoveLootAt(Index)
-    if Index and State.Loot[Index] then
-        local Removed = table.remove(State.Loot, Index)
-        Slib:Info("[Loot] Removed " .. Removed.Id .. " (" .. Removed.Name .. ")")
+-- Add a batch of ids to a list. Every id is handled on its own, so a bad or
+-- duplicate one in the middle of a batch does not stop the rest. Verbose logs a
+-- line per id, which the preset lists turn off - 145 salvage ids would flood the
+-- log. Returns the added / already listed / not found counts.
+local function AddIdsToList(Key, Ids, Verbose)
+    local List = State.Lists[Key]
+    local Tag = "[" .. ListLabels[Key] .. "] "
+    local Added, Skipped, Failed = 0, 0, 0
+    for _, Value in ipairs(Ids) do
+        local Id, Name = ResolveItem(Value)
+        if Id == nil then
+            if Verbose then
+                Slib:Warn(Tag .. "No item found for id '" .. tostring(Value) .. "'")
+            end
+            Failed = Failed + 1
+        elseif ListContains(Key, Id) then
+            if Verbose then
+                Slib:Warn(Tag .. "Item " .. Id .. " (" .. Name .. ") already in list")
+            end
+            Skipped = Skipped + 1
+        else
+            List.Entries[#List.Entries + 1] = { Id = Id, Name = Name }
+            List.IdSet[Id] = true
+            if Verbose then
+                Slib:Info(Tag .. "Added " .. Id .. " (" .. Name .. ")")
+            end
+            Added = Added + 1
+        end
+    end
+
+    if Added > 0 then RebuildListIds(Key) end
+    return Added, Skipped, Failed
+end
+
+-- Add the ids typed into a list's input box. Accepts one id or several separated
+-- by commas and/or spaces.
+local function AddInputToList(Key, Input)
+    local Tag = "[" .. ListLabels[Key] .. "] "
+    local Tokens = (Input ~= nil) and SplitIdInput(Input) or {}
+    if #Tokens == 0 then
+        Slib:Warn(Tag .. "No item id entered")
+        return
+    end
+
+    local Added, Skipped, Failed = AddIdsToList(Key, Tokens, true)
+
+    -- One summary line for a batch, since the per-id lines scroll off quickly.
+    if #Tokens > 1 then
+        Slib:Info(string.format("%s%d added, %d already listed, %d not found",
+            Tag, Added, Skipped, Failed))
     end
 end
 
-local function ClearLoot()
-    State.Loot = {}
-    Slib:Info("[Loot] Cleared list")
+-- Add a whole static list from LootPresets. Index is the 0-based dropdown value.
+-- The list goes in as a single entry holding only its name, so the visible list
+-- stays readable and the saved config does not carry 145 ids. The ids are
+-- expanded from LootPresets whenever they are needed.
+local function AddPresetToList(Key, Index)
+    local Tag = "[" .. ListLabels[Key] .. "] "
+    local Preset = LootPresets[(Index or 0) + 1]
+    if Preset == nil then
+        Slib:Warn(Tag .. "No list selected")
+        return
+    end
+    if ListContainsPreset(Key, Preset.Name) then
+        Slib:Warn(Tag .. "List " .. Preset.Name .. " already added")
+        return
+    end
+
+    local List = State.Lists[Key]
+    List.Entries[#List.Entries + 1] = { List = Preset.Name }
+    RebuildListIds(Key)
+    Slib:Info(string.format("%sAdded list %s (%d items)", Tag, Preset.Name, #Preset.Ids))
+end
+
+local function RemoveFromList(Key, Index)
+    local List = State.Lists[Key]
+    if Index == nil or List.Entries[Index] == nil then return end
+
+    local Tag = "[" .. ListLabels[Key] .. "] "
+    local Removed = table.remove(List.Entries, Index)
+    RebuildListIds(Key)
+    if Removed.List ~= nil then
+        Slib:Info(Tag .. "Removed list " .. Removed.List)
+    else
+        Slib:Info(Tag .. "Removed " .. Removed.Id .. " (" .. Removed.Name .. ")")
+    end
+end
+
+local function ClearList(Key)
+    local List = State.Lists[Key]
+    List.Entries = {}
+    RebuildListIds(Key)
+    Slib:Info("[" .. ListLabels[Key] .. "] Cleared list")
 end
 
 -- Action kinds that change saved config, so the file is rewritten after them.
 local ConfigChangingActions = {
     add = true, remove = true, up = true, down = true, clear = true,
-    lootadd = true, lootremove = true, lootclear = true, savesettings = true,
+    listadd = true, listaddpreset = true, listremove = true, listclear = true,
+    savesettings = true,
     togglemode = true,
 }
 
@@ -610,12 +900,16 @@ local function ProcessActions()
             MoveDown(Action.Payload)
         elseif Kind == "clear" then
             ClearPriority()
-        elseif Kind == "lootadd" then
-            AddLoot(Action.Payload)
-        elseif Kind == "lootremove" then
-            RemoveLootAt(Action.Payload)
-        elseif Kind == "lootclear" then
-            ClearLoot()
+        -- The list actions all carry which list they act on, so the Loot, Alch
+        -- and Note tabs share one set of handlers.
+        elseif Kind == "listadd" then
+            AddInputToList(Action.Payload.Key, Action.Payload.Value)
+        elseif Kind == "listaddpreset" then
+            AddPresetToList(Action.Payload.Key, Action.Payload.Value)
+        elseif Kind == "listremove" then
+            RemoveFromList(Action.Payload.Key, Action.Payload.Value)
+        elseif Kind == "listclear" then
+            ClearList(Action.Payload.Key)
         elseif Kind == "togglemode" then
             CycleTargetMode()
         elseif Kind == "toggle" then
@@ -828,18 +1122,77 @@ local function AttackByPriority()
     return false
 end
 
+-- Magic notepaper, both the normal and the bottomless variant.
+local NotepaperIds = { 30372, 43045 }
+
+-- The ids from a list that are actually in the inventory right now, or nil when
+-- none are. Slib:HighAlch and Slib:Note both walk their whole argument list
+-- calling Inventory:Contains on every id, so handing them a 145 id salvage list
+-- costs 145 inventory scans per pass. Reading the inventory once and
+-- intersecting against the list's IdSet costs one scan, and the usual answer of
+-- "nothing matches" skips the Slib call entirely.
+local function ListIdsInInventory(Key)
+    local List = State.Lists[Key]
+    if #List.Ids == 0 then return nil end
+
+    local Present, Seen = nil, {}
+    for _, Item in ipairs(Inventory:GetItems()) do
+        local Id = Item.id
+        if List.IdSet[Id] and not Seen[Id] then
+            Seen[Id] = true
+            Present = Present or {}
+            Present[#Present + 1] = Id
+        end
+    end
+    return Present
+end
+
+-- High Alch whatever the Alch list matches in the inventory. Throttled, because
+-- each cast takes several ticks and Slib:HighAlch re-checks the spellbook and
+-- the rune counts on every call.
+local function AlchListed()
+    if not State.Lists.Alch.Enabled then return end
+    if os.clock() - State.LastAlch < Config.AlchInterval then return end
+
+    local Ids = ListIdsInInventory("Alch")
+    if Ids == nil then return end
+
+    State.LastAlch = os.clock()
+    Slib:HighAlch(Ids)
+end
+
+-- Note whatever the Note list matches in the inventory.
+local function NoteListed()
+    if not State.Lists.Note.Enabled then return end
+    if os.clock() - State.LastNote < Config.NoteInterval then return end
+
+    local Ids = ListIdsInInventory("Note")
+    if Ids == nil then return end
+
+    -- Slib:Note logs an error per id when the notepaper has run out, so the
+    -- check happens here instead - one throttled warning per pass.
+    if not Inventory:ContainsAny(NotepaperIds) then
+        if os.clock() - State.LastNotepaperWarn >= Config.SustainWarnInterval then
+            State.LastNotepaperWarn = os.clock()
+            Slib:Warn("[Note] No magic notepaper in the inventory")
+        end
+        return
+    end
+
+    State.LastNote = os.clock()
+    Slib:Note(Ids)
+end
+
 -- Loot the configured item ids off the ground around the player.
 local function LootGround()
-    if #State.Loot == 0 then
+    -- Expanded ids, not entries: a saved list whose preset is gone has none.
+    local Ids = State.Lists.Loot.Ids
+    if #Ids == 0 then
         return false
     end
 
-    local Ids = {}
-    for _, Entry in ipairs(State.Loot) do
-        Ids[#Ids + 1] = Entry.Id
-    end
-
-    local Ok = API.DoAction_Loot_o(Ids, Config.LootRange, API.PlayerCoordfloat(), Config.LootRange)
+    local Ok = API.DoAction_Loot_o(Ids, Config.LootRange,
+        API.PlayerCoordfloat(), Config.LootRange)
     if Ok then
         Slib:Info("[Loot] Looting nearby items")
         Slib:RandomSleep(Config.LootMinSleep, Config.LootMaxSleep, "ms")
@@ -1100,48 +1453,107 @@ local function DrawPriorityList()
     end
 end
 
-local function DrawLootControls()
-    ImGui.SeparatorText("Add Loot Item")
+-- One widget for the Loot, Alch and Note tabs: an id input, a preset dropdown
+-- and the resulting list. Key picks which of State.Lists it edits.
+local function DrawItemListControls(Key)
+    local List = State.Lists[Key]
+    local Label = ListLabels[Key]
 
-    ImGui.PushItemWidth(150)
-    local Changed, NewText = ImGui.InputTextWithHint("##lootinput", "Item id", State.LootInput)
+    ImGui.SeparatorText("Add " .. Label .. " Items")
+
+    ImGui.PushItemWidth(200)
+    local Changed, NewText = ImGui.InputTextWithHint("##input" .. Key, "Item ids", List.Input)
     if Changed then
-        State.LootInput = NewText
+        List.Input = NewText
     end
     ImGui.PopItemWidth()
 
     ImGui.SameLine(0, 8)
-    if ImGui.Button("Add##lootadd", 60, 26) then
-        QueueAction("lootadd", State.LootInput)
+    if ImGui.Button("Add##add" .. Key, 60, 26) then
+        QueueAction("listadd", { Key = Key, Value = List.Input })
     end
     if ImGui.IsItemHovered() then
-        ImGui.SetTooltip("Add an item to the loot list by id")
+        ImGui.SetTooltip("Add items by id.\nSeparate several ids with commas or spaces.")
+    end
+
+    ImGui.SeparatorText("Add " .. Label .. " List")
+
+    ImGui.PushItemWidth(200)
+    local ListChanged, NewIndex = ImGui.Combo("##preset" .. Key, List.PresetIndex, LootPresetNames, 10)
+    if ListChanged then
+        List.PresetIndex = NewIndex
+    end
+    ImGui.PopItemWidth()
+
+    ImGui.SameLine(0, 8)
+    if ImGui.Button("Add##addpreset" .. Key, 60, 26) then
+        QueueAction("listaddpreset", { Key = Key, Value = List.PresetIndex })
+    end
+    if ImGui.IsItemHovered() then
+        ImGui.SetTooltip("Add every id in the selected list.\nIds already in this list are skipped.")
     end
 end
 
-local function DrawLootList()
-    ImGui.SeparatorText("Loot Items")
+local function DrawItemList(Key)
+    local List = State.Lists[Key]
 
-    if #State.Loot == 0 then
-        ColoredText(Theme.Muted, "Empty. Enter an item id, then Add.")
+    ImGui.SeparatorText(ListLabels[Key] .. " Items")
+
+    if #List.Entries == 0 then
+        ColoredText(Theme.Muted, "Empty. Add ids or a list above.")
     else
-        for Index, Entry in ipairs(State.Loot) do
-            ImGui.PushID("loot" .. Index)
-            ColoredText(Theme.AccentHi, tostring(Entry.Id))
-            ImGui.SameLine(0, 8)
-            ImGui.Text(tostring(Entry.Name))
+        -- The box grows with the list up to ItemListMaxRows, then scrolls. A
+        -- fixed height jumped the auto-height window to full size on one row.
+        local Rows = math.min(#List.Entries, Config.ItemListMaxRows)
+        local Height = Rows * ImGui.GetTextLineHeightWithSpacing() + 8
+        ImGui.BeginChild("##list" .. Key, 0, Height, 1)
+        for Index, Entry in ipairs(List.Entries) do
+            ImGui.PushID(Key .. Index)
+            if Entry.List ~= nil then
+                -- A list is one row. Showing its 145 ids instead would make the
+                -- list impossible to manage, which is the point of grouping it.
+                local Preset = FindPreset(Entry.List)
+                ColoredText(Theme.Accent, "[list]")
+                ImGui.SameLine(0, 8)
+                if Preset ~= nil then
+                    ImGui.Text(Entry.List .. " (" .. #Preset.Ids .. " items)")
+                else
+                    ColoredText(Theme.Bad, Entry.List .. " (unknown list)")
+                end
+            else
+                ColoredText(Theme.AccentHi, tostring(Entry.Id))
+                ImGui.SameLine(0, 8)
+                ImGui.Text(tostring(Entry.Name))
+            end
 
             ImGui.SameLine(0, 12)
             if ImGui.SmallButton("x") then
-                QueueAction("lootremove", Index)
+                QueueAction("listremove", { Key = Key, Value = Index })
             end
             ImGui.PopID()
         end
+        ImGui.EndChild()
 
         ImGui.Spacing()
-        if ImGui.Button("Clear Loot", 100, 24) then
-            QueueAction("lootclear")
+        ColoredText(Theme.Muted, #List.Entries .. " entr(ies), "
+            .. #List.Ids .. " item(s)")
+        if ImGui.Button("Clear##clear" .. Key, 100, 24) then
+            QueueAction("listclear", { Key = Key })
         end
+    end
+end
+
+-- The Alch and Note tabs are opt-in, so each opens with its own toggle. Loot has
+-- no toggle: it loots whenever its list is not empty, as it always has.
+local function DrawItemListToggle(Key, Text, Tooltip)
+    local List = State.Lists[Key]
+    local Changed, Value = ImGui.Checkbox(Text, List.Enabled == true)
+    if Changed then
+        List.Enabled = Value
+        QueueAction("savesettings")
+    end
+    if ImGui.IsItemHovered() then
+        ImGui.SetTooltip(Tooltip)
     end
 end
 
@@ -1244,8 +1656,24 @@ local function DrawGui()
                 end
                 if ImGui.BeginTabItem("Loot") then
                     ImGui.Spacing()
-                    DrawLootControls()
-                    DrawLootList()
+                    DrawItemListControls("Loot")
+                    DrawItemList("Loot")
+                    ImGui.EndTabItem()
+                end
+                if ImGui.BeginTabItem("Alch") then
+                    ImGui.Spacing()
+                    DrawItemListToggle("Alch", "High Alch listed items",
+                        "Needs the Standard spellbook, nature runes and fire runes")
+                    DrawItemListControls("Alch")
+                    DrawItemList("Alch")
+                    ImGui.EndTabItem()
+                end
+                if ImGui.BeginTabItem("Note") then
+                    ImGui.Spacing()
+                    DrawItemListToggle("Note", "Note listed items",
+                        "Needs magic notepaper in the inventory")
+                    DrawItemListControls("Note")
+                    DrawItemList("Note")
                     ImGui.EndTabItem()
                 end
                 if ImGui.BeginTabItem("Options") then
@@ -1275,8 +1703,21 @@ end
 -- #endregion
 
 -- #region Main loop --------------------------------------------------------
--- Load saved config before the render callback starts reading State.
+-- Load saved config before the render callback starts reading State. LoadConfig
+-- is defined above RebuildAllListIds, so the flattened id arrays are built here.
 LoadConfig()
+RebuildAllListIds()
+
+-- A saved list whose preset was renamed or removed contributes no ids, so say so
+-- rather than letting it sit in the list looking active.
+for Key, List in pairs(State.Lists) do
+    for _, Entry in ipairs(List.Entries) do
+        if Entry.List ~= nil and FindPreset(Entry.List) == nil then
+            Slib:Warn("[" .. ListLabels[Key] .. "] Saved list "
+                .. tostring(Entry.List) .. " no longer exists")
+        end
+    end
+end
 
 -- The client keeps render callbacks across script runs, so a stale one from a
 -- previous run would draw a second window on top of this one.
@@ -1296,6 +1737,11 @@ RememberAutoRetaliate()
 Slib:Info("[Script] " .. ScriptName .. " v" .. ScriptVersion .. " started")
 
 while API.Read_LoopyLoop() do
+
+    if Inventory:Contains(47660) then
+        API.DoAction_Interface(0x24,0xba2c,1,1473,5,0,API.OFF_ACT_GeneralInterface_route)
+        Slib:RandomSleep(600, 900, "ms")
+    end
     -- GUI actions are safe to drain at any time; everything below this point
     -- touches the game, so it is skipped while logged out. The loop stays alive
     -- so the script picks straight back up on reconnect.
@@ -1320,6 +1766,8 @@ while API.Read_LoopyLoop() do
         local Idle = IsReadyToAttack()
         if not Attacked then
             LootGround()
+            AlchListed()
+            NoteListed()
         end
 
         -- Landing an attack, or already being locked in a fight, both count as
